@@ -5,6 +5,14 @@
   "type": "module",
   "packageManager": "pnpm@12.10.1",
   "scripts": {
+    "dev": "rsbuild dev",
+    "build": "rsbuild build",
+    "preview": "rsbuild preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format:check": "prettier --check .",
+    "e2e": "cypress run",
     "gen:api": "bash scripts/gen-api.sh"
   },
   "dependencies": {
