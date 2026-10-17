@@ -4,6 +4,11 @@
 set -euo pipefail
 
 SPEC="${1:-../rustdesk-control-panel-api/openapi.yaml}"
+# openapi-ts 会把不带 ./ 的相对路径当成 Hey API 注册表简写，这里统一归一化
+case "$SPEC" in
+  /* | ./* | ../*) ;;
+  *) SPEC="./$SPEC" ;;
+esac
 
 if [ ! -f "$SPEC" ]; then
   echo "spec not found: $SPEC" >&2
