@@ -1,0 +1,21 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+.rsbuild/
+
+# cypress artifacts
+cypress/screenshots/
+cypress/videos/
+cypress/downloads/
+
+# env
+.env
+.env.local
+*.local
+
+# editor / os
+.idea/
+.vscode/
+.DS_Store
