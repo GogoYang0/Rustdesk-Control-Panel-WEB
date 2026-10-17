@@ -61,3 +61,11 @@ src/
 ## 许可
 
 私有项目，保留所有权利（见 `LICENSE`）。
+
+## CI Secrets
+
+本仓库 CI 的 `contract` job 需要跨仓读取私有 API 仓库，依赖 secret `API_REPO_TOKEN`：
+
+- 建议使用 **fine-grained PAT**，仅授予 `Rustdesk-Control-Panel-API` 的 `Contents: read` 权限
+- 设置命令：`gh secret set API_REPO_TOKEN --body "<token>" --repo GogoYang0/Rustdesk-Control-Panel-WEB`
+- **注意 PAT 有效期**：过期后 WEB/APP 两仓的 contract job 会同时失败；到期前需轮换
