@@ -5,14 +5,7 @@
   "type": "module",
   "packageManager": "pnpm@12.10.1",
   "scripts": {
-    "dev": "rsbuild dev",
-    "build": "rsbuild build",
-    "preview": "rsbuild preview",
-    "test": "vitest run",
-    "typecheck": "tsc --noEmit",
-    "lint": "eslint .",
-    "format:check": "prettier --check .",
-    "e2e": "cypress run"
+    "gen:api": "bash scripts/gen-api.sh"
   },
   "dependencies": {
     "@douyinfe/semi-ui": "^2.104.0",
@@ -24,6 +17,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
+    "@hey-api/openapi-ts": "^0.99.0",
     "@rsbuild/core": "^2.2.13",
     "@rsbuild/plugin-react": "^2.1.1",
     "@tailwindcss/postcss": "^4.3.3",
