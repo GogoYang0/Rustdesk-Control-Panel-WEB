@@ -1,0 +1,84 @@
+name: ci
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+env:
+  CYPRESS_INSTALL_BINARY: '0'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.x'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm eslint .
+      - run: pnpm prettier --check .
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.x'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm tsc --noEmit
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.x'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm vitest run
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.x'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm rsbuild build
+
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: checkout api repository (contract source)
+        uses: actions/checkout@v4
+        with:
+          repository: GogoYang0/Rustdesk-Control-Panel-API
+          path: rustdesk-control-panel-api
+          token: ${{ secrets.API_REPO_TOKEN }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.x'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: generate client from contract
+        run: bash scripts/gen-api.sh rustdesk-control-panel-api/openapi.yaml
+      - name: fail on drift
+        run: git diff --exit-code -- src/api/generated
