@@ -4,6 +4,136 @@ export type ClientOptions = {
     baseUrl: 'http://localhost:8080' | (string & {});
 };
 
+/**
+ * 机器可读错误码：
+ * - ok：成功
+ * - invalid_request：参数校验失败
+ * - unauthorized：未认证或令牌无效
+ * - forbidden：权限不足
+ * - not_found：资源不存在
+ * - conflict：状态冲突（重复创建、邀请过期或已使用）
+ * - rate_limited：触发限流
+ * - internal：服务端错误
+ *
+ */
+export type ErrorCode = 'ok' | 'invalid_request' | 'unauthorized' | 'forbidden' | 'not_found' | 'conflict' | 'rate_limited' | 'internal';
+
+export type ErrorResponse = {
+    code: ErrorCode;
+    message: string;
+    data?: {
+        [key: string]: unknown;
+    };
+};
+
+export type LoginRequest = {
+    email: string;
+    password: string;
+};
+
+export type RefreshRequest = {
+    refresh_token: string;
+};
+
+export type TokenPair = {
+    access_token: string;
+    refresh_token: string;
+    /**
+     * access 令牌剩余有效秒数
+     */
+    expires_in: number;
+};
+
+export type TokenResponse = {
+    code: ErrorCode;
+    message: string;
+    data: TokenPair;
+};
+
+export type Org = {
+    id: number;
+    name: string;
+    created_at: string;
+};
+
+export type OrgCreateRequest = {
+    name: string;
+};
+
+export type OrgResponse = {
+    code: ErrorCode;
+    message: string;
+    data: Org;
+};
+
+export type OrgListResponse = {
+    code: ErrorCode;
+    message: string;
+    data: Array<Org>;
+};
+
+export type Member = {
+    id: number;
+    user_id: number;
+    email: string;
+    role: 'owner' | 'admin' | 'member';
+    created_at: string;
+};
+
+export type MemberResponse = {
+    code: ErrorCode;
+    message: string;
+    data: Member;
+};
+
+export type MemberListResponse = {
+    code: ErrorCode;
+    message: string;
+    data: Array<Member>;
+};
+
+export type InvitationCreateRequest = {
+    email: string;
+    role: 'admin' | 'member';
+};
+
+export type Invitation = {
+    id: number;
+    email: string;
+    role: 'admin' | 'member';
+    expires_at: string;
+};
+
+export type InvitationResponse = {
+    code: ErrorCode;
+    message: string;
+    data: Invitation;
+};
+
+export type InvitationAcceptRequest = {
+    token: string;
+    password: string;
+};
+
+export type Device = {
+    id: number;
+    name: string;
+    rustdesk_id: string;
+    status: 'online' | 'offline';
+    last_seen_at: string | null;
+};
+
+export type DeviceCreateRequest = {
+    name: string;
+    rustdesk_id: string;
+};
+
+export type DeviceResponse = {
+    code: ErrorCode;
+    message: string;
+    data: Device;
+};
+
 export type GetHealthzData = {
     body?: never;
     path?: never;
@@ -21,3 +151,301 @@ export type GetHealthzResponses = {
 };
 
 export type GetHealthzResponse = GetHealthzResponses[keyof GetHealthzResponses];
+
+export type LoginData = {
+    body: LoginRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/login';
+};
+
+export type LoginErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 触发限流
+     */
+    429: ErrorResponse;
+};
+
+export type LoginError = LoginErrors[keyof LoginErrors];
+
+export type LoginResponses = {
+    /**
+     * 登录成功
+     */
+    200: TokenResponse;
+};
+
+export type LoginResponse = LoginResponses[keyof LoginResponses];
+
+export type RefreshTokensData = {
+    body: RefreshRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/refresh';
+};
+
+export type RefreshTokensErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+};
+
+export type RefreshTokensError = RefreshTokensErrors[keyof RefreshTokensErrors];
+
+export type RefreshTokensResponses = {
+    /**
+     * 轮换成功
+     */
+    200: TokenResponse;
+};
+
+export type RefreshTokensResponse = RefreshTokensResponses[keyof RefreshTokensResponses];
+
+export type ListOrgsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/orgs';
+};
+
+export type ListOrgsErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+};
+
+export type ListOrgsError = ListOrgsErrors[keyof ListOrgsErrors];
+
+export type ListOrgsResponses = {
+    /**
+     * 组织列表
+     */
+    200: OrgListResponse;
+};
+
+export type ListOrgsResponse = ListOrgsResponses[keyof ListOrgsResponses];
+
+export type CreateOrgData = {
+    body: OrgCreateRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/orgs';
+};
+
+export type CreateOrgErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+};
+
+export type CreateOrgError = CreateOrgErrors[keyof CreateOrgErrors];
+
+export type CreateOrgResponses = {
+    /**
+     * 创建成功
+     */
+    201: OrgResponse;
+};
+
+export type CreateOrgResponse = CreateOrgResponses[keyof CreateOrgResponses];
+
+export type ListMembersData = {
+    body?: never;
+    path: {
+        orgId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/members';
+};
+
+export type ListMembersErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type ListMembersError = ListMembersErrors[keyof ListMembersErrors];
+
+export type ListMembersResponses = {
+    /**
+     * 成员列表
+     */
+    200: MemberListResponse;
+};
+
+export type ListMembersResponse = ListMembersResponses[keyof ListMembersResponses];
+
+export type CreateInvitationData = {
+    body: InvitationCreateRequest;
+    path: {
+        orgId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/invitations';
+};
+
+export type CreateInvitationErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type CreateInvitationError = CreateInvitationErrors[keyof CreateInvitationErrors];
+
+export type CreateInvitationResponses = {
+    /**
+     * 邀请已创建
+     */
+    201: InvitationResponse;
+};
+
+export type CreateInvitationResponse = CreateInvitationResponses[keyof CreateInvitationResponses];
+
+export type AcceptInvitationData = {
+    body: InvitationAcceptRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/invitations/accept';
+};
+
+export type AcceptInvitationErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+};
+
+export type AcceptInvitationError = AcceptInvitationErrors[keyof AcceptInvitationErrors];
+
+export type AcceptInvitationResponses = {
+    /**
+     * 已加入组织
+     */
+    200: MemberResponse;
+};
+
+export type AcceptInvitationResponse = AcceptInvitationResponses[keyof AcceptInvitationResponses];
+
+export type CreateDeviceData = {
+    body: DeviceCreateRequest;
+    path: {
+        orgId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/devices';
+};
+
+export type CreateDeviceErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type CreateDeviceError = CreateDeviceErrors[keyof CreateDeviceErrors];
+
+export type CreateDeviceResponses = {
+    /**
+     * 设备已登记
+     */
+    201: DeviceResponse;
+};
+
+export type CreateDeviceResponse = CreateDeviceResponses[keyof CreateDeviceResponses];
+
+export type DeviceHeartbeatData = {
+    body?: never;
+    path: {
+        orgId: number;
+        deviceId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/devices/{deviceId}/heartbeat';
+};
+
+export type DeviceHeartbeatErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type DeviceHeartbeatError = DeviceHeartbeatErrors[keyof DeviceHeartbeatErrors];
+
+export type DeviceHeartbeatResponses = {
+    /**
+     * 心跳已记录
+     */
+    200: DeviceResponse;
+};
+
+export type DeviceHeartbeatResponse = DeviceHeartbeatResponses[keyof DeviceHeartbeatResponses];
