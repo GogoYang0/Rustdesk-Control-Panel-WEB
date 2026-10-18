@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { GetHealthzData, GetHealthzResponses } from './types.gen';
+import type { AcceptInvitationData, AcceptInvitationErrors, AcceptInvitationResponses, CreateDeviceData, CreateDeviceErrors, CreateDeviceResponses, CreateInvitationData, CreateInvitationErrors, CreateInvitationResponses, CreateOrgData, CreateOrgErrors, CreateOrgResponses, DeviceHeartbeatData, DeviceHeartbeatErrors, DeviceHeartbeatResponses, GetHealthzData, GetHealthzResponses, ListMembersData, ListMembersErrors, ListMembersResponses, ListOrgsData, ListOrgsErrors, ListOrgsResponses, LoginData, LoginErrors, LoginResponses, RefreshTokensData, RefreshTokensErrors, RefreshTokensResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -24,3 +24,125 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
  * 返回进程存活状态，不需要认证。
  */
 export const getHealthz = <ThrowOnError extends boolean = false>(options?: Options<GetHealthzData, ThrowOnError>): RequestResult<GetHealthzResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetHealthzResponses, unknown, ThrowOnError>({ url: '/healthz', ...options });
+
+/**
+ * 邮箱密码登录
+ *
+ * 校验邮箱与密码，返回 access/refresh 令牌对。受 IP 与账号双轨限流（429）。
+ */
+export const login = <ThrowOnError extends boolean = false>(options: Options<LoginData, ThrowOnError>): RequestResult<LoginResponses, LoginErrors, ThrowOnError> => (options.client ?? client).post<LoginResponses, LoginErrors, ThrowOnError>({
+    url: '/api/v1/auth/login',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 轮换 refresh 令牌
+ *
+ * 校验 refresh 令牌并轮换：旧令牌立即撤销，返回新的令牌对。
+ * 重放已撤销令牌会撤销该用户全部 refresh 令牌，需重新登录。
+ *
+ */
+export const refreshTokens = <ThrowOnError extends boolean = false>(options: Options<RefreshTokensData, ThrowOnError>): RequestResult<RefreshTokensResponses, RefreshTokensErrors, ThrowOnError> => (options.client ?? client).post<RefreshTokensResponses, RefreshTokensErrors, ThrowOnError>({
+    url: '/api/v1/auth/refresh',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 列出当前用户所属组织
+ *
+ * 返回调用者已加入的全部组织，按组织 id 升序。
+ */
+export const listOrgs = <ThrowOnError extends boolean = false>(options?: Options<ListOrgsData, ThrowOnError>): RequestResult<ListOrgsResponses, ListOrgsErrors, ThrowOnError> => (options?.client ?? client).get<ListOrgsResponses, ListOrgsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs',
+    ...options
+});
+
+/**
+ * 创建组织
+ *
+ * 创建组织并将调用者设为 owner。
+ */
+export const createOrg = <ThrowOnError extends boolean = false>(options: Options<CreateOrgData, ThrowOnError>): RequestResult<CreateOrgResponses, CreateOrgErrors, ThrowOnError> => (options.client ?? client).post<CreateOrgResponses, CreateOrgErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 列出组织成员
+ *
+ * 返回指定组织的成员及其组织内角色；调用者必须是该组织成员。
+ */
+export const listMembers = <ThrowOnError extends boolean = false>(options: Options<ListMembersData, ThrowOnError>): RequestResult<ListMembersResponses, ListMembersErrors, ThrowOnError> => (options.client ?? client).get<ListMembersResponses, ListMembersErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/members',
+    ...options
+});
+
+/**
+ * 邀请成员加入组织
+ *
+ * 生成邀请令牌（服务端只存哈希），有效期 7 天。需要 member.manage 权限。
+ */
+export const createInvitation = <ThrowOnError extends boolean = false>(options: Options<CreateInvitationData, ThrowOnError>): RequestResult<CreateInvitationResponses, CreateInvitationErrors, ThrowOnError> => (options.client ?? client).post<CreateInvitationResponses, CreateInvitationErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/invitations',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 接受邀请
+ *
+ * 使用邀请令牌加入组织；令牌过期或已使用返回 409。
+ */
+export const acceptInvitation = <ThrowOnError extends boolean = false>(options: Options<AcceptInvitationData, ThrowOnError>): RequestResult<AcceptInvitationResponses, AcceptInvitationErrors, ThrowOnError> => (options.client ?? client).post<AcceptInvitationResponses, AcceptInvitationErrors, ThrowOnError>({
+    url: '/api/v1/invitations/accept',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 注册设备
+ *
+ * 在当前组织下登记一台 RustDesk 设备。需要 device.write 权限。
+ */
+export const createDevice = <ThrowOnError extends boolean = false>(options: Options<CreateDeviceData, ThrowOnError>): RequestResult<CreateDeviceResponses, CreateDeviceErrors, ThrowOnError> => (options.client ?? client).post<CreateDeviceResponses, CreateDeviceErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/devices',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 设备心跳
+ *
+ * 上报设备在线心跳，刷新 last_seen_at。需要 device.write 权限。
+ */
+export const deviceHeartbeat = <ThrowOnError extends boolean = false>(options: Options<DeviceHeartbeatData, ThrowOnError>): RequestResult<DeviceHeartbeatResponses, DeviceHeartbeatErrors, ThrowOnError> => (options.client ?? client).post<DeviceHeartbeatResponses, DeviceHeartbeatErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/devices/{deviceId}/heartbeat',
+    ...options
+});
