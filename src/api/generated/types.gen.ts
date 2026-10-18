@@ -102,6 +102,10 @@ export type Invitation = {
     email: string;
     role: 'admin' | 'member';
     expires_at: string;
+    /**
+     * 邀请令牌明文，仅在创建响应中返回一次，服务端只存哈希。
+     */
+    token?: string;
 };
 
 export type InvitationResponse = {
