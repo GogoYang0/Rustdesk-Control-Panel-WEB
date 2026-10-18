@@ -1,4 +1,4 @@
-# CodeRabbit 评审配置：develop 与 main 基分支均启用评审
+# CodeRabbit 评审配置：仅 main / develop 为评审目标分支（项目约定 PR 只进入这两个分支，feature 分支经 PR 合入 develop）
 # 项目约定：所有 PR 必须经 CodeRabbit 评审并解决其问题后，由维护者人工审核合并
 language: zh-CN
 reviews:
