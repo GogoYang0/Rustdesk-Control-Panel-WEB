@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AcceptInvitationData, AcceptInvitationErrors, AcceptInvitationResponses, CreateDeviceData, CreateDeviceErrors, CreateDeviceResponses, CreateInvitationData, CreateInvitationErrors, CreateInvitationResponses, CreateOrgData, CreateOrgErrors, CreateOrgResponses, DeviceHeartbeatData, DeviceHeartbeatErrors, DeviceHeartbeatResponses, GetHealthzData, GetHealthzResponses, ListMembersData, ListMembersErrors, ListMembersResponses, ListOrgsData, ListOrgsErrors, ListOrgsResponses, LoginData, LoginErrors, LoginResponses, RefreshTokensData, RefreshTokensErrors, RefreshTokensResponses } from './types.gen';
+import type { AcceptInvitationData, AcceptInvitationErrors, AcceptInvitationResponses, CreateAddressBookData, CreateAddressBookErrors, CreateAddressBookResponses, CreateDeviceData, CreateDeviceErrors, CreateDeviceResponses, CreateInvitationData, CreateInvitationErrors, CreateInvitationResponses, CreateOrgData, CreateOrgErrors, CreateOrgResponses, DeleteAddressBookData, DeleteAddressBookErrors, DeleteAddressBookResponses, DeviceHeartbeatData, DeviceHeartbeatErrors, DeviceHeartbeatResponses, GetAddressBookData, GetAddressBookErrors, GetAddressBookResponses, GetHealthzData, GetHealthzResponses, ListAddressBooksData, ListAddressBooksErrors, ListAddressBooksResponses, ListLogEventsData, ListLogEventsErrors, ListLogEventsResponses, ListMembersData, ListMembersErrors, ListMembersResponses, ListOrgsData, ListOrgsErrors, ListOrgsResponses, LoginData, LoginErrors, LoginResponses, RefreshTokensData, RefreshTokensErrors, RefreshTokensResponses, ReplaceAddressBookPeersData, ReplaceAddressBookPeersErrors, ReplaceAddressBookPeersResponses, ReplaceAddressBookTagsData, ReplaceAddressBookTagsErrors, ReplaceAddressBookTagsResponses, ResendVerificationData, ResendVerificationErrors, ResendVerificationResponses, UpdateAddressBookData, UpdateAddressBookErrors, UpdateAddressBookResponses, VerifyEmailData, VerifyEmailErrors, VerifyEmailResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -129,6 +129,146 @@ export const acceptInvitation = <ThrowOnError extends boolean = false>(options: 
 export const createDevice = <ThrowOnError extends boolean = false>(options: Options<CreateDeviceData, ThrowOnError>): RequestResult<CreateDeviceResponses, CreateDeviceErrors, ThrowOnError> => (options.client ?? client).post<CreateDeviceResponses, CreateDeviceErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/v1/orgs/{orgId}/devices',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 列出地址簿
+ *
+ * 返回调用者可见的地址簿：个人地址簿（owner 为调用者）与共享地址簿。
+ * 需要 addressbook 权限。
+ *
+ */
+export const listAddressBooks = <ThrowOnError extends boolean = false>(options: Options<ListAddressBooksData, ThrowOnError>): RequestResult<ListAddressBooksResponses, ListAddressBooksErrors, ThrowOnError> => (options.client ?? client).get<ListAddressBooksResponses, ListAddressBooksErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/address-books',
+    ...options
+});
+
+/**
+ * 创建地址簿
+ *
+ * 创建地址簿。personal 由调用者拥有；shared 需要组织管理权限。
+ * 同名同 scope 重复创建返回 409。
+ *
+ */
+export const createAddressBook = <ThrowOnError extends boolean = false>(options: Options<CreateAddressBookData, ThrowOnError>): RequestResult<CreateAddressBookResponses, CreateAddressBookErrors, ThrowOnError> => (options.client ?? client).post<CreateAddressBookResponses, CreateAddressBookErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/address-books',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 删除地址簿（级联删除 peers 与 tags）
+ *
+ * 删除地址簿及其全部 peers 与 tags；不可恢复。
+ */
+export const deleteAddressBook = <ThrowOnError extends boolean = false>(options: Options<DeleteAddressBookData, ThrowOnError>): RequestResult<DeleteAddressBookResponses, DeleteAddressBookErrors, ThrowOnError> => (options.client ?? client).delete<DeleteAddressBookResponses, DeleteAddressBookErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/address-books/{bookId}',
+    ...options
+});
+
+/**
+ * 地址簿详情（含 peers 与 tags）
+ *
+ * 返回单个地址簿及其 peers 与 tags；无权访问或不存在返回 404。
+ */
+export const getAddressBook = <ThrowOnError extends boolean = false>(options: Options<GetAddressBookData, ThrowOnError>): RequestResult<GetAddressBookResponses, GetAddressBookErrors, ThrowOnError> => (options.client ?? client).get<GetAddressBookResponses, GetAddressBookErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/address-books/{bookId}',
+    ...options
+});
+
+/**
+ * 更新地址簿名称
+ *
+ * personal 仅 owner 可改；shared 需要组织管理权限。scope 创建后不可变更。
+ */
+export const updateAddressBook = <ThrowOnError extends boolean = false>(options: Options<UpdateAddressBookData, ThrowOnError>): RequestResult<UpdateAddressBookResponses, UpdateAddressBookErrors, ThrowOnError> => (options.client ?? client).put<UpdateAddressBookResponses, UpdateAddressBookErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/address-books/{bookId}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 全量替换地址簿 peers
+ *
+ * 以请求体完整替换该地址簿的 peers 列表，revision 递增。
+ * 并发更新以 revision 兜底（乐观锁语义，供客户端同步对比）。
+ *
+ */
+export const replaceAddressBookPeers = <ThrowOnError extends boolean = false>(options: Options<ReplaceAddressBookPeersData, ThrowOnError>): RequestResult<ReplaceAddressBookPeersResponses, ReplaceAddressBookPeersErrors, ThrowOnError> => (options.client ?? client).put<ReplaceAddressBookPeersResponses, ReplaceAddressBookPeersErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/address-books/{bookId}/peers',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 全量替换地址簿标签
+ *
+ * 以请求体完整替换该地址簿的标签列表，revision 递增。
+ */
+export const replaceAddressBookTags = <ThrowOnError extends boolean = false>(options: Options<ReplaceAddressBookTagsData, ThrowOnError>): RequestResult<ReplaceAddressBookTagsResponses, ReplaceAddressBookTagsErrors, ThrowOnError> => (options.client ?? client).put<ReplaceAddressBookTagsResponses, ReplaceAddressBookTagsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/address-books/{bookId}/tags',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 查询采集日志事件
+ *
+ * 返回本组织采集的 hbbs/hbbr 日志事件，按发生时间倒序，limit 上限 200。
+ */
+export const listLogEvents = <ThrowOnError extends boolean = false>(options: Options<ListLogEventsData, ThrowOnError>): RequestResult<ListLogEventsResponses, ListLogEventsErrors, ThrowOnError> => (options.client ?? client).get<ListLogEventsResponses, ListLogEventsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/log-events',
+    ...options
+});
+
+/**
+ * 邮箱验证
+ *
+ * 使用邮件中的验证令牌完成邮箱验证；令牌过期或已使用返回 409。
+ */
+export const verifyEmail = <ThrowOnError extends boolean = false>(options: Options<VerifyEmailData, ThrowOnError>): RequestResult<VerifyEmailResponses, VerifyEmailErrors, ThrowOnError> => (options.client ?? client).post<VerifyEmailResponses, VerifyEmailErrors, ThrowOnError>({
+    url: '/api/v1/auth/verify-email',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 重发验证邮件
+ *
+ * 无论邮箱是否存在均返回 200（防枚举）；存在未验证账号时才真正发送。
+ * 受限流保护。
+ *
+ */
+export const resendVerification = <ThrowOnError extends boolean = false>(options: Options<ResendVerificationData, ThrowOnError>): RequestResult<ResendVerificationResponses, ResendVerificationErrors, ThrowOnError> => (options.client ?? client).post<ResendVerificationResponses, ResendVerificationErrors, ThrowOnError>({
+    url: '/api/v1/auth/resend-verification',
     ...options,
     headers: {
         'Content-Type': 'application/json',

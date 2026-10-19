@@ -23,7 +23,7 @@ export type ErrorResponse = {
     message: string;
     data?: {
         [key: string]: unknown;
-    };
+    } | null;
 };
 
 export type LoginRequest = {
@@ -132,6 +132,107 @@ export type DeviceResponse = {
     code: ErrorCode;
     message: string;
     data: Device;
+};
+
+export type OkResponse = {
+    code: ErrorCode;
+    message: string;
+};
+
+export type EmailVerificationRequest = {
+    token: string;
+};
+
+export type ResendVerificationRequest = {
+    email: string;
+};
+
+export type AddressBookCreateRequest = {
+    name: string;
+    scope: 'personal' | 'shared';
+};
+
+export type AddressBookUpdateRequest = {
+    name: string;
+};
+
+export type AddressBookPeer = {
+    /**
+     * RustDesk 设备 ID
+     */
+    peer_id: string;
+    alias?: string;
+    username?: string;
+    hostname?: string;
+    platform?: string;
+    tags?: Array<string>;
+};
+
+export type AddressBookTag = {
+    name: string;
+    /**
+     * RGB 颜色值（同 RustDesk 客户端 tag_colors 语义）
+     */
+    color?: number;
+};
+
+export type AddressBook = {
+    id: number;
+    name: string;
+    scope: 'personal' | 'shared';
+    /**
+     * personal 时为所有者用户 id；shared 时为 null
+     */
+    owner_id?: number | null;
+    /**
+     * 内容修订号，每次 peers/tags 全量替换递增
+     */
+    revision: number;
+    peers?: Array<AddressBookPeer>;
+    tags?: Array<AddressBookTag>;
+    created_at: string;
+    updated_at: string;
+};
+
+export type AddressBookPeersReplaceRequest = {
+    peers: Array<AddressBookPeer>;
+};
+
+export type AddressBookTagsReplaceRequest = {
+    tags: Array<AddressBookTag>;
+};
+
+export type AddressBookResponse = {
+    code: ErrorCode;
+    message: string;
+    data: AddressBook;
+};
+
+export type AddressBookListResponse = {
+    code: ErrorCode;
+    message: string;
+    data: Array<AddressBook>;
+};
+
+export type LogEvent = {
+    id: number;
+    /**
+     * 关联设备；无法解析时为 null
+     */
+    device_id?: number | null;
+    source: 'hbbs' | 'hbbr';
+    level: 'info' | 'warn' | 'error';
+    kind: 'conn' | 'file' | 'error' | 'other';
+    detail?: {
+        [key: string]: unknown;
+    } | null;
+    occurred_at: string;
+};
+
+export type LogEventListResponse = {
+    code: ErrorCode;
+    message: string;
+    data: Array<LogEvent>;
 };
 
 export type GetHealthzData = {
@@ -413,6 +514,370 @@ export type CreateDeviceResponses = {
 };
 
 export type CreateDeviceResponse = CreateDeviceResponses[keyof CreateDeviceResponses];
+
+export type ListAddressBooksData = {
+    body?: never;
+    path: {
+        orgId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/address-books';
+};
+
+export type ListAddressBooksErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type ListAddressBooksError = ListAddressBooksErrors[keyof ListAddressBooksErrors];
+
+export type ListAddressBooksResponses = {
+    /**
+     * 地址簿列表
+     */
+    200: AddressBookListResponse;
+};
+
+export type ListAddressBooksResponse = ListAddressBooksResponses[keyof ListAddressBooksResponses];
+
+export type CreateAddressBookData = {
+    body: AddressBookCreateRequest;
+    path: {
+        orgId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/address-books';
+};
+
+export type CreateAddressBookErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+};
+
+export type CreateAddressBookError = CreateAddressBookErrors[keyof CreateAddressBookErrors];
+
+export type CreateAddressBookResponses = {
+    /**
+     * 已创建
+     */
+    201: AddressBookResponse;
+};
+
+export type CreateAddressBookResponse = CreateAddressBookResponses[keyof CreateAddressBookResponses];
+
+export type DeleteAddressBookData = {
+    body?: never;
+    path: {
+        orgId: number;
+        bookId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/address-books/{bookId}';
+};
+
+export type DeleteAddressBookErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type DeleteAddressBookError = DeleteAddressBookErrors[keyof DeleteAddressBookErrors];
+
+export type DeleteAddressBookResponses = {
+    /**
+     * 已删除
+     */
+    200: AddressBookResponse;
+};
+
+export type DeleteAddressBookResponse = DeleteAddressBookResponses[keyof DeleteAddressBookResponses];
+
+export type GetAddressBookData = {
+    body?: never;
+    path: {
+        orgId: number;
+        bookId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/address-books/{bookId}';
+};
+
+export type GetAddressBookErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type GetAddressBookError = GetAddressBookErrors[keyof GetAddressBookErrors];
+
+export type GetAddressBookResponses = {
+    /**
+     * 地址簿详情
+     */
+    200: AddressBookResponse;
+};
+
+export type GetAddressBookResponse = GetAddressBookResponses[keyof GetAddressBookResponses];
+
+export type UpdateAddressBookData = {
+    body: AddressBookUpdateRequest;
+    path: {
+        orgId: number;
+        bookId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/address-books/{bookId}';
+};
+
+export type UpdateAddressBookErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type UpdateAddressBookError = UpdateAddressBookErrors[keyof UpdateAddressBookErrors];
+
+export type UpdateAddressBookResponses = {
+    /**
+     * 已更新
+     */
+    200: AddressBookResponse;
+};
+
+export type UpdateAddressBookResponse = UpdateAddressBookResponses[keyof UpdateAddressBookResponses];
+
+export type ReplaceAddressBookPeersData = {
+    body: AddressBookPeersReplaceRequest;
+    path: {
+        orgId: number;
+        bookId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/address-books/{bookId}/peers';
+};
+
+export type ReplaceAddressBookPeersErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type ReplaceAddressBookPeersError = ReplaceAddressBookPeersErrors[keyof ReplaceAddressBookPeersErrors];
+
+export type ReplaceAddressBookPeersResponses = {
+    /**
+     * 已替换
+     */
+    200: AddressBookResponse;
+};
+
+export type ReplaceAddressBookPeersResponse = ReplaceAddressBookPeersResponses[keyof ReplaceAddressBookPeersResponses];
+
+export type ReplaceAddressBookTagsData = {
+    body: AddressBookTagsReplaceRequest;
+    path: {
+        orgId: number;
+        bookId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/address-books/{bookId}/tags';
+};
+
+export type ReplaceAddressBookTagsErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type ReplaceAddressBookTagsError = ReplaceAddressBookTagsErrors[keyof ReplaceAddressBookTagsErrors];
+
+export type ReplaceAddressBookTagsResponses = {
+    /**
+     * 已替换
+     */
+    200: AddressBookResponse;
+};
+
+export type ReplaceAddressBookTagsResponse = ReplaceAddressBookTagsResponses[keyof ReplaceAddressBookTagsResponses];
+
+export type ListLogEventsData = {
+    body?: never;
+    path: {
+        orgId: number;
+    };
+    query?: {
+        deviceId?: number;
+        level?: 'info' | 'warn' | 'error';
+        since?: string;
+        limit?: number;
+    };
+    url: '/api/v1/orgs/{orgId}/log-events';
+};
+
+export type ListLogEventsErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type ListLogEventsError = ListLogEventsErrors[keyof ListLogEventsErrors];
+
+export type ListLogEventsResponses = {
+    /**
+     * 日志事件列表
+     */
+    200: LogEventListResponse;
+};
+
+export type ListLogEventsResponse = ListLogEventsResponses[keyof ListLogEventsResponses];
+
+export type VerifyEmailData = {
+    body: EmailVerificationRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/verify-email';
+};
+
+export type VerifyEmailErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+};
+
+export type VerifyEmailError = VerifyEmailErrors[keyof VerifyEmailErrors];
+
+export type VerifyEmailResponses = {
+    /**
+     * 验证成功
+     */
+    200: OkResponse;
+};
+
+export type VerifyEmailResponse = VerifyEmailResponses[keyof VerifyEmailResponses];
+
+export type ResendVerificationData = {
+    body: ResendVerificationRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/resend-verification';
+};
+
+export type ResendVerificationErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 触发限流
+     */
+    429: ErrorResponse;
+};
+
+export type ResendVerificationError = ResendVerificationErrors[keyof ResendVerificationErrors];
+
+export type ResendVerificationResponses = {
+    /**
+     * 请求已受理
+     */
+    200: OkResponse;
+};
+
+export type ResendVerificationResponse = ResendVerificationResponses[keyof ResendVerificationResponses];
 
 export type DeviceHeartbeatData = {
     body?: never;
