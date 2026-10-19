@@ -189,9 +189,9 @@ export const getAddressBook = <ThrowOnError extends boolean = false>(options: Op
 });
 
 /**
- * 更新地址簿名称与共享范围
+ * 更新地址簿名称
  *
- * personal 仅 owner 可改；shared 需要组织管理权限。
+ * personal 仅 owner 可改；shared 需要组织管理权限。scope 创建后不可变更。
  */
 export const updateAddressBook = <ThrowOnError extends boolean = false>(options: Options<UpdateAddressBookData, ThrowOnError>): RequestResult<UpdateAddressBookResponses, UpdateAddressBookErrors, ThrowOnError> => (options.client ?? client).put<UpdateAddressBookResponses, UpdateAddressBookErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
