@@ -6608,6 +6608,14 @@ export type ListAlertsData = {
          */
         kind?: string;
         since?: string;
+        /**
+         * 只返回该会话引起的告警（`Alert.session_id`）。会话详情页据此展示
+         * 「关联告警」：告警列表按时间倒序分页，客户端自行按 `session_id` 过滤
+         * 会漏掉不在当前页的告警。未知 id 返回空页，不报错；跨组织的 id 同样
+         * 返回空页（租户作用域优先于过滤条件）。
+         *
+         */
+        sessionId?: number;
         page?: number;
         pageSize?: number;
     };
