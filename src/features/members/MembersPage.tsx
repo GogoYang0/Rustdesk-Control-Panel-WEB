@@ -459,12 +459,30 @@ function RoleDialog({
       </div>
       <div className="field">
         <label className="form-label">新角色</label>
-        <div className="vstack" style={{ gap: 6 }}>
+        <div className="vstack" style={{ gap: 6 }} role="radiogroup" aria-label="新角色">
+          {isLoading ? <div className="help">正在加载角色…</div> : null}
+          {loadError ? (
+            <div className="help" style={{ color: 'var(--danger)' }}>
+              角色列表加载失败，请重试
+            </div>
+          ) : null}
+          {!isLoading && !loadError && assignable.length === 0 ? (
+            <div className="help">没有可分配的角色</div>
+          ) : null}
           {assignable.map((role) => (
             <label
               key={role.id}
               className={`radio ${roleId === role.id ? 'on' : ''}`}
+              role="radio"
+              aria-checked={roleId === role.id}
+              tabIndex={0}
               onClick={() => setRoleId(role.id)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  setRoleId(role.id)
+                }
+              }}
             >
               <i />
               {role.name}
