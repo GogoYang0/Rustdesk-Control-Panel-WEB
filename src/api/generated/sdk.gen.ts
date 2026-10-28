@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AcceptInvitationData, AcceptInvitationErrors, AcceptInvitationResponses, CreateAddressBookData, CreateAddressBookErrors, CreateAddressBookResponses, CreateDeviceData, CreateDeviceErrors, CreateDeviceResponses, CreateInvitationData, CreateInvitationErrors, CreateInvitationResponses, CreateOrgData, CreateOrgErrors, CreateOrgResponses, DeleteAddressBookData, DeleteAddressBookErrors, DeleteAddressBookResponses, DeviceHeartbeatData, DeviceHeartbeatErrors, DeviceHeartbeatResponses, GetAddressBookData, GetAddressBookErrors, GetAddressBookResponses, GetHealthzData, GetHealthzResponses, ListAddressBooksData, ListAddressBooksErrors, ListAddressBooksResponses, ListLogEventsData, ListLogEventsErrors, ListLogEventsResponses, ListMembersData, ListMembersErrors, ListMembersResponses, ListOrgsData, ListOrgsErrors, ListOrgsResponses, LoginData, LoginErrors, LoginResponses, RefreshTokensData, RefreshTokensErrors, RefreshTokensResponses, ReplaceAddressBookPeersData, ReplaceAddressBookPeersErrors, ReplaceAddressBookPeersResponses, ReplaceAddressBookTagsData, ReplaceAddressBookTagsErrors, ReplaceAddressBookTagsResponses, ResendVerificationData, ResendVerificationErrors, ResendVerificationResponses, UpdateAddressBookData, UpdateAddressBookErrors, UpdateAddressBookResponses, VerifyEmailData, VerifyEmailErrors, VerifyEmailResponses } from './types.gen';
+import type { AcceptInvitationData, AcceptInvitationErrors, AcceptInvitationResponses, AssignDeviceGroupStrategyData, AssignDeviceGroupStrategyErrors, AssignDeviceGroupStrategyResponses, AssignDeviceStrategyData, AssignDeviceStrategyErrors, AssignDeviceStrategyResponses, AssignMemberControlRoleData, AssignMemberControlRoleErrors, AssignMemberControlRoleResponses, AssignMemberStrategyData, AssignMemberStrategyErrors, AssignMemberStrategyResponses, BeginPasskeyLoginData, BeginPasskeyLoginErrors, BeginPasskeyLoginResponses, BeginPasskeyRegistrationData, BeginPasskeyRegistrationErrors, BeginPasskeyRegistrationResponses, BeginPasskeyStepupData, BeginPasskeyStepupErrors, BeginPasskeyStepupResponses, CancelClientBuildData, CancelClientBuildErrors, CancelClientBuildResponses, CreateAccessRuleData, CreateAccessRuleErrors, CreateAccessRuleResponses, CreateAddressBookData, CreateAddressBookErrors, CreateAddressBookGrantData, CreateAddressBookGrantErrors, CreateAddressBookGrantResponses, CreateAddressBookResponses, CreateApprovalData, CreateApprovalErrors, CreateApprovalResponses, CreateClientBuildData, CreateClientBuildErrors, CreateClientBuildProfileData, CreateClientBuildProfileErrors, CreateClientBuildProfileResponses, CreateClientBuildResponses, CreateControlRoleData, CreateControlRoleErrors, CreateControlRoleResponses, CreateDeviceData, CreateDeviceErrors, CreateDeviceGroupData, CreateDeviceGroupErrors, CreateDeviceGroupResponses, CreateDeviceResponses, CreateInvitationData, CreateInvitationErrors, CreateInvitationResponses, CreateOrgData, CreateOrgErrors, CreateOrgResponses, CreatePolicyData, CreatePolicyErrors, CreatePolicyResponses, CreateRoleData, CreateRoleErrors, CreateRoleResponses, CreateStrategyData, CreateStrategyErrors, CreateStrategyResponses, CreateTokenData, CreateTokenErrors, CreateTokenResponses, CreateUserGroupData, CreateUserGroupErrors, CreateUserGroupResponses, DecideApprovalData, DecideApprovalErrors, DecideApprovalResponses, DeleteAccessRuleData, DeleteAccessRuleErrors, DeleteAccessRuleResponses, DeleteAddressBookData, DeleteAddressBookErrors, DeleteAddressBookGrantData, DeleteAddressBookGrantErrors, DeleteAddressBookGrantResponses, DeleteAddressBookPeerData, DeleteAddressBookPeerErrors, DeleteAddressBookPeerResponses, DeleteAddressBookResponses, DeleteClientBuildProfileData, DeleteClientBuildProfileErrors, DeleteClientBuildProfileLogoData, DeleteClientBuildProfileLogoErrors, DeleteClientBuildProfileLogoResponses, DeleteClientBuildProfileResponses, DeleteControlRoleData, DeleteControlRoleErrors, DeleteControlRoleResponses, DeleteDeviceGroupData, DeleteDeviceGroupErrors, DeleteDeviceGroupResponses, DeletePasskeyData, DeletePasskeyErrors, DeletePasskeyResponses, DeletePolicyData, DeletePolicyErrors, DeletePolicyResponses, DeleteRoleData, DeleteRoleErrors, DeleteRoleResponses, DeleteStrategyData, DeleteStrategyErrors, DeleteStrategyResponses, DeleteUserGroupData, DeleteUserGroupErrors, DeleteUserGroupResponses, DeviceHeartbeatData, DeviceHeartbeatErrors, DeviceHeartbeatResponses, DisableTotpData, DisableTotpErrors, DisableTotpResponses, DownloadClientBuildArtifactData, DownloadClientBuildArtifactErrors, DownloadClientBuildArtifactResponses, DownloadClientBuildBundleData, DownloadClientBuildBundleErrors, DownloadClientBuildBundleResponses, EnableTotpData, EnableTotpErrors, EnableTotpResponses, ExchangeOidcLoginData, ExchangeOidcLoginErrors, ExchangeOidcLoginResponses, ExportAuditLogsData, ExportAuditLogsErrors, ExportAuditLogsResponses, ExportConnectionLogsData, ExportConnectionLogsErrors, ExportConnectionLogsResponses, ExportFileLogsData, ExportFileLogsErrors, ExportFileLogsResponses, FinishPasskeyLoginData, FinishPasskeyLoginErrors, FinishPasskeyLoginResponses, FinishPasskeyRegistrationData, FinishPasskeyRegistrationErrors, FinishPasskeyRegistrationResponses, FinishPasskeyStepupData, FinishPasskeyStepupErrors, FinishPasskeyStepupResponses, GetAddressBookData, GetAddressBookErrors, GetAddressBookResponses, GetApprovalData, GetApprovalErrors, GetApprovalResponses, GetAuditRetentionData, GetAuditRetentionErrors, GetAuditRetentionResponses, GetCaptchaChallengeData, GetCaptchaChallengeErrors, GetCaptchaChallengeResponses, GetClientBuildCapabilitiesData, GetClientBuildCapabilitiesErrors, GetClientBuildCapabilitiesResponses, GetClientBuildData, GetClientBuildErrors, GetClientBuildProfileData, GetClientBuildProfileErrors, GetClientBuildProfileLogoData, GetClientBuildProfileLogoErrors, GetClientBuildProfileLogoResponses, GetClientBuildProfileResponses, GetClientBuildResponses, GetHealthzData, GetHealthzResponses, GetIdentitiesData, GetIdentitiesErrors, GetIdentitiesResponses, GetMeData, GetMeErrors, GetMeResponses, GetProvisioningData, GetProvisioningErrors, GetProvisioningResponses, GetRoleData, GetRoleErrors, GetRoleResponses, GetSessionData, GetSessionErrors, GetSessionResponses, GetStrategyData, GetStrategyErrors, GetStrategyResponses, GetTicketData, GetTicketErrors, GetTicketResponses, HandleOidcCallbackData, HandleOidcCallbackErrors, IssueTicketData, IssueTicketErrors, IssueTicketResponses, LdapLoginData, LdapLoginErrors, LdapLoginResponses, ListAccessRulesData, ListAccessRulesErrors, ListAccessRulesResponses, ListAddressBookGrantsData, ListAddressBookGrantsErrors, ListAddressBookGrantsResponses, ListAddressBookRecycleBinData, ListAddressBookRecycleBinErrors, ListAddressBookRecycleBinResponses, ListAddressBooksData, ListAddressBooksErrors, ListAddressBooksResponses, ListAlertsData, ListAlertsErrors, ListAlertsResponses, ListApprovalsData, ListApprovalsErrors, ListApprovalsResponses, ListAuditLogsData, ListAuditLogsErrors, ListAuditLogsResponses, ListAuthProvidersData, ListAuthProvidersResponses, ListClientBuildProfilesData, ListClientBuildProfilesErrors, ListClientBuildProfilesResponses, ListClientBuildsData, ListClientBuildsErrors, ListClientBuildsResponses, ListConnectionLogsData, ListConnectionLogsErrors, ListConnectionLogsResponses, ListControlRolesData, ListControlRolesErrors, ListControlRolesResponses, ListDeviceGroupsData, ListDeviceGroupsErrors, ListDeviceGroupsResponses, ListDevicesData, ListDevicesErrors, ListDevicesResponses, ListFileLogsData, ListFileLogsErrors, ListFileLogsResponses, ListLogEventsData, ListLogEventsErrors, ListLogEventsResponses, ListMembersData, ListMembersErrors, ListMembersResponses, ListOrgsData, ListOrgsErrors, ListOrgsResponses, ListPasskeysData, ListPasskeysErrors, ListPasskeysResponses, ListPermissionsData, ListPermissionsErrors, ListPermissionsResponses, ListPoliciesData, ListPoliciesErrors, ListPoliciesResponses, ListRolesData, ListRolesErrors, ListRolesResponses, ListSessionsData, ListSessionsErrors, ListSessionsResponses, ListStrategiesData, ListStrategiesErrors, ListStrategiesResponses, ListTokensData, ListTokensErrors, ListTokensResponses, ListUserGroupsData, ListUserGroupsErrors, ListUserGroupsResponses, LoginData, LoginErrors, LoginResponses, PurgeAddressBookPeerData, PurgeAddressBookPeerErrors, PurgeAddressBookPeerResponses, PutClientBuildProfileLogoData, PutClientBuildProfileLogoErrors, PutClientBuildProfileLogoResponses, RedeemTicketData, RedeemTicketErrors, RedeemTicketResponses, RefreshTokensData, RefreshTokensErrors, RefreshTokensResponses, RegenerateRecoveryCodesData, RegenerateRecoveryCodesErrors, RegenerateRecoveryCodesResponses, RemoveMemberData, RemoveMemberErrors, RemoveMemberResponses, RemovePasswordData, RemovePasswordErrors, RemovePasswordResponses, RenameDeviceGroupData, RenameDeviceGroupErrors, RenameDeviceGroupResponses, RenamePasskeyData, RenamePasskeyErrors, RenamePasskeyResponses, RenameUserGroupData, RenameUserGroupErrors, RenameUserGroupResponses, ReplaceAddressBookPeersData, ReplaceAddressBookPeersErrors, ReplaceAddressBookPeersResponses, ReplaceAddressBookTagsData, ReplaceAddressBookTagsErrors, ReplaceAddressBookTagsResponses, ReplaceDeviceGroupDevicesData, ReplaceDeviceGroupDevicesErrors, ReplaceDeviceGroupDevicesResponses, ReplaceUserGroupMembersData, ReplaceUserGroupMembersErrors, ReplaceUserGroupMembersResponses, RequestDeviceDisconnectData, RequestDeviceDisconnectErrors, RequestDeviceDisconnectResponses, ResendVerificationData, ResendVerificationErrors, ResendVerificationResponses, ResetDeviceBindingData, ResetDeviceBindingErrors, ResetDeviceBindingResponses, ResetMemberIdentityData, ResetMemberIdentityErrors, ResetMemberIdentityResponses, ResetMemberPasskeysData, ResetMemberPasskeysErrors, ResetMemberPasskeysResponses, ResetMemberTotpData, ResetMemberTotpErrors, ResetMemberTotpResponses, RestoreAddressBookPeerData, RestoreAddressBookPeerErrors, RestoreAddressBookPeerResponses, RevokeTokenData, RevokeTokenErrors, RevokeTokenResponses, SetAuditRetentionData, SetAuditRetentionErrors, SetAuditRetentionResponses, SetPasswordData, SetPasswordErrors, SetPasswordResponses, SetupTotpData, SetupTotpErrors, SetupTotpResponses, StartOidcLoginData, StartOidcLoginErrors, StartOidcLoginResponses, UnlinkIdentityData, UnlinkIdentityErrors, UnlinkIdentityResponses, UpdateAddressBookData, UpdateAddressBookErrors, UpdateAddressBookResponses, UpdateClientBuildProfileData, UpdateClientBuildProfileErrors, UpdateClientBuildProfileResponses, UpdateControlRoleData, UpdateControlRoleErrors, UpdateControlRoleResponses, UpdateDeviceData, UpdateDeviceErrors, UpdateDeviceResponses, UpdateMemberRoleData, UpdateMemberRoleErrors, UpdateMemberRoleResponses, UpdatePolicyData, UpdatePolicyErrors, UpdatePolicyResponses, UpdateProvisioningData, UpdateProvisioningErrors, UpdateProvisioningResponses, UpdateRoleData, UpdateRoleErrors, UpdateRoleResponses, UpdateStrategyData, UpdateStrategyErrors, UpdateStrategyResponses, VerifyEmailData, VerifyEmailErrors, VerifyEmailResponses, VerifyTotpData, VerifyTotpErrors, VerifyTotpResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -28,7 +28,7 @@ export const getHealthz = <ThrowOnError extends boolean = false>(options?: Optio
 /**
  * 邮箱密码登录
  *
- * 校验邮箱与密码，返回 access/refresh 令牌对。受 IP 与账号双轨限流（429）。
+ * 校验邮箱与密码，返回 access/refresh 令牌对。受 IP 与账号双轨限流（429）。邮箱未验证的账号返回 403（code=email_not_verified）。
  */
 export const login = <ThrowOnError extends boolean = false>(options: Options<LoginData, ThrowOnError>): RequestResult<LoginResponses, LoginErrors, ThrowOnError> => (options.client ?? client).post<LoginResponses, LoginErrors, ThrowOnError>({
     url: '/api/v1/auth/login',
@@ -38,6 +38,170 @@ export const login = <ThrowOnError extends boolean = false>(options: Options<Log
         ...options.headers
     }
 });
+
+/**
+ * 列出可用的登录方式
+ *
+ * 未认证。返回部署级启用的外部身份源：`oidc` 反映 `oidc.enabled`（同时给出
+ * `name` 作为按钮文案），`ldap` 在本版本恒为 false（未实现，配置开启会启动失败）。
+ * 前端据此显示「使用 {name} 登录」入口。
+ *
+ */
+export const listAuthProviders = <ThrowOnError extends boolean = false>(options?: Options<ListAuthProvidersData, ThrowOnError>): RequestResult<ListAuthProvidersResponses, unknown, ThrowOnError> => (options?.client ?? client).get<ListAuthProvidersResponses, unknown, ThrowOnError>({ url: '/api/v1/auth/providers', ...options });
+
+/**
+ * 开始 OIDC 登录
+ *
+ * 未认证。返回浏览器必须跳转的 `authorization_url`。流程为
+ * Authorization Code + PKCE(S256) + nonce；`state` 一次性（默认 10 分钟）。
+ * 回调地址固定为 `{web.baseURL}/api/v1/auth/oidc/callback`，不接受请求指定。
+ *
+ * `redirect_path` 是登录成功后前端回到的站内路径：必须以 `/` 开头，且不含
+ * `//`、反斜杠、`:`、`..`、百分号编码的分隔符（`%2f`/`%5c`），长度 ≤256；
+ * 缺省为 `/`。非法值返回 400 且不会创建流程行。
+ *
+ * `oidc.enabled=false` 或 IdP 的 discovery 不可达时返回 503 —— 不降级为
+ * 密码登录，也不返回 500。
+ *
+ */
+export const startOidcLogin = <ThrowOnError extends boolean = false>(options?: Options<StartOidcLoginData, ThrowOnError>): RequestResult<StartOidcLoginResponses, StartOidcLoginErrors, ThrowOnError> => (options?.client ?? client).post<StartOidcLoginResponses, StartOidcLoginErrors, ThrowOnError>({
+    url: '/api/v1/auth/oidc/start',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers
+    }
+});
+
+/**
+ * OIDC 回调
+ *
+ * 未认证。IdP 重定向到这里。成功时 302 到
+ * `{web.baseURL}{redirect_path}?ticket=…`，失败时 302 到同一路径并带
+ * `?error=<oidc_failed|no_account|email_unverified|identity_conflict>`。
+ *
+ * URL 中**不出现任何 token**（access/refresh/id_token 都不进查询串）；
+ * ticket 有效期 60 秒、一次一用。请求里的 `redirect_uri` 被忽略，
+ * `Location` 只由 `web.baseURL` 与启动时校验过的站内路径拼成。
+ * IdP 返回的 `error`/`error_description` 原文不回显、不入日志。
+ *
+ */
+export const handleOidcCallback = <ThrowOnError extends boolean = false>(options?: Options<HandleOidcCallbackData, ThrowOnError>): RequestResult<unknown, HandleOidcCallbackErrors, ThrowOnError> => (options?.client ?? client).get<unknown, HandleOidcCallbackErrors, ThrowOnError>({ url: '/api/v1/auth/oidc/callback', ...options });
+
+/**
+ * 用 ticket 换取令牌
+ *
+ * 未认证。把回调带回来的 ticket 换成与密码登录相同的 token 对。
+ * ticket 一次有效（60 秒），重放或伪造一律 401。
+ *
+ * `external.requireLocalSecondFactor=true` 且该账户**已启用** TOTP 时，
+ * 返回 401 `two_factor_required` 与 `challenge_token`（`methods:["totp"]`），
+ * 客户端继续调用 `POST /auth/2fa/verify`；未启用 TOTP 的账户直接发 token。
+ *
+ */
+export const exchangeOidcLogin = <ThrowOnError extends boolean = false>(options: Options<ExchangeOidcLoginData, ThrowOnError>): RequestResult<ExchangeOidcLoginResponses, ExchangeOidcLoginErrors, ThrowOnError> => (options.client ?? client).post<ExchangeOidcLoginResponses, ExchangeOidcLoginErrors, ThrowOnError>({
+    url: '/api/v1/auth/oidc/exchange',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 查看外部身份绑定
+ *
+ * 需要登录（JWT）。返回当前账户的全部外部身份绑定（按绑定时间倒序），
+ * 以及 `active_provider`（当前部署启用的外部身份源）。
+ * `conflict_at` 非空表示该绑定已被标记冲突：SSO 会拒绝它，
+ * 需要管理员 reset 后才能重绑（设计 O4/O14）。
+ *
+ */
+export const getIdentities = <ThrowOnError extends boolean = false>(options?: Options<GetIdentitiesData, ThrowOnError>): RequestResult<GetIdentitiesResponses, GetIdentitiesErrors, ThrowOnError> => (options?.client ?? client).get<GetIdentitiesResponses, GetIdentitiesErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/auth/identity',
+    ...options
+});
+
+/**
+ * 解绑外部身份
+ *
+ * 需要登录（JWT）+ 二次证明：`stepup_token`（passkey step-up）或当前密码，
+ * **二者给其一**（都给或缺一 → 400）。
+ *
+ * 拒绝会锁死账户的解绑：账户没有密码、没有 passkey、且这是唯一一条绑定
+ * 时返回 409 —— 此类账户没有任何线上自救通道。
+ * `identity_id` 不属于当前账户时返回 404（不区分“不存在”与“不是你的”）。
+ *
+ */
+export const unlinkIdentity = <ThrowOnError extends boolean = false>(options: Options<UnlinkIdentityData, ThrowOnError>): RequestResult<UnlinkIdentityResponses, UnlinkIdentityErrors, ThrowOnError> => (options.client ?? client).post<UnlinkIdentityResponses, UnlinkIdentityErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/auth/identity/unlink',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 重置成员的外部身份绑定
+ *
+ * 管理员清空成员的外部身份绑定（需要 `member.manage`），写审计
+ * `user.identity.reset`。守卫与 `2fa/reset`、`passkeys/reset` 一致：
+ * 不能重置自己；重置 owner 需要 `org.admin`；目标同属其他组织时拒绝；
+ * 事务内复判。
+ *
+ * 例外（设计 O14）：目标没有本地凭据（无密码、无 passkey）且仍有
+ * **未冲突**的绑定时返回 409 —— 清空绑定会让它彻底无法登录；
+ * 但全部绑定都已标记 `conflict_at` 时，SSO 本来就登不进，
+ * 此时 reset 是管理员唯一的修复手段，予以放行。
+ *
+ */
+export const resetMemberIdentity = <ThrowOnError extends boolean = false>(options: Options<ResetMemberIdentityData, ThrowOnError>): RequestResult<ResetMemberIdentityResponses, ResetMemberIdentityErrors, ThrowOnError> => (options.client ?? client).post<ResetMemberIdentityResponses, ResetMemberIdentityErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/members/{userId}/identity/reset',
+    ...options
+});
+
+/**
+ * 目录账号登录
+ *
+ * 未认证。服务账号搜索到恰好一条目录条目后，以该条目 DN 做用户 bind 验证
+ * 密码；成功后按目录 `mail` 属性绑定到**已存在**的面板账户（无 JIT），
+ * 返回与密码登录相同的 token 对。
+ *
+ * 空用户名或空密码返回 400 且**不会触碰目录**（L1：空密码 + simple bind
+ * 在多数目录上等于匿名 bind）。bind 失败一律 401「用户名或密码错误」，
+ * 不区分用户不存在与密码错；目录连接/TLS/搜索协议错误返回 503；搜索
+ * 命中多于一条也按 401 拒绝（filter 太宽 = fail closed，L6）。
+ *
+ * 限流与验证码与 `/auth/login` 同源（同一 IP 桶与失败窗口，L9）。
+ * `external.requireLocalSecondFactor=true` 且该账户已启用 TOTP 时，
+ * 返回 401 `two_factor_required` + `challenge_token`，由
+ * `POST /auth/2fa/verify` 完成第二步（与 OIDC 同一收尾逻辑，L12）。
+ *
+ */
+export const ldapLogin = <ThrowOnError extends boolean = false>(options: Options<LdapLoginData, ThrowOnError>): RequestResult<LdapLoginResponses, LdapLoginErrors, ThrowOnError> => (options.client ?? client).post<LdapLoginResponses, LdapLoginErrors, ThrowOnError>({
+    url: '/api/v1/auth/ldap/login',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 获取交互式验证码挑战
+ *
+ * 未认证。返回当前启用的验证码提供商与客户端所需参数：
+ * `altcha` 返回挑战 JSON（algorithm/challenge/maxNumber/salt/signature）；
+ * `geetest` 返回 `captcha_id` 与 widget 脚本地址；`cap` 返回
+ * `api_endpoint` 与 `site_key`。未启用时 `enabled=false` 且不含
+ * provider/challenge。受独立 IP 限流（429）。
+ *
+ */
+export const getCaptchaChallenge = <ThrowOnError extends boolean = false>(options?: Options<GetCaptchaChallengeData, ThrowOnError>): RequestResult<GetCaptchaChallengeResponses, GetCaptchaChallengeErrors, ThrowOnError> => (options?.client ?? client).get<GetCaptchaChallengeResponses, GetCaptchaChallengeErrors, ThrowOnError>({ url: '/api/v1/auth/captcha', ...options });
 
 /**
  * 轮换 refresh 令牌
@@ -53,6 +217,345 @@ export const refreshTokens = <ThrowOnError extends boolean = false>(options: Opt
         'Content-Type': 'application/json',
         ...options.headers
     }
+});
+
+/**
+ * 列出个人访问令牌
+ *
+ * 返回当前用户在某组织内的个人令牌（v0.8.0，不返回明文）。需要 JWT 身份
+ * （个人令牌本身不能管理令牌）。
+ *
+ */
+export const listTokens = <ThrowOnError extends boolean = false>(options: Options<ListTokensData, ThrowOnError>): RequestResult<ListTokensResponses, ListTokensErrors, ThrowOnError> => (options.client ?? client).get<ListTokensResponses, ListTokensErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/auth/tokens',
+    ...options
+});
+
+/**
+ * 创建个人访问令牌
+ *
+ * 签发一个绑定到单个组织的个人令牌（v0.8.0）。明文只在创建响应中出现一次；
+ * 服务端只存 SHA-256。`permissions` 省略时取当前角色的全部权限，给出时必须是
+ * 当前角色权限的子集（不能借令牌提权）。每人每组织最多 20 个活跃令牌。
+ * 有效期 `expires_in_days` 1..365，默认 90。
+ *
+ */
+export const createToken = <ThrowOnError extends boolean = false>(options: Options<CreateTokenData, ThrowOnError>): RequestResult<CreateTokenResponses, CreateTokenErrors, ThrowOnError> => (options.client ?? client).post<CreateTokenResponses, CreateTokenErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/auth/tokens',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 撤销个人访问令牌
+ *
+ * 撤销当前用户名下的一个个人令牌（v0.8.0）；重复撤销幂等，他人令牌返回 404。
+ */
+export const revokeToken = <ThrowOnError extends boolean = false>(options: Options<RevokeTokenData, ThrowOnError>): RequestResult<RevokeTokenResponses, RevokeTokenErrors, ThrowOnError> => (options.client ?? client).delete<RevokeTokenResponses, RevokeTokenErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/auth/tokens/{tokenId}',
+    ...options
+});
+
+/**
+ * 初始化 TOTP 两步验证
+ *
+ * 生成新的 TOTP 秘密并返回 `otpauth://` URI（v0.8.0）。秘密在用户完成
+ * `/auth/2fa/enable` 之前不生效；已启用时再次调用返回 409。
+ *
+ */
+export const setupTotp = <ThrowOnError extends boolean = false>(options?: Options<SetupTotpData, ThrowOnError>): RequestResult<SetupTotpResponses, SetupTotpErrors, ThrowOnError> => (options?.client ?? client).post<SetupTotpResponses, SetupTotpErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/auth/2fa/setup',
+    ...options
+});
+
+/**
+ * 启用 TOTP 两步验证
+ *
+ * 校验首个 TOTP 码后启用（v0.8.0）。
+ */
+export const enableTotp = <ThrowOnError extends boolean = false>(options: Options<EnableTotpData, ThrowOnError>): RequestResult<EnableTotpResponses, EnableTotpErrors, ThrowOnError> => (options.client ?? client).post<EnableTotpResponses, EnableTotpErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/auth/2fa/enable',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 关闭 TOTP 两步验证
+ *
+ * 需要当前密码 + 一个有效的 TOTP 码或恢复码（v0.8.0）。
+ */
+export const disableTotp = <ThrowOnError extends boolean = false>(options: Options<DisableTotpData, ThrowOnError>): RequestResult<DisableTotpResponses, DisableTotpErrors, ThrowOnError> => (options.client ?? client).post<DisableTotpResponses, DisableTotpErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/auth/2fa/disable',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 重新生成恢复码
+ *
+ * 需要当前密码 + 有效 TOTP 码或恢复码；返回 10 个一次性恢复码（只出现一次，v0.8.0）。
+ */
+export const regenerateRecoveryCodes = <ThrowOnError extends boolean = false>(options: Options<RegenerateRecoveryCodesData, ThrowOnError>): RequestResult<RegenerateRecoveryCodesResponses, RegenerateRecoveryCodesErrors, ThrowOnError> => (options.client ?? client).post<RegenerateRecoveryCodesResponses, RegenerateRecoveryCodesErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/auth/2fa/recovery-codes',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 登录第二步校验
+ *
+ * 使用登录返回的短期 `challenge_token` 与 TOTP 码（或一次性恢复码）完成登录
+ * （v0.8.0）。成功返回与 `/auth/login` 相同的令牌对。
+ *
+ * 挑战令牌本身不是一次性凭据：它在签发后 5 分钟内有效，期间可重复提交校验。
+ * 一次性的是凭据——每个 TOTP 码仅在对应时间步内可用（同一时间步不可重放），
+ * 每个恢复码只能成功使用一次。
+ *
+ */
+export const verifyTotp = <ThrowOnError extends boolean = false>(options: Options<VerifyTotpData, ThrowOnError>): RequestResult<VerifyTotpResponses, VerifyTotpErrors, ThrowOnError> => (options.client ?? client).post<VerifyTotpResponses, VerifyTotpErrors, ThrowOnError>({
+    url: '/api/v1/auth/2fa/verify',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 开始 step-up 断言
+ *
+ * 需要登录（JWT）。为敏感操作（删除/恢复本地密码）发起一次新鲜断言。
+ * 账户没有 passkey 时 409；断言有效期由 `webauthn.ceremonyTTL` 决定（默认 5 分钟）。
+ *
+ */
+export const beginPasskeyStepup = <ThrowOnError extends boolean = false>(options?: Options<BeginPasskeyStepupData, ThrowOnError>): RequestResult<BeginPasskeyStepupResponses, BeginPasskeyStepupErrors, ThrowOnError> => (options?.client ?? client).post<BeginPasskeyStepupResponses, BeginPasskeyStepupErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/auth/passkey/stepup/begin',
+    ...options
+});
+
+/**
+ * 完成 step-up 断言
+ *
+ * 需要登录（JWT）。校验断言后返回 2 分钟、**一次一用**的 `stepup_token`。
+ * 该令牌只能授权一个敏感动作；重放返回 401。
+ *
+ */
+export const finishPasskeyStepup = <ThrowOnError extends boolean = false>(options: Options<FinishPasskeyStepupData, ThrowOnError>): RequestResult<FinishPasskeyStepupResponses, FinishPasskeyStepupErrors, ThrowOnError> => (options.client ?? client).post<FinishPasskeyStepupResponses, FinishPasskeyStepupErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/auth/passkey/stepup/finish',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 删除本地密码（转为 passkey-only）
+ *
+ * 需要登录（JWT）+ 一次**新鲜的 passkey 断言**（`stepup_token`，2 分钟、一次一用）。
+ * 四项前置条件全部满足才执行：当前密码正确；stepup 有效；已绑定 passkey ≥ 2；
+ * 账户没有任何 TOTP 配置（含未启用的 pending 行）。
+ *
+ * 成功后 `password_hash` 置空，密码登录返回通用 `unauthorized`，只能走 passkey。
+ * **没有线上自救通道**：删除后若丢失全部 passkey，只能由部署方按运维手册处理。
+ * 响应 `warnings` 列出连带影响（compat 登录不可用等）。
+ *
+ */
+export const removePassword = <ThrowOnError extends boolean = false>(options: Options<RemovePasswordData, ThrowOnError>): RequestResult<RemovePasswordResponses, RemovePasswordErrors, ThrowOnError> => (options.client ?? client).post<RemovePasswordResponses, RemovePasswordErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/auth/password/remove',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 恢复本地密码
+ *
+ * 需要登录（JWT）+ 一次新鲜的 passkey 断言。仅当账户**当前没有密码**时可用
+ * （已有密码返回 409；本版本不提供改密）。用于 passkey-only 账户恢复密码登录。
+ *
+ */
+export const setPassword = <ThrowOnError extends boolean = false>(options: Options<SetPasswordData, ThrowOnError>): RequestResult<SetPasswordResponses, SetPasswordErrors, ThrowOnError> => (options.client ?? client).post<SetPasswordResponses, SetPasswordErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/auth/password/set',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 列出我的 passkey
+ *
+ * 需要登录（JWT）。返回调用者自己的凭据，附带 `has_password` 与
+ * `totp_enabled`，供客户端判断"删除最后一个凭据会不会锁死账户"。
+ *
+ */
+export const listPasskeys = <ThrowOnError extends boolean = false>(options?: Options<ListPasskeysData, ThrowOnError>): RequestResult<ListPasskeysResponses, ListPasskeysErrors, ThrowOnError> => (options?.client ?? client).get<ListPasskeysResponses, ListPasskeysErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/auth/passkeys',
+    ...options
+});
+
+/**
+ * 删除 passkey
+ *
+ * 需要登录（JWT）。账户**没有密码**且这是最后一个凭据时返回 409：
+ * 删除会让账户再也无法登录，必须先设置密码或再绑定一个凭据。
+ * 不属于调用者的凭据一律 404，不区分"不存在"与"非本人"。
+ *
+ */
+export const deletePasskey = <ThrowOnError extends boolean = false>(options: Options<DeletePasskeyData, ThrowOnError>): RequestResult<DeletePasskeyResponses, DeletePasskeyErrors, ThrowOnError> => (options.client ?? client).delete<DeletePasskeyResponses, DeletePasskeyErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/auth/passkeys/{passkeyId}',
+    ...options
+});
+
+/**
+ * 重命名 passkey
+ *
+ * 需要登录（JWT）。名称 1-64 字符，首尾空白会被裁剪。只能操作自己的凭据。
+ */
+export const renamePasskey = <ThrowOnError extends boolean = false>(options: Options<RenamePasskeyData, ThrowOnError>): RequestResult<RenamePasskeyResponses, RenamePasskeyErrors, ThrowOnError> => (options.client ?? client).patch<RenamePasskeyResponses, RenamePasskeyErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/auth/passkeys/{passkeyId}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 开始 passkey 登录
+ *
+ * 未认证。三种入口，互斥：
+ *
+ * - 带 `challenge_token`：密码已通过、账户开启了 TOTP，此时用 passkey 代替
+ * TOTP 完成第二步；`allowCredentials` 限定为该账户的凭据。账户没有凭据时 409。
+ * - 带 `email`：把 `allowCredentials` 收窄到该邮箱的凭据；**邮箱不存在或
+ * 账户没有凭据时仍返回 200**，退化为可发现凭据 ceremony（不带
+ * `allowCredentials`）。`email` 只是提示。
+ *
+ * **安全边界说明**：命中与未命中的差别只在 `allowCredentials` 的内容，
+ * 状态码与结构一致。因此响应用途上可区分"该邮箱是否已绑定 passkey"——
+ * 这是为了让浏览器只列出相关凭据而显式接受的取舍（设计 D16），**不要**
+ * 把响应形状当作保密边界；探测成本由 per-IP 限流约束。
+ *
+ * 要彻底消除该差异，**必须在服务端或入口网关拒绝 `email` 参数**：端点公开，
+ * 客户端不发送并不能阻止第三方直接提交。本版本无内置开关，属已知限制。
+ * - 都不带：可发现凭据（usernameless）流程，由认证器选择账户。
+ *
+ * 受 per-IP 限流；`email` 分支额外按账户计失败窗口。
+ *
+ */
+export const beginPasskeyLogin = <ThrowOnError extends boolean = false>(options?: Options<BeginPasskeyLoginData, ThrowOnError>): RequestResult<BeginPasskeyLoginResponses, BeginPasskeyLoginErrors, ThrowOnError> => (options?.client ?? client).post<BeginPasskeyLoginResponses, BeginPasskeyLoginErrors, ThrowOnError>({
+    url: '/api/v1/auth/passkey/login/begin',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers
+    }
+});
+
+/**
+ * 完成 passkey 登录
+ *
+ * 未认证。校验断言并签发与 `/auth/login` 相同的令牌对。
+ * `ceremony_token` 一次有效；重放、过期、origin/rpId/challenge 不符、
+ * 签名无效一律 401，不区分原因。签名计数器回退按克隆处置（401），
+ * 凭据被标记 `clone_warning` 且不会自动删除。
+ *
+ * passkey 登录成功即视为完成认证，不再叠加本地 TOTP（设计 D1/D14）。
+ *
+ */
+export const finishPasskeyLogin = <ThrowOnError extends boolean = false>(options: Options<FinishPasskeyLoginData, ThrowOnError>): RequestResult<FinishPasskeyLoginResponses, FinishPasskeyLoginErrors, ThrowOnError> => (options.client ?? client).post<FinishPasskeyLoginResponses, FinishPasskeyLoginErrors, ThrowOnError>({
+    url: '/api/v1/auth/passkey/login/finish',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 开始绑定 passkey
+ *
+ * 需要登录（JWT）。返回一次性 `ceremony_token` 与 `navigator.credentials.create()`
+ * 所需的 `options`（W3C 标准 JSON，顶层为 `publicKey`）。字段按 W3C 结构透传，
+ * 契约不重复建模，避免与标准漂移；其中的二进制字段是 **base64url 字符串**，
+ * 客户端必须先解码为 `ArrayBuffer` 再调用 WebAuthn API（见
+ * `PasskeyCeremony.options` 的说明与 `docs/reference/passkey-smoke.html`）。
+ *
+ * 认证器策略固定：`userVerification=required`、`residentKey=preferred`、
+ * `attestation=none`；`excludeCredentials` 含该账户已绑定的凭据。
+ * `webauthn.enabled=false` 时返回 503；账户已达凭据上限时返回 409。
+ *
+ */
+export const beginPasskeyRegistration = <ThrowOnError extends boolean = false>(options?: Options<BeginPasskeyRegistrationData, ThrowOnError>): RequestResult<BeginPasskeyRegistrationResponses, BeginPasskeyRegistrationErrors, ThrowOnError> => (options?.client ?? client).post<BeginPasskeyRegistrationResponses, BeginPasskeyRegistrationErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/auth/passkey/register/begin',
+    ...options
+});
+
+/**
+ * 完成绑定 passkey
+ *
+ * 需要登录（JWT）。提交浏览器 `navigator.credentials.create()` 的结果。
+ * `ceremony_token` 一次有效（有效期由 `webauthn.ceremonyTTL` 决定，默认 5 分钟），重放返回 401。
+ *
+ * 校验失败（origin/rpId 不符、challenge 不符、签名无效）一律 401，不区分原因；
+ * 同一凭据已绑定到任何账户时 409，且不回显归属账户。
+ *
+ */
+export const finishPasskeyRegistration = <ThrowOnError extends boolean = false>(options: Options<FinishPasskeyRegistrationData, ThrowOnError>): RequestResult<FinishPasskeyRegistrationResponses, FinishPasskeyRegistrationErrors, ThrowOnError> => (options.client ?? client).post<FinishPasskeyRegistrationResponses, FinishPasskeyRegistrationErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/auth/passkey/register/finish',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 当前用户与所属组织
+ *
+ * 一次返回调用者自身的资料，以及在每个**有效**组织会籍下的角色与权限码。
+ * 停用会籍、以及 `role_id` 指向不存在角色的会籍**不出现**在 `orgs` 中（fail closed，
+ * 与逐请求鉴权一致）。`permissions` 是只读快照，供前端做交互闸门，不构成授权；
+ * 后端仍在每次请求上独立鉴权。
+ *
+ */
+export const getMe = <ThrowOnError extends boolean = false>(options?: Options<GetMeData, ThrowOnError>): RequestResult<GetMeResponses, GetMeErrors, ThrowOnError> => (options?.client ?? client).get<GetMeResponses, GetMeErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/me',
+    ...options
 });
 
 /**
@@ -93,9 +596,710 @@ export const listMembers = <ThrowOnError extends boolean = false>(options: Optio
 });
 
 /**
+ * 移除组织成员
+ *
+ * 移除成员并在**同一事务**内撤销该用户在本组织的全部活跃 compat 会话
+ * （#39 offboarding）。需要 member.manage 权限；admin 不能移除 owner，
+ * 最后一个 owner 不能被移除，不能通过本端点移除自己。撤销失败则整体回滚。
+ *
+ */
+export const removeMember = <ThrowOnError extends boolean = false>(options: Options<RemoveMemberData, ThrowOnError>): RequestResult<RemoveMemberResponses, RemoveMemberErrors, ThrowOnError> => (options.client ?? client).delete<RemoveMemberResponses, RemoveMemberErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/members/{userId}',
+    ...options
+});
+
+/**
+ * 更新成员角色或停用状态
+ *
+ * 按字段更新会籍：`role_id` 授予内置 admin/member 或自定义角色（仅 owner，
+ * 不能授予 owner），`disabled` 停用或恢复会籍（`member.manage`）。两个字段可
+ * 同时出现，需同时满足各自权限。降级角色或停用会在同一事务内撤销该用户在本
+ * 组织的活跃 compat 会话；恢复与提升不撤销。不能变更自己的角色或停用自己，
+ * 也不能停用末位 owner。
+ *
+ */
+export const updateMemberRole = <ThrowOnError extends boolean = false>(options: Options<UpdateMemberRoleData, ThrowOnError>): RequestResult<UpdateMemberRoleResponses, UpdateMemberRoleErrors, ThrowOnError> => (options.client ?? client).patch<UpdateMemberRoleResponses, UpdateMemberRoleErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/members/{userId}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 重置成员的 passkey
+ *
+ * 管理员清空成员的 WebAuthn 凭据（`member.manage`），写审计 `user.passkey.reset`。
+ * 守卫与 `2fa/reset` 一致：不能重置自己；重置 owner 需要 `org.admin`；
+ * 目标同属其他组织时拒绝（账户级因子不能由单租户管理员处置）；事务内复判。
+ *
+ * 额外一条：目标账户**没有密码**时返回 409 —— 清空凭据会让它彻底无法登录。
+ * 用于用户丢失认证器但仍有密码的场景。
+ *
+ */
+export const resetMemberPasskeys = <ThrowOnError extends boolean = false>(options: Options<ResetMemberPasskeysData, ThrowOnError>): RequestResult<ResetMemberPasskeysResponses, ResetMemberPasskeysErrors, ThrowOnError> => (options.client ?? client).post<ResetMemberPasskeysResponses, ResetMemberPasskeysErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/members/{userId}/passkeys/reset',
+    ...options
+});
+
+/**
+ * 重置成员的 2FA
+ *
+ * 管理员重置成员的 TOTP 配置（v0.8.0，`member.manage`），使该用户下次登录
+ * 不再要求第二步，并写审计 `user.2fa.reset`。用于用户丢失设备与恢复码的场景。
+ *
+ */
+export const resetMemberTotp = <ThrowOnError extends boolean = false>(options: Options<ResetMemberTotpData, ThrowOnError>): RequestResult<ResetMemberTotpResponses, ResetMemberTotpErrors, ThrowOnError> => (options.client ?? client).post<ResetMemberTotpResponses, ResetMemberTotpErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/members/{userId}/2fa/reset',
+    ...options
+});
+
+/**
+ * 列出权限目录
+ *
+ * 返回全部权限码、说明与是否可委派。任何已认证用户可读；自定义角色只能包含
+ * `delegable=true` 的权限码。
+ *
+ */
+export const listPermissions = <ThrowOnError extends boolean = false>(options?: Options<ListPermissionsData, ThrowOnError>): RequestResult<ListPermissionsResponses, ListPermissionsErrors, ThrowOnError> => (options?.client ?? client).get<ListPermissionsResponses, ListPermissionsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/permissions',
+    ...options
+});
+
+/**
+ * 列出组织角色
+ *
+ * 返回内置角色与自定义角色；调用者必须是该组织成员。
+ */
+export const listRoles = <ThrowOnError extends boolean = false>(options: Options<ListRolesData, ThrowOnError>): RequestResult<ListRolesResponses, ListRolesErrors, ThrowOnError> => (options.client ?? client).get<ListRolesResponses, ListRolesErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/roles',
+    ...options
+});
+
+/**
+ * 创建自定义角色
+ *
+ * 仅 owner（`role.manage`）。权限码必须来自权限目录；包含不可委派权限码返回
+ * 403。名称不能与内置角色（owner/admin/member）或其他角色重名，重名返回 409。
+ * 内置角色不可创建或修改。
+ *
+ */
+export const createRole = <ThrowOnError extends boolean = false>(options: Options<CreateRoleData, ThrowOnError>): RequestResult<CreateRoleResponses, CreateRoleErrors, ThrowOnError> => (options.client ?? client).post<CreateRoleResponses, CreateRoleErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/roles',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 删除自定义角色
+ *
+ * 仅 owner（`role.manage`）。内置角色返回 409；仍被成员会籍引用返回 409，
+ * 必须先改派该角色的成员。
+ *
+ */
+export const deleteRole = <ThrowOnError extends boolean = false>(options: Options<DeleteRoleData, ThrowOnError>): RequestResult<DeleteRoleResponses, DeleteRoleErrors, ThrowOnError> => (options.client ?? client).delete<DeleteRoleResponses, DeleteRoleErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/roles/{roleId}',
+    ...options
+});
+
+/**
+ * 查询角色详情
+ *
+ * 调用者必须是该组织成员。
+ */
+export const getRole = <ThrowOnError extends boolean = false>(options: Options<GetRoleData, ThrowOnError>): RequestResult<GetRoleResponses, GetRoleErrors, ThrowOnError> => (options.client ?? client).get<GetRoleResponses, GetRoleErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/roles/{roleId}',
+    ...options
+});
+
+/**
+ * 更新自定义角色
+ *
+ * 仅 owner（`role.manage`）。内置角色返回 409；新名称与内置角色或其他角色
+ * 重名返回 409；包含不可委派权限码返回 403。`PUT` 是全量替换。
+ *
+ */
+export const updateRole = <ThrowOnError extends boolean = false>(options: Options<UpdateRoleData, ThrowOnError>): RequestResult<UpdateRoleResponses, UpdateRoleErrors, ThrowOnError> => (options.client ?? client).put<UpdateRoleResponses, UpdateRoleErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/roles/{roleId}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 列出控制角色
+ *
+ * 返回组织的内置 `default` 角色与全部自定义角色，``default`` 在前。
+ * 调用者必须是该组织成员；读取不需要 `control_role.manage`。
+ *
+ * **控制角色只决定「连上后能做什么」，且当前不约束原生客户端会话**：
+ * `control_permissions` 由 hbbs 在信令消息里注入，本面板不在信令链路
+ * （设计 D10），因此角色只在票据上留下快照，供网页客户端与审计使用。
+ *
+ */
+export const listControlRoles = <ThrowOnError extends boolean = false>(options: Options<ListControlRolesData, ThrowOnError>): RequestResult<ListControlRolesResponses, ListControlRolesErrors, ThrowOnError> => (options.client ?? client).get<ListControlRolesResponses, ListControlRolesErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/control-roles',
+    ...options
+});
+
+/**
+ * 创建控制角色
+ *
+ * 需要 `control_role.manage`（owner 全量、admin 由内置集合授予，不可委派）。
+ * 权限键必须来自 14 个协议键；未知键或非法状态整单 400。名称在组织内唯一，
+ * 重名返回 409。缺失的权限键按 `use_client` 补全。
+ *
+ */
+export const createControlRole = <ThrowOnError extends boolean = false>(options: Options<CreateControlRoleData, ThrowOnError>): RequestResult<CreateControlRoleResponses, CreateControlRoleErrors, ThrowOnError> => (options.client ?? client).post<CreateControlRoleResponses, CreateControlRoleErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/control-roles',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 删除控制角色
+ *
+ * 需要 `control_role.manage`。内置 `default` 角色不可删（409）。删除在同一事务内
+ * 把持有该角色的会籍改回「未分配」（回退 default），并写审计。
+ *
+ */
+export const deleteControlRole = <ThrowOnError extends boolean = false>(options: Options<DeleteControlRoleData, ThrowOnError>): RequestResult<DeleteControlRoleResponses, DeleteControlRoleErrors, ThrowOnError> => (options.client ?? client).delete<DeleteControlRoleResponses, DeleteControlRoleErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/control-roles/{roleId}',
+    ...options
+});
+
+/**
+ * 更新控制角色
+ *
+ * 需要 `control_role.manage`。按字段更新，至少给出 `name` 或 `permissions` 之一。
+ * 内置 `default` 角色的**名称不可改**（改权限可以）：启动播种与「未分配即回退
+ * default」都绑定该行；改名返回 409。
+ *
+ */
+export const updateControlRole = <ThrowOnError extends boolean = false>(options: Options<UpdateControlRoleData, ThrowOnError>): RequestResult<UpdateControlRoleResponses, UpdateControlRoleErrors, ThrowOnError> => (options.client ?? client).patch<UpdateControlRoleResponses, UpdateControlRoleErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/control-roles/{roleId}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 分配成员的控制角色
+ *
+ * 需要 `control_role.manage`。`control_role_id` 显式给 `null` 表示回到组织内置
+ * `default` 角色。目标必须是本组织成员，角色必须属于本组织（跨组织 id 一律 404）。
+ * 写入与审计同事务。
+ *
+ */
+export const assignMemberControlRole = <ThrowOnError extends boolean = false>(options: Options<AssignMemberControlRoleData, ThrowOnError>): RequestResult<AssignMemberControlRoleResponses, AssignMemberControlRoleErrors, ThrowOnError> => (options.client ?? client).put<AssignMemberControlRoleResponses, AssignMemberControlRoleErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/members/{userId}/control-role',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 列出客户端策略
+ *
+ * 返回组织的策略，按名称升序。任何组织成员可读（控制台渲染分配需要列表）。
+ *
+ * **Strategy 是配置下发，不是授权**：它改被控端客户端选项（音频、剪贴板、
+ * 文件传输等），与「能否连接」（访问控制）和「连上后能做什么」（控制角色）
+ * 是三件不同的事。下发经客户端 30 秒一次的 `POST /api/heartbeat` 完成。
+ *
+ */
+export const listStrategies = <ThrowOnError extends boolean = false>(options: Options<ListStrategiesData, ThrowOnError>): RequestResult<ListStrategiesResponses, ListStrategiesErrors, ThrowOnError> => (options.client ?? client).get<ListStrategiesResponses, ListStrategiesErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/strategies',
+    ...options
+});
+
+/**
+ * 创建客户端策略
+ *
+ * 需要 `strategy.manage`（owner 全量、admin 由内置集合授予，不可委派）。
+ * 名称去首尾空白后 1–64 字符，组织内**不区分大小写**唯一（CLI 按名解析，
+ * `Ops` 与 `ops` 并存会让解析歧义），重名返回 409。
+ *
+ * `config_options` 只接受白名单键（见 `Strategy.config_options` 说明）；
+ * 未知键、超过 50 个键、值超过 256 字符或含控制字符均整单 400——客户端
+ * 对收到的键**没有自己的白名单**，漏一个网络类键（如 `api-server`）就等于
+ * 把设备交给别人。`version` 取自组织内单调的下发代次（首个策略为 1，此后递增，跨策略不重复）；`enabled=true`。
+ *
+ */
+export const createStrategy = <ThrowOnError extends boolean = false>(options: Options<CreateStrategyData, ThrowOnError>): RequestResult<CreateStrategyResponses, CreateStrategyErrors, ThrowOnError> => (options.client ?? client).post<CreateStrategyResponses, CreateStrategyErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/strategies',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 删除客户端策略
+ *
+ * 需要 `strategy.manage`。同一事务内清空设备、设备组与会籍上指向该策略的
+ * 分配（悬空 id 会读作「已分配」却解析不到任何行），并写审计。
+ *
+ */
+export const deleteStrategy = <ThrowOnError extends boolean = false>(options: Options<DeleteStrategyData, ThrowOnError>): RequestResult<DeleteStrategyResponses, DeleteStrategyErrors, ThrowOnError> => (options.client ?? client).delete<DeleteStrategyResponses, DeleteStrategyErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/strategies/{strategyId}',
+    ...options
+});
+
+/**
+ * 读取单个客户端策略
+ *
+ * 返回一个策略的完整定义（含 `version` 与 `cleared_keys`）。任何组织成员可读；
+ * 跨组织 id 与不存在都返回 404。
+ *
+ */
+export const getStrategy = <ThrowOnError extends boolean = false>(options: Options<GetStrategyData, ThrowOnError>): RequestResult<GetStrategyResponses, GetStrategyErrors, ThrowOnError> => (options.client ?? client).get<GetStrategyResponses, GetStrategyErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/strategies/{strategyId}',
+    ...options
+});
+
+/**
+ * 更新客户端策略
+ *
+ * 需要 `strategy.manage`。按字段更新（`name` / `config_options` /
+ * `enabled`），至少给出一项。
+ *
+ * `version` **只在 `config_options` 实际变化时 +1**：它是客户端判断「是否
+ * 重新套用」的依据，改名或空转的 PATCH 不应触发一次全量下发。
+ * `enabled=false` 是停用开关——保留行与分配，但心跳不再下发；重新启用
+ * 也不改写版本（客户端手上的选项没变）。
+ *
+ */
+export const updateStrategy = <ThrowOnError extends boolean = false>(options: Options<UpdateStrategyData, ThrowOnError>): RequestResult<UpdateStrategyResponses, UpdateStrategyErrors, ThrowOnError> => (options.client ?? client).patch<UpdateStrategyResponses, UpdateStrategyErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/strategies/{strategyId}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 分配成员的默认客户端策略
+ *
+ * 需要 `strategy.manage`。作用于该成员**拥有**（`owner_user_id`）且没有设备层、
+ * 组层分配的设备。`null` 清除。成员必须是本组织会籍，否则 404。
+ *
+ */
+export const assignMemberStrategy = <ThrowOnError extends boolean = false>(options: Options<AssignMemberStrategyData, ThrowOnError>): RequestResult<AssignMemberStrategyResponses, AssignMemberStrategyErrors, ThrowOnError> => (options.client ?? client).put<AssignMemberStrategyResponses, AssignMemberStrategyErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/members/{userId}/strategy',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 列出用户组
+ *
+ * 返回组织的用户组，含内置 `everyone`（`kind=everyone`；成员隐式，`member_ids`
+ * 恒为空）。自定义组返回显式成员 id，供 PUT 全量替换回填。需要 `access.manage`。
+ *
+ */
+export const listUserGroups = <ThrowOnError extends boolean = false>(options: Options<ListUserGroupsData, ThrowOnError>): RequestResult<ListUserGroupsResponses, ListUserGroupsErrors, ThrowOnError> => (options.client ?? client).get<ListUserGroupsResponses, ListUserGroupsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/user-groups',
+    ...options
+});
+
+/**
+ * 创建用户组
+ *
+ * 需要 `access.manage`。名称为去首尾空白后的 1–64 个字符；`everyone` 为保留名
+ * （不区分大小写），保留名或与已有组重名均返回 409。
+ *
+ */
+export const createUserGroup = <ThrowOnError extends boolean = false>(options: Options<CreateUserGroupData, ThrowOnError>): RequestResult<CreateUserGroupResponses, CreateUserGroupErrors, ThrowOnError> => (options.client ?? client).post<CreateUserGroupResponses, CreateUserGroupErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/user-groups',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 删除用户组
+ *
+ * 需要 `access.manage`。`everyone` 组不可删除（409）。同一事务内级联删除成员行与
+ * 以该组为来源的访问规则，并逐条记录 `access.rule.delete` 审计。
+ *
+ */
+export const deleteUserGroup = <ThrowOnError extends boolean = false>(options: Options<DeleteUserGroupData, ThrowOnError>): RequestResult<DeleteUserGroupResponses, DeleteUserGroupErrors, ThrowOnError> => (options.client ?? client).delete<DeleteUserGroupResponses, DeleteUserGroupErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/user-groups/{groupId}',
+    ...options
+});
+
+/**
+ * 重命名用户组
+ *
+ * 需要 `access.manage`。`everyone` 组不可重命名（409）；名称规则与创建相同。
+ *
+ */
+export const renameUserGroup = <ThrowOnError extends boolean = false>(options: Options<RenameUserGroupData, ThrowOnError>): RequestResult<RenameUserGroupResponses, RenameUserGroupErrors, ThrowOnError> => (options.client ?? client).patch<RenameUserGroupResponses, RenameUserGroupErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/user-groups/{groupId}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 全量替换用户组成员
+ *
+ * 需要 `access.manage`。请求中的用户必须全部是本组织成员，任一越界或不存在的
+ * id 都整单拒绝（400），不静默跳过。`everyone` 组成员不可编辑（409）。提交与
+ * 现状相同的集合不产生变更（added=removed=0）。
+ *
+ */
+export const replaceUserGroupMembers = <ThrowOnError extends boolean = false>(options: Options<ReplaceUserGroupMembersData, ThrowOnError>): RequestResult<ReplaceUserGroupMembersResponses, ReplaceUserGroupMembersErrors, ThrowOnError> => (options.client ?? client).put<ReplaceUserGroupMembersResponses, ReplaceUserGroupMembersErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/user-groups/{groupId}/members',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 列出设备组
+ *
+ * 返回组织的设备组及其设备 id。一台设备只能属于一个设备组，因此设备 id 不会
+ * 同时出现在两个组。需要 `access.manage`。
+ *
+ */
+export const listDeviceGroups = <ThrowOnError extends boolean = false>(options: Options<ListDeviceGroupsData, ThrowOnError>): RequestResult<ListDeviceGroupsResponses, ListDeviceGroupsErrors, ThrowOnError> => (options.client ?? client).get<ListDeviceGroupsResponses, ListDeviceGroupsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/device-groups',
+    ...options
+});
+
+/**
+ * 创建设备组
+ *
+ * 需要 `access.manage`。名称为去首尾空白后的 1–64 个字符；同组织内重名
+ * （不区分大小写）返回 409。
+ *
+ */
+export const createDeviceGroup = <ThrowOnError extends boolean = false>(options: Options<CreateDeviceGroupData, ThrowOnError>): RequestResult<CreateDeviceGroupResponses, CreateDeviceGroupErrors, ThrowOnError> => (options.client ?? client).post<CreateDeviceGroupResponses, CreateDeviceGroupErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/device-groups',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 删除设备组
+ *
+ * 需要 `access.manage`。同一事务内把组内设备置为未分组，并级联删除以该组为
+ * 目标的访问规则（逐条记录 `access.rule.delete` 审计）；重建同名组不会恢复
+ * 旧授权。
+ *
+ */
+export const deleteDeviceGroup = <ThrowOnError extends boolean = false>(options: Options<DeleteDeviceGroupData, ThrowOnError>): RequestResult<DeleteDeviceGroupResponses, DeleteDeviceGroupErrors, ThrowOnError> => (options.client ?? client).delete<DeleteDeviceGroupResponses, DeleteDeviceGroupErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/device-groups/{deviceGroupId}',
+    ...options
+});
+
+/**
+ * 重命名设备组
+ *
+ * 需要 `access.manage`；名称规则与创建相同。
+ */
+export const renameDeviceGroup = <ThrowOnError extends boolean = false>(options: Options<RenameDeviceGroupData, ThrowOnError>): RequestResult<RenameDeviceGroupResponses, RenameDeviceGroupErrors, ThrowOnError> => (options.client ?? client).patch<RenameDeviceGroupResponses, RenameDeviceGroupErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/device-groups/{deviceGroupId}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 分配设备组的客户端策略
+ *
+ * 需要 `strategy.manage`。作用于组内所有**没有设备层分配**的设备。
+ * `null` 清除组层分配。写入与审计同事务。
+ *
+ */
+export const assignDeviceGroupStrategy = <ThrowOnError extends boolean = false>(options: Options<AssignDeviceGroupStrategyData, ThrowOnError>): RequestResult<AssignDeviceGroupStrategyResponses, AssignDeviceGroupStrategyErrors, ThrowOnError> => (options.client ?? client).put<AssignDeviceGroupStrategyResponses, AssignDeviceGroupStrategyErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/device-groups/{deviceGroupId}/strategy',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 全量替换设备组成员
+ *
+ * 需要 `access.manage`。目标设备从原设备组移入本组（一设备一组，覆盖旧值）；
+ * 本组中原有但不在请求内的设备被置为未分组。所有设备 id 必须属于本组织，
+ * 任一越界或不存在都整单 400。提交与现状相同的集合不产生变更。
+ *
+ */
+export const replaceDeviceGroupDevices = <ThrowOnError extends boolean = false>(options: Options<ReplaceDeviceGroupDevicesData, ThrowOnError>): RequestResult<ReplaceDeviceGroupDevicesResponses, ReplaceDeviceGroupDevicesErrors, ThrowOnError> => (options.client ?? client).put<ReplaceDeviceGroupDevicesResponses, ReplaceDeviceGroupDevicesErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/device-groups/{deviceGroupId}/devices',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 列出访问规则
+ *
+ * 返回组织的 allow 规则（含源组名与设备组目标名；`all_devices` 无目标组名）。
+ * 需要 `access.manage`。多规则按并集生效。
+ *
+ */
+export const listAccessRules = <ThrowOnError extends boolean = false>(options: Options<ListAccessRulesData, ThrowOnError>): RequestResult<ListAccessRulesResponses, ListAccessRulesErrors, ThrowOnError> => (options.client ?? client).get<ListAccessRulesResponses, ListAccessRulesErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/access-rules',
+    ...options
+});
+
+/**
+ * 创建访问规则
+ *
+ * 需要 `access.manage`。只支持 allow：`target_kind=device_group` 时必须给出
+ * 同组织的设备组 id；`target_kind=all_devices` 时不得给出目标组。源用户组必须
+ * 属于本组织。相同四元组重复创建返回 409。
+ *
+ */
+export const createAccessRule = <ThrowOnError extends boolean = false>(options: Options<CreateAccessRuleData, ThrowOnError>): RequestResult<CreateAccessRuleResponses, CreateAccessRuleErrors, ThrowOnError> => (options.client ?? client).post<CreateAccessRuleResponses, CreateAccessRuleErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/access-rules',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 删除访问规则
+ *
+ * 需要 `access.manage`。默认规则 `everyone → all_devices` 也是普通可删除行：
+ * 删除后成员只保留精确组规则带来的访问（即收紧）。
+ *
+ */
+export const deleteAccessRule = <ThrowOnError extends boolean = false>(options: Options<DeleteAccessRuleData, ThrowOnError>): RequestResult<DeleteAccessRuleResponses, DeleteAccessRuleErrors, ThrowOnError> => (options.client ?? client).delete<DeleteAccessRuleResponses, DeleteAccessRuleErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/access-rules/{ruleId}',
+    ...options
+});
+
+/**
+ * 查询审计日志
+ *
+ * 按 `created_at desc, id desc` 分页返回组织审计记录（v0.8.0，`audit.read`）。
+ * 过滤条件全部可选；`from` 含、`to` 不含（UTC 半开区间）。
+ *
+ * 可见范围由角色 `audit_scope` 决定：`global` 可查全组织；`individual` 只返回
+ * 自己是操作者（`actor_user_id`）或用户类目标（`target_type=user` 且
+ * `target_id` 为自己）的条目。列表轮询不产生新的审计记录。
+ *
+ */
+export const listAuditLogs = <ThrowOnError extends boolean = false>(options: Options<ListAuditLogsData, ThrowOnError>): RequestResult<ListAuditLogsResponses, ListAuditLogsErrors, ThrowOnError> => (options.client ?? client).get<ListAuditLogsResponses, ListAuditLogsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/audit-logs',
+    ...options
+});
+
+/**
+ * 导出审计日志 CSV
+ *
+ * 按与查询相同的过滤条件导出 CSV（v0.8.0，`audit.read`），单次最多 1000 行，
+ * 超出返回 400 并提示收窄过滤。可见范围与查询一致。CSV 列：
+ * `created_at, actor_user_id, actor_email, action, target_type, target_id, detail`；
+ * 以 `= + - @` 开头的单元格会加 `'` 前缀防止公式注入。导出动作写审计
+ * `audit.export`（含过滤条件与行数）。
+ *
+ */
+export const exportAuditLogs = <ThrowOnError extends boolean = false>(options: Options<ExportAuditLogsData, ThrowOnError>): RequestResult<ExportAuditLogsResponses, ExportAuditLogsErrors, ThrowOnError> => (options.client ?? client).get<ExportAuditLogsResponses, ExportAuditLogsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/audit-logs/export',
+    ...options
+});
+
+/**
+ * 查询客户端连接日志
+ *
+ * 按 `started_at desc, id desc` 分页返回客户端上报的连接记录（`audit.read`）。
+ * 数据来自原生客户端 `POST /api/audit/conn`，不是面板签发的会话记录（后者见
+ * sessions）。可见范围由角色 `audit_scope` 决定：`global` 全组织；`individual`
+ * 只看自己拥有设备（`devices.owner_user_id`）的记录。列表轮询不写审计。
+ *
+ */
+export const listConnectionLogs = <ThrowOnError extends boolean = false>(options: Options<ListConnectionLogsData, ThrowOnError>): RequestResult<ListConnectionLogsResponses, ListConnectionLogsErrors, ThrowOnError> => (options.client ?? client).get<ListConnectionLogsResponses, ListConnectionLogsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/connection-logs',
+    ...options
+});
+
+/**
+ * 导出连接日志 CSV
+ *
+ * 与查询相同的过滤条件，单次最多 1000 行（超出返回 400）。CSV 列：
+ * `started_at, ended_at, status, rustdesk_id, device_id, ip, conn_id, session_id,
+ * note, conn_audit_ref`。导出动作写审计 `connection_log.export`。
+ *
+ */
+export const exportConnectionLogs = <ThrowOnError extends boolean = false>(options: Options<ExportConnectionLogsData, ThrowOnError>): RequestResult<ExportConnectionLogsResponses, ExportConnectionLogsErrors, ThrowOnError> => (options.client ?? client).get<ExportConnectionLogsResponses, ExportConnectionLogsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/connection-logs/export',
+    ...options
+});
+
+/**
+ * 查询客户端文件传输日志
+ *
+ * 按 `created_at desc, id desc` 分页返回客户端上报的文件传输记录（`audit.read`）。
+ * 数据来自原生客户端 `POST /api/audit/file`。可见范围与连接日志一致。
+ *
+ */
+export const listFileLogs = <ThrowOnError extends boolean = false>(options: Options<ListFileLogsData, ThrowOnError>): RequestResult<ListFileLogsResponses, ListFileLogsErrors, ThrowOnError> => (options.client ?? client).get<ListFileLogsResponses, ListFileLogsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/file-logs',
+    ...options
+});
+
+/**
+ * 导出文件传输日志 CSV
+ *
+ * 与查询相同的过滤条件，单次最多 1000 行（超出返回 400）。CSV 列：
+ * `created_at, direction, rustdesk_id, device_id, peer_id, conn_id, path, is_file,
+ * file_count, ip, name, files`。导出动作写审计 `file_log.export`。
+ *
+ */
+export const exportFileLogs = <ThrowOnError extends boolean = false>(options: Options<ExportFileLogsData, ThrowOnError>): RequestResult<ExportFileLogsResponses, ExportFileLogsErrors, ThrowOnError> => (options.client ?? client).get<ExportFileLogsResponses, ExportFileLogsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/file-logs/export',
+    ...options
+});
+
+/**
+ * 查询审计保留期
+ *
+ * 返回组织的审计保留天数（v0.8.0，仅 owner `org.admin`）。0 = 永久保留。
+ * 响应含最近一次归档的状态。
+ *
+ */
+export const getAuditRetention = <ThrowOnError extends boolean = false>(options: Options<GetAuditRetentionData, ThrowOnError>): RequestResult<GetAuditRetentionResponses, GetAuditRetentionErrors, ThrowOnError> => (options.client ?? client).get<GetAuditRetentionResponses, GetAuditRetentionErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/audit-retention',
+    ...options
+});
+
+/**
+ * 设置审计保留期
+ *
+ * 设置组织的审计保留天数（v0.8.0，仅 owner `org.admin`）；0 = 永久保留，
+ * 1..3650 为正的保留窗口。到期记录由后台任务先归档到本地文件校验后再删除；
+ * 归档失败则该组织本轮不删除。设置动作写审计 `organization.audit_retention.set`。
+ *
+ */
+export const setAuditRetention = <ThrowOnError extends boolean = false>(options: Options<SetAuditRetentionData, ThrowOnError>): RequestResult<SetAuditRetentionResponses, SetAuditRetentionErrors, ThrowOnError> => (options.client ?? client).put<SetAuditRetentionResponses, SetAuditRetentionErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/audit-retention',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 查询组织 provisioning 状态
+ *
+ * 返回供应开关与部署状态。仅 owner（org.admin）可读。
+ * `state` 为 `disabled|pending|provisioning|deployed|failed`。
+ *
+ */
+export const getProvisioning = <ThrowOnError extends boolean = false>(options: Options<GetProvisioningData, ThrowOnError>): RequestResult<GetProvisioningResponses, GetProvisioningErrors, ThrowOnError> => (options.client ?? client).get<GetProvisioningResponses, GetProvisioningErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/provisioning',
+    ...options
+});
+
+/**
+ * 启用或禁用组织 provisioning
+ *
+ * 仅 owner。`enabled=false` 会同步下线已有容器、删除 `ServerGroup` 行，并在
+ * 同一事务内置标记与写审计；`enabled=true` 只清除标记，部署由供应队列异步
+ * 执行（队列满时由 reconciler 兜底）。状态未变化时为幂等 no-op。
+ *
+ */
+export const updateProvisioning = <ThrowOnError extends boolean = false>(options: Options<UpdateProvisioningData, ThrowOnError>): RequestResult<UpdateProvisioningResponses, UpdateProvisioningErrors, ThrowOnError> => (options.client ?? client).put<UpdateProvisioningResponses, UpdateProvisioningErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/provisioning',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
  * 邀请成员加入组织
  *
- * 生成邀请令牌（服务端只存哈希），有效期 7 天。需要 member.manage 权限。
+ * 生成邀请令牌（服务端只存哈希），有效期 7 天，并通过邮件发送给受邀邮箱；令牌不出现在响应中（issue
  */
 export const createInvitation = <ThrowOnError extends boolean = false>(options: Options<CreateInvitationData, ThrowOnError>): RequestResult<CreateInvitationResponses, CreateInvitationErrors, ThrowOnError> => (options.client ?? client).post<CreateInvitationResponses, CreateInvitationErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
@@ -122,6 +1326,20 @@ export const acceptInvitation = <ThrowOnError extends boolean = false>(options: 
 });
 
 /**
+ * 列出组织设备
+ *
+ * 分页返回本组织的设备，按 `id` 升序（翻页稳定）。需要 device.read 权限
+ * （组织成员即可）。`q` 对 `name` 与 `rustdesk_id` 做大小写不敏感子串匹配，
+ * `%`/`_` 按字面量处理。
+ *
+ */
+export const listDevices = <ThrowOnError extends boolean = false>(options: Options<ListDevicesData, ThrowOnError>): RequestResult<ListDevicesResponses, ListDevicesErrors, ThrowOnError> => (options.client ?? client).get<ListDevicesResponses, ListDevicesErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/devices',
+    ...options
+});
+
+/**
  * 注册设备
  *
  * 在当前组织下登记一台 RustDesk 设备。需要 device.write 权限。
@@ -140,7 +1358,7 @@ export const createDevice = <ThrowOnError extends boolean = false>(options: Opti
  * 列出地址簿
  *
  * 返回调用者可见的地址簿：个人地址簿（owner 为调用者）与共享地址簿。
- * 需要 addressbook 权限。
+ * 需要组织成员身份；shared 地址簿的写操作才需要 addressbook 权限。
  *
  */
 export const listAddressBooks = <ThrowOnError extends boolean = false>(options: Options<ListAddressBooksData, ThrowOnError>): RequestResult<ListAddressBooksResponses, ListAddressBooksErrors, ThrowOnError> => (options.client ?? client).get<ListAddressBooksResponses, ListAddressBooksErrors, ThrowOnError>({
@@ -207,7 +1425,8 @@ export const updateAddressBook = <ThrowOnError extends boolean = false>(options:
  * 全量替换地址簿 peers
  *
  * 以请求体完整替换该地址簿的 peers 列表，revision 递增。
- * 并发更新以 revision 兜底（乐观锁语义，供客户端同步对比）。
+ * 并发替换为最后写入者生效；revision 只用于客户端同步对比，服务端不校验客户端提交的版本。
+ * 需要冲突检测时请走 `/api/ab`（legacy 整本写入带 content hash，冲突返回 409）——该路径只服务个人地址簿，共享地址簿没有冲突检测。
  *
  */
 export const replaceAddressBookPeers = <ThrowOnError extends boolean = false>(options: Options<ReplaceAddressBookPeersData, ThrowOnError>): RequestResult<ReplaceAddressBookPeersResponses, ReplaceAddressBookPeersErrors, ThrowOnError> => (options.client ?? client).put<ReplaceAddressBookPeersResponses, ReplaceAddressBookPeersErrors, ThrowOnError>({
@@ -218,6 +1437,94 @@ export const replaceAddressBookPeers = <ThrowOnError extends boolean = false>(op
         'Content-Type': 'application/json',
         ...options.headers
     }
+});
+
+/**
+ * 列出共享地址簿授权
+ *
+ * 列出共享簿的授权（v0.8.0）。需要 `full` 访问：`addressbook.write` 权限或
+ * 该簿的 `full` 授权。个人簿没有授权概念，返回 400。
+ *
+ */
+export const listAddressBookGrants = <ThrowOnError extends boolean = false>(options: Options<ListAddressBookGrantsData, ThrowOnError>): RequestResult<ListAddressBookGrantsResponses, ListAddressBookGrantsErrors, ThrowOnError> => (options.client ?? client).get<ListAddressBookGrantsResponses, ListAddressBookGrantsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/address-books/{bookId}/grants',
+    ...options
+});
+
+/**
+ * 新增或更新共享地址簿授权
+ *
+ * 为共享簿授予按用户或 `everyone` 的访问级别（v0.8.0）。需要 `full` 访问。
+ * 同一主体重复授权时改为更新其访问级别（201 创建 / 200 更新）。用户主体必须
+ * 是本组织成员。`user` 授权的优先级高于 `everyone`。
+ *
+ */
+export const createAddressBookGrant = <ThrowOnError extends boolean = false>(options: Options<CreateAddressBookGrantData, ThrowOnError>): RequestResult<CreateAddressBookGrantResponses, CreateAddressBookGrantErrors, ThrowOnError> => (options.client ?? client).post<CreateAddressBookGrantResponses, CreateAddressBookGrantErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/address-books/{bookId}/grants',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 撤销共享地址簿授权
+ *
+ * 需要 `full` 访问（v0.8.0）。
+ */
+export const deleteAddressBookGrant = <ThrowOnError extends boolean = false>(options: Options<DeleteAddressBookGrantData, ThrowOnError>): RequestResult<DeleteAddressBookGrantResponses, DeleteAddressBookGrantErrors, ThrowOnError> => (options.client ?? client).delete<DeleteAddressBookGrantResponses, DeleteAddressBookGrantErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/address-books/{bookId}/grants/{grantId}',
+    ...options
+});
+
+/**
+ * 删除地址簿条目（进回收站）
+ *
+ * 软删除一个 peer（v0.8.0，需 `write` 及以上：`addressbook.write` 或该簿 write/full
+ * 授权）。条目进入回收站保留 30 天，可恢复；不会硬删除。
+ *
+ */
+export const deleteAddressBookPeer = <ThrowOnError extends boolean = false>(options: Options<DeleteAddressBookPeerData, ThrowOnError>): RequestResult<DeleteAddressBookPeerResponses, DeleteAddressBookPeerErrors, ThrowOnError> => (options.client ?? client).delete<DeleteAddressBookPeerResponses, DeleteAddressBookPeerErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/address-books/{bookId}/peers/{peerId}',
+    ...options
+});
+
+/**
+ * 回收站列表
+ *
+ * 返回该簿已软删除的 peer（v0.8.0，需 `write` 及以上），按删除时间倒序。
+ */
+export const listAddressBookRecycleBin = <ThrowOnError extends boolean = false>(options: Options<ListAddressBookRecycleBinData, ThrowOnError>): RequestResult<ListAddressBookRecycleBinResponses, ListAddressBookRecycleBinErrors, ThrowOnError> => (options.client ?? client).get<ListAddressBookRecycleBinResponses, ListAddressBookRecycleBinErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/address-books/{bookId}/recycle-bin',
+    ...options
+});
+
+/**
+ * 从回收站恢复条目
+ *
+ * 恢复一个软删除的 peer（v0.8.0，需 `write` 及以上），并 bump revision。
+ */
+export const restoreAddressBookPeer = <ThrowOnError extends boolean = false>(options: Options<RestoreAddressBookPeerData, ThrowOnError>): RequestResult<RestoreAddressBookPeerResponses, RestoreAddressBookPeerErrors, ThrowOnError> => (options.client ?? client).post<RestoreAddressBookPeerResponses, RestoreAddressBookPeerErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/address-books/{bookId}/recycle-bin/{peerId}/restore',
+    ...options
+});
+
+/**
+ * 永久删除回收站条目
+ *
+ * 永久删除一个软删除的 peer（v0.8.0，需 `full` 访问）。不可恢复。
+ */
+export const purgeAddressBookPeer = <ThrowOnError extends boolean = false>(options: Options<PurgeAddressBookPeerData, ThrowOnError>): RequestResult<PurgeAddressBookPeerResponses, PurgeAddressBookPeerErrors, ThrowOnError> => (options.client ?? client).delete<PurgeAddressBookPeerResponses, PurgeAddressBookPeerErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/address-books/{bookId}/recycle-bin/{peerId}',
+    ...options
 });
 
 /**
@@ -280,9 +1587,569 @@ export const resendVerification = <ThrowOnError extends boolean = false>(options
  * 设备心跳
  *
  * 上报设备在线心跳，刷新 last_seen_at。需要 device.write 权限。
+ * 设备已停用时返回 409（停用设备的活跃提示不再可信，也不会刷新时间）。
+ *
  */
 export const deviceHeartbeat = <ThrowOnError extends boolean = false>(options: Options<DeviceHeartbeatData, ThrowOnError>): RequestResult<DeviceHeartbeatResponses, DeviceHeartbeatErrors, ThrowOnError> => (options.client ?? client).post<DeviceHeartbeatResponses, DeviceHeartbeatErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/v1/orgs/{orgId}/devices/{deviceId}/heartbeat',
     ...options
 });
+
+/**
+ * 重置设备绑定
+ *
+ * 清空设备的 `bound_uuid` 并把 `binding_generation` +1，使此前登录取到该设备
+ * 的 compat 会话立即失去驱动设备的能力（其心跳与系统信息被丢弃）。`reason`
+ * 必填并随审计一同留存。需要 device.write 权限。
+ *
+ * 重复调用是安全的：每次都成功且代数继续 +1，不会把系统带进半个状态。
+ * 设备不属于本组织与设备不存在都返回 404。
+ *
+ */
+export const resetDeviceBinding = <ThrowOnError extends boolean = false>(options: Options<ResetDeviceBindingData, ThrowOnError>): RequestResult<ResetDeviceBindingResponses, ResetDeviceBindingErrors, ThrowOnError> => (options.client ?? client).post<ResetDeviceBindingResponses, ResetDeviceBindingErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/devices/{deviceId}/rebind',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 请求断开设备的当前连接
+ *
+ * 需要 `device.disconnect`（owner 全量、admin 由内置集合授予，不可委派）。
+ * `reason` 必填（去首尾空白后 1–255 字符），随审计留存。
+ *
+ * **面板不直接断连**：它不在信令链路（设计 D10）。本端点只记录一次请求，
+ * 由客户端下一次 `POST /api/heartbeat` 的响应 `disconnect` 字段执行——
+ * 客户端把请求里自报的**活跃连接编号**断开。因此：
+ *
+ * - 生效延迟最长一个心跳周期（30 秒）加上客户端处理时间；
+ * - 客户端当时没有活跃连接（`conns` 为空）时请求**保持 pending**，不消耗；
+ * - 同一设备已有 pending 请求时返回 `409`（避免堆积重复断连）；
+ * - 15 分钟未被消费则标记 `expired` 并写系统审计。
+ *
+ * 设备不存在或不属于本组织均返回 `404`。
+ *
+ */
+export const requestDeviceDisconnect = <ThrowOnError extends boolean = false>(options: Options<RequestDeviceDisconnectData, ThrowOnError>): RequestResult<RequestDeviceDisconnectResponses, RequestDeviceDisconnectErrors, ThrowOnError> => (options.client ?? client).post<RequestDeviceDisconnectResponses, RequestDeviceDisconnectErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/devices/{deviceId}/disconnect',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 分配设备的客户端策略
+ *
+ * 需要 `strategy.manage`。`strategy_id` 显式给 `null` 表示清除设备层分配，
+ * 回落到设备组层。设备层优先级最高（设计 D1：设备 > 设备组 > 成员）。
+ * 策略必须属于本组织，跨组织 id 与不存在的设备一律 404。写入与审计同事务。
+ *
+ */
+export const assignDeviceStrategy = <ThrowOnError extends boolean = false>(options: Options<AssignDeviceStrategyData, ThrowOnError>): RequestResult<AssignDeviceStrategyResponses, AssignDeviceStrategyErrors, ThrowOnError> => (options.client ?? client).put<AssignDeviceStrategyResponses, AssignDeviceStrategyErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/devices/{deviceId}/strategy',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 更新设备（停用/恢复、归属、备注）
+ *
+ * 按字段更新设备（`device.write`）。请求体至少包含一个字段，同一请求中的多个字段
+ * 要么全部生效、要么全部不生效；每个实际发生变化的字段各写一条审计
+ * （`device.disable` / `device.enable`、`device.assign`、`device.note`），
+ * 未变化的字段不写审计。
+ *
+ * `disabled`（v0.8.0）：停用设备后拒绝该设备的新客户端认领、compat 登录、心跳与
+ * 系统信息上报，并在同一事务撤销该设备在本组织的活跃 compat 会话；票据兑换被拒绝
+ * （409）。恢复后设备重新可被认领与连接。设备历史（心跳、会话、审计）保留。重复
+ * 设置同一状态为 200 no-op。
+ *
+ * `owner_user_id`：设置设备归属人，值必须是本组织的有效成员（执行成员，会籍未停用），
+ * 否则 404；`null` 清空归属；`0` 或负数非法（400）。归属人始终能在客户端看到并连接
+ * 自己的设备（设备停用或会籍停用时除外）。
+ *
+ * `note`：运维备注，最长 255 字符，`null` 或空串清空。
+ *
+ * 设备不属于本组织或不存在返回 404。
+ *
+ */
+export const updateDevice = <ThrowOnError extends boolean = false>(options: Options<UpdateDeviceData, ThrowOnError>): RequestResult<UpdateDeviceResponses, UpdateDeviceErrors, ThrowOnError> => (options.client ?? client).patch<UpdateDeviceResponses, UpdateDeviceErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/devices/{deviceId}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 会话记录列表
+ *
+ * 本组织的会话记录，按 `started_at` 倒序（同秒按 `id` 倒序，保证翻页稳定），
+ * 分页返回。组织成员即可读取。
+ *
+ * `origin` 区分两类来源：`panel`（面板签发：网页客户端与地址簿下发的连接
+ * 票据，策略强制且可事前阻断）与 `native`（原生客户端直连，由 hbbs/hbbr
+ * 日志采集推断，只记录不阻断）。`denied` 状态的会话只出现在 `panel` 来源，
+ * 表示签发阶段即被策略拒绝，用于留痕。
+ *
+ */
+export const listSessions = <ThrowOnError extends boolean = false>(options: Options<ListSessionsData, ThrowOnError>): RequestResult<ListSessionsResponses, ListSessionsErrors, ThrowOnError> => (options.client ?? client).get<ListSessionsResponses, ListSessionsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/sessions',
+    ...options
+});
+
+/**
+ * 会话详情（含事件序列）
+ *
+ * 返回单个会话及其事件序列（`started`/`approved`/`denied`/`closed` 等，
+ * 按时间正序）。事件序列是审计留痕：超过 200 条时只返回最早 200 条并置
+ * `truncated=true`。组织成员即可读取。
+ *
+ */
+export const getSession = <ThrowOnError extends boolean = false>(options: Options<GetSessionData, ThrowOnError>): RequestResult<GetSessionResponses, GetSessionErrors, ThrowOnError> => (options.client ?? client).get<GetSessionResponses, GetSessionErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/sessions/{sessionId}',
+    ...options
+});
+
+/**
+ * 连接策略列表
+ *
+ * 本组织的连接策略（单次返回全部，不分页）。组织成员即可读取。
+ *
+ * 评估票据签发时**所有 `enabled` 策略同时生效**，各维度取最严约束
+ * （并发/时长的最小值、时段的交集、任一条要求审批即需审批）。时段按模 1440
+ * 求交（跨零点窗口先展开成区间再取交），**交集为空表示该时段完全禁止**。
+ *
+ */
+export const listPolicies = <ThrowOnError extends boolean = false>(options: Options<ListPoliciesData, ThrowOnError>): RequestResult<ListPoliciesResponses, ListPoliciesErrors, ThrowOnError> => (options.client ?? client).get<ListPoliciesResponses, ListPoliciesErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/policies',
+    ...options
+});
+
+/**
+ * 创建连接策略
+ *
+ * 需要 `owner`/`admin` 角色。创建即生效（`enabled` 由请求体显式给出）。
+ * 同一组织内策略 `name` 唯一，重复创建返回 `409 conflict`。
+ *
+ */
+export const createPolicy = <ThrowOnError extends boolean = false>(options: Options<CreatePolicyData, ThrowOnError>): RequestResult<CreatePolicyResponses, CreatePolicyErrors, ThrowOnError> => (options.client ?? client).post<CreatePolicyResponses, CreatePolicyErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/policies',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 删除连接策略
+ *
+ * 删除后该策略不再参与评估；已签发的票据保留签发时的策略快照。需要 `owner`/`admin` 角色。
+ */
+export const deletePolicy = <ThrowOnError extends boolean = false>(options: Options<DeletePolicyData, ThrowOnError>): RequestResult<DeletePolicyResponses, DeletePolicyErrors, ThrowOnError> => (options.client ?? client).delete<DeletePolicyResponses, DeletePolicyErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/policies/{policyId}',
+    ...options
+});
+
+/**
+ * 更新连接策略
+ *
+ * 全量更新策略：`enabled`/`require_approval` 必填，限额字段为 null 表示「不限」。
+ * 需要 `owner`/`admin` 角色。改名撞上同组织内其他策略返回 `409 conflict`。
+ *
+ */
+export const updatePolicy = <ThrowOnError extends boolean = false>(options: Options<UpdatePolicyData, ThrowOnError>): RequestResult<UpdatePolicyResponses, UpdatePolicyErrors, ThrowOnError> => (options.client ?? client).put<UpdatePolicyResponses, UpdatePolicyErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/policies/{policyId}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 审批请求列表
+ *
+ * 本组织的审批请求，按 `requested_at` 倒序（同秒按 `id` 倒序），分页返回。审批中心按
+ * `status=pending` 拉取待办。组织成员即可读取（审批中心对 member 只读）。
+ *
+ */
+export const listApprovals = <ThrowOnError extends boolean = false>(options: Options<ListApprovalsData, ThrowOnError>): RequestResult<ListApprovalsResponses, ListApprovalsErrors, ThrowOnError> => (options.client ?? client).get<ListApprovalsResponses, ListApprovalsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/approvals',
+    ...options
+});
+
+/**
+ * 提交审批请求
+ *
+ * 为指定设备提交事前审批请求（默认 15 分钟有效）。组织成员均可提交；
+ * 组织无需审批时也可提交，但票据签发并不依赖它——是否需要审批由策略决定。
+ *
+ * 复用规则按 `kind` 区分，两种都不重复创建：
+ *
+ * - `pre_approval`：同一 actor + 设备已有 `pending` 请求 → 复用，返回 200
+ * - `ratification`：同一会话已有 `pending` 或 `approved` 的追认 → 复用，返回 200
+ * （同一会话被不同 approver 重复点开时不应该产生多条待办）
+ *
+ * 首次创建返回 201。
+ *
+ */
+export const createApproval = <ThrowOnError extends boolean = false>(options: Options<CreateApprovalData, ThrowOnError>): RequestResult<CreateApprovalResponses, CreateApprovalErrors, ThrowOnError> => (options.client ?? client).post<CreateApprovalResponses, CreateApprovalErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/approvals',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 审批决定（approve/deny）
+ *
+ * 需要 `owner`/`admin` 角色。只有 `pending` 请求可决策；已决策或已过期返回
+ * `409 conflict`。
+ *
+ * - `kind=pre_approval`：`approve` 后该 actor 对该设备的**下一次**票据签发不再
+ * 被审批阻断。审批本身不签发任何东西（不返回 token）——客户端重试
+ * `POST .../tickets` 才拿到票据，审批与票据**一次性绑定**（签发票据即消费审批）。
+ *
+ * 消费点在签发而不是兑换：票据过期（默认 300 秒）**不退还审批**，需要重新申请。
+ * 这样"一次审批 = 一次签发许可"的语义最简单，也不会因为客户端反复兑换失败
+ * 而重复消耗审批。
+ * - `kind=ratification`：`approve` 即「已追认」，仅改状态并落审计，
+ * 不产生票据、不消费任何额度（`ticket_id` 恒为 null）。
+ *
+ * `expires_at` 对两类一致：请求时刻 + 15 分钟；超期未决策由后台任务置 `expired`。
+ * 已结束的原生会话同样可以追认（追认针对已发生的事实，与连接是否还在无关）。
+ *
+ */
+export const decideApproval = <ThrowOnError extends boolean = false>(options: Options<DecideApprovalData, ThrowOnError>): RequestResult<DecideApprovalResponses, DecideApprovalErrors, ThrowOnError> => (options.client ?? client).post<DecideApprovalResponses, DecideApprovalErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/approvals/{approvalId}/decision',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 签发连接票据
+ *
+ * 为一次远控签发一次性、短时效的连接票据（默认 300 秒，范围 30–900）。
+ * 组织成员均可签发（是否放行由策略决定，不看角色）。
+ *
+ * 签发前评估**时段**与**审批要求**：时段外返回 `409 conflict`；策略要求事前
+ * 审批而该 actor 对设备没有已批准且未消费的审批时返回 `409 approval_required`，
+ * `data.approval_id` 指向新建或复用的待审批请求——审批通过后重试本端点即可。
+ *
+ * **并发上限与时长上限不在这里评估**：签发不产生会话，此刻看不到任何新会话，
+ * 在这里判并发等于恒不超限。并发在兑换时复查（见
+ * `POST .../tickets/{ticketId}/redeem`），时长是后置处理（超时由后台任务关闭
+ * 会话并告警，不掐断真实连接——面板不在信令链路上）。
+ *
+ * 明文 `token` **仅在本次响应中返回一次**，服务端只保存摘要。
+ *
+ */
+export const issueTicket = <ThrowOnError extends boolean = false>(options: Options<IssueTicketData, ThrowOnError>): RequestResult<IssueTicketResponses, IssueTicketErrors, ThrowOnError> => (options.client ?? client).post<IssueTicketResponses, IssueTicketErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/tickets',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 策略违规告警列表
+ *
+ * 本组织的告警，按 `created_at` 倒序（同秒按 `id` 倒序），分页返回。
+ *
+ * 告警来源（对应约束实际生效的位置）：
+ * - 签发时时段外被拒 → `outside_window`
+ * - 兑换时并发超限被拒 → `concurrency_exceeded`
+ * - 后台任务发现会话超过时长上限 → `duration_exceeded`（后置，不掐断连接）
+ * - 原生直连会话违反时段/时长 → 只告警不阻断（D10）
+ *
+ * 事前审批阻断不产生告警（见 Alert.kind）；与 open 会话归并的 panel 日志事件
+ * 也不产生 native 告警（见 Session 生命周期）。
+ * 组织成员即可读取。
+ *
+ */
+export const listAlerts = <ThrowOnError extends boolean = false>(options: Options<ListAlertsData, ThrowOnError>): RequestResult<ListAlertsResponses, ListAlertsErrors, ThrowOnError> => (options.client ?? client).get<ListAlertsResponses, ListAlertsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/alerts',
+    ...options
+});
+
+/**
+ * 审批请求详情
+ *
+ * 单个审批请求（审批中心深链）。组织成员即可读取。
+ */
+export const getApproval = <ThrowOnError extends boolean = false>(options: Options<GetApprovalData, ThrowOnError>): RequestResult<GetApprovalResponses, GetApprovalErrors, ThrowOnError> => (options.client ?? client).get<GetApprovalResponses, GetApprovalErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/approvals/{approvalId}',
+    ...options
+});
+
+/**
+ * 票据详情
+ *
+ * 票据的记账状态（是否已兑换、过期、撤销）。明文 token **不会**返回。
+ * 组织成员即可读取。
+ *
+ */
+export const getTicket = <ThrowOnError extends boolean = false>(options: Options<GetTicketData, ThrowOnError>): RequestResult<GetTicketResponses, GetTicketErrors, ThrowOnError> => (options.client ?? client).get<GetTicketResponses, GetTicketErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/tickets/{ticketId}',
+    ...options
+});
+
+/**
+ * 兑换连接票据（创建面板会话）
+ *
+ * 兑换一次性票据：在**同一个事务**里复查并发与时段 → 原子占用 `used_at` →
+ * 创建一条 `origin=panel`、`status=open` 的会话（`started_at` 为兑换时刻），
+ * 返回该会话。这是 open panel 会话的唯一创建入口，也是并发配额的真正闸门。
+ *
+ * **并发复查必须在兑换时做**：统计本组织 `status=open` 且 `origin=panel` 的会话数，
+ * 达到策略上限就拒绝——否则「先连签 N 张票据再并行兑换」可以绕过并发上限。
+ *
+ * ⚠️ 只把计数与插入放进同一事务**不够**：在默认的 READ COMMITTED 隔离级别下，
+ * 两个事务可以各自读到旧计数、各自通过检查、各自插入，上限照样被突破。
+ * 必须显式串行化同一组织的兑换：**先 `SELECT ... FOR UPDATE` 锁住组织行
+ * （或该组织的策略行），再做计数与插入**。
+ *
+ * 不要用「按设备」的唯一约束来代替：上限是按**组织**统计的，设备级约束既拦不住
+ * 不同设备同时占满名额（上限=1 时两台设备照样各自通过），又会错误拒绝同一设备的
+ * 第二个合法会话（上限>1 时）。串行化范围只需到组织粒度，跨组织的兑换互不影响。
+ * SQLite 上写事务本身串行，但实现不得因此省掉锁——生产是 MySQL/PostgreSQL。
+ *
+ * 票据只能兑换一次：已兑换、已过期、已撤销或 token 不匹配一律返回
+ * `409 conflict`（不区分原因，避免探测）；并发或时段约束不满足同样返回 409
+ * （`conflict`，原因写在 message 里）。票据不存在或不属于本组织返回 404。
+ * 组织成员即可兑换（M4 托管客户端若需未登录兑换，走面板内部路径，不在本契约内）。
+ *
+ * M3 阶段票据不注入信令（面板不在信令链路），这里是面板侧记账入口；
+ * 网页客户端托管与票据注入见 M4。
+ *
+ */
+export const redeemTicket = <ThrowOnError extends boolean = false>(options: Options<RedeemTicketData, ThrowOnError>): RequestResult<RedeemTicketResponses, RedeemTicketErrors, ThrowOnError> => (options.client ?? client).post<RedeemTicketResponses, RedeemTicketErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/tickets/{ticketId}/redeem',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 读取自定义客户端构建能力
+ *
+ * 任何组织成员可读。返回平台白名单、配额、服务器推导状态与默认值。
+ * `enabled=false` 时仍可维护 profile，但发起构建返回 503。
+ *
+ */
+export const getClientBuildCapabilities = <ThrowOnError extends boolean = false>(options: Options<GetClientBuildCapabilitiesData, ThrowOnError>): RequestResult<GetClientBuildCapabilitiesResponses, GetClientBuildCapabilitiesErrors, ThrowOnError> => (options.client ?? client).get<GetClientBuildCapabilitiesResponses, GetClientBuildCapabilitiesErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/client-build/capabilities',
+    ...options
+});
+
+/**
+ * 列出客户端品牌配置
+ *
+ * 分页返回本组织的品牌配置，按名称升序。任何成员可读。
+ */
+export const listClientBuildProfiles = <ThrowOnError extends boolean = false>(options: Options<ListClientBuildProfilesData, ThrowOnError>): RequestResult<ListClientBuildProfilesResponses, ListClientBuildProfilesErrors, ThrowOnError> => (options.client ?? client).get<ListClientBuildProfilesResponses, ListClientBuildProfilesErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/client-build-profiles',
+    ...options
+});
+
+/**
+ * 创建客户端品牌配置
+ *
+ * 需要 `client_build.manage`（owner/admin，不可委派）。名称去首尾空白后
+ * 1–64 字符，组织内不区分大小写唯一；应用名 1–32 字符，拒绝精确的
+ * `RustDesk`。组织最多保留 10 个 profile。
+ *
+ */
+export const createClientBuildProfile = <ThrowOnError extends boolean = false>(options: Options<CreateClientBuildProfileData, ThrowOnError>): RequestResult<CreateClientBuildProfileResponses, CreateClientBuildProfileErrors, ThrowOnError> => (options.client ?? client).post<CreateClientBuildProfileResponses, CreateClientBuildProfileErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/client-build-profiles',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 删除客户端品牌配置
+ *
+ * 存在非终态构建时返回 409；历史构建保留快照。
+ */
+export const deleteClientBuildProfile = <ThrowOnError extends boolean = false>(options: Options<DeleteClientBuildProfileData, ThrowOnError>): RequestResult<DeleteClientBuildProfileResponses, DeleteClientBuildProfileErrors, ThrowOnError> => (options.client ?? client).delete<DeleteClientBuildProfileResponses, DeleteClientBuildProfileErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/client-build-profiles/{profileId}',
+    ...options
+});
+
+/**
+ * 读取客户端品牌配置
+ */
+export const getClientBuildProfile = <ThrowOnError extends boolean = false>(options: Options<GetClientBuildProfileData, ThrowOnError>): RequestResult<GetClientBuildProfileResponses, GetClientBuildProfileErrors, ThrowOnError> => (options.client ?? client).get<GetClientBuildProfileResponses, GetClientBuildProfileErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/client-build-profiles/{profileId}',
+    ...options
+});
+
+/**
+ * 更新客户端品牌配置
+ *
+ * 只允许修改 `name` 与 `app_name`；Logo 走独立端点。
+ */
+export const updateClientBuildProfile = <ThrowOnError extends boolean = false>(options: Options<UpdateClientBuildProfileData, ThrowOnError>): RequestResult<UpdateClientBuildProfileResponses, UpdateClientBuildProfileErrors, ThrowOnError> => (options.client ?? client).patch<UpdateClientBuildProfileResponses, UpdateClientBuildProfileErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/client-build-profiles/{profileId}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 删除客户端 Logo
+ */
+export const deleteClientBuildProfileLogo = <ThrowOnError extends boolean = false>(options: Options<DeleteClientBuildProfileLogoData, ThrowOnError>): RequestResult<DeleteClientBuildProfileLogoResponses, DeleteClientBuildProfileLogoErrors, ThrowOnError> => (options.client ?? client).delete<DeleteClientBuildProfileLogoResponses, DeleteClientBuildProfileLogoErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/client-build-profiles/{profileId}/logo',
+    ...options
+});
+
+/**
+ * 读取客户端 Logo
+ */
+export const getClientBuildProfileLogo = <ThrowOnError extends boolean = false>(options: Options<GetClientBuildProfileLogoData, ThrowOnError>): RequestResult<GetClientBuildProfileLogoResponses, GetClientBuildProfileLogoErrors, ThrowOnError> => (options.client ?? client).get<GetClientBuildProfileLogoResponses, GetClientBuildProfileLogoErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/client-build-profiles/{profileId}/logo',
+    ...options
+});
+
+/**
+ * 上传客户端 Logo
+ *
+ * 需要 `client_build.manage`。PNG、正方形 256–1024、解码后 ≤1 MiB；
+ * 服务端会解码并重新编码，剥离元数据。
+ *
+ */
+export const putClientBuildProfileLogo = <ThrowOnError extends boolean = false>(options: Options<PutClientBuildProfileLogoData, ThrowOnError>): RequestResult<PutClientBuildProfileLogoResponses, PutClientBuildProfileLogoErrors, ThrowOnError> => (options.client ?? client).put<PutClientBuildProfileLogoResponses, PutClientBuildProfileLogoErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/client-build-profiles/{profileId}/logo',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 列出客户端构建
+ *
+ * 分页返回本组织的构建，按 id 降序。任何成员可读。
+ * `status` 与 `profileId` 可过滤；`status` 必须是已知状态。
+ *
+ */
+export const listClientBuilds = <ThrowOnError extends boolean = false>(options: Options<ListClientBuildsData, ThrowOnError>): RequestResult<ListClientBuildsResponses, ListClientBuildsErrors, ThrowOnError> => (options.client ?? client).get<ListClientBuildsResponses, ListClientBuildsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/client-builds',
+    ...options
+});
+
+/**
+ * 发起客户端构建
+ *
+ * 需要 `client_build.manage`。服务器地址、公钥与 API server 由本组织已部署的
+ * `ServerGroup`、`provision.relayHost` 与 `clientbuild.publicBaseURL` 推导，
+ * 不接受用户传入。创建后返回 202，由后台任务异步 dispatch 到 GitHub Actions。
+ *
+ */
+export const createClientBuild = <ThrowOnError extends boolean = false>(options: Options<CreateClientBuildData, ThrowOnError>): RequestResult<CreateClientBuildResponses, CreateClientBuildErrors, ThrowOnError> => (options.client ?? client).post<CreateClientBuildResponses, CreateClientBuildErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/client-builds',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * 读取客户端构建
+ */
+export const getClientBuild = <ThrowOnError extends boolean = false>(options: Options<GetClientBuildData, ThrowOnError>): RequestResult<GetClientBuildResponses, GetClientBuildErrors, ThrowOnError> => (options.client ?? client).get<GetClientBuildResponses, GetClientBuildErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/client-builds/{buildId}',
+    ...options
+});
+
+/**
+ * 取消客户端构建
+ *
+ * 需要 `client_build.manage`。取消为尽力而为：已进入产物回收后返回 409；
+ * 已发起的 GitHub run 会被请求取消，终态以回调轮询结果为准。
+ *
+ */
+export const cancelClientBuild = <ThrowOnError extends boolean = false>(options: Options<CancelClientBuildData, ThrowOnError>): RequestResult<CancelClientBuildResponses, CancelClientBuildErrors, ThrowOnError> => (options.client ?? client).post<CancelClientBuildResponses, CancelClientBuildErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/client-builds/{buildId}/cancel',
+    ...options
+});
+
+/**
+ * 下载构建产物
+ *
+ * 需要 `client_build.manage`；下载动作写审计。
+ */
+export const downloadClientBuildArtifact = <ThrowOnError extends boolean = false>(options: Options<DownloadClientBuildArtifactData, ThrowOnError>): RequestResult<DownloadClientBuildArtifactResponses, DownloadClientBuildArtifactErrors, ThrowOnError> => (options.client ?? client).get<DownloadClientBuildArtifactResponses, DownloadClientBuildArtifactErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/v1/orgs/{orgId}/client-builds/{buildId}/artifacts/{artifactId}',
+    ...options
+});
+
+/**
+ * 下载构建 bundle（构建 runner 使用）
+ *
+ * 公开端点，只接受短期 HMAC token；token 绑定路径 buildId，过期、篡改或
+ * 跨构建使用一律 401。成功请求写 `client_build.bundle.served` 审计。
+ *
+ */
+export const downloadClientBuildBundle = <ThrowOnError extends boolean = false>(options: Options<DownloadClientBuildBundleData, ThrowOnError>): RequestResult<DownloadClientBuildBundleResponses, DownloadClientBuildBundleErrors, ThrowOnError> => (options.client ?? client).get<DownloadClientBuildBundleResponses, DownloadClientBuildBundleErrors, ThrowOnError>({ url: '/api/v1/client-builds/{buildId}/bundle', ...options });

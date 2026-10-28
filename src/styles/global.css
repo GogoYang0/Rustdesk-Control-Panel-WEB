@@ -1,3 +1,116 @@
 /* Tailwind v4：不引入 preflight，避免与 Semi Design 的 reset 冲突（设计文档 C4） */
 @import 'tailwindcss/theme.css' layer(theme);
 @import 'tailwindcss/utilities.css' layer(utilities);
+
+/* Semi 主题：主色沿用原型的深海蓝（设计 D8） */
+:root {
+  --semi-color-primary: #0f4c81;
+  --semi-color-primary-hover: #1d5f97;
+  --semi-color-primary-active: #0b3a63;
+  --semi-color-primary-light-default: #e9f1f9;
+}
+
+#root {
+  height: 100%;
+}
+
+/* 组织切换浮层（原型 .orgPop 的最小实现） */
+.org-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+.org-menu {
+  /* The surface lives here rather than on .card: prototype.css loads later and
+     .card{position:relative} would win over this absolute placement. */
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-pop);
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 41;
+  min-width: 240px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.org-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-1);
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.org-menu-item:hover {
+  background: var(--fill-0);
+}
+.org-menu-item.on {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+.org-menu-item .nm {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 弹窗浮层：原型的样式挂在 #modalRoot 下，组件用 portal 渲染进该容器。
+   原型把遮罩与 scrim 分开；这里合并成一层半透明遮罩，避免再引入一个全局节点。 */
+#modalRoot .mask {
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(8, 39, 65, 0.32);
+  backdrop-filter: blur(2px);
+}
+#modalRoot .modal {
+  width: 540px;
+  max-width: 100%;
+  max-height: 88vh;
+  overflow: auto;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-pop);
+  animation: pop 0.2s var(--ease);
+}
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* 登录页独立于外壳：原型把 login-wrap 设计成内嵌面板，这里给它一个居中的全屏容器 */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--bg-app);
+}
+.login-page .login-wrap {
+  width: min(980px, 100%);
+  min-height: min(620px, calc(100vh - 48px));
+}
