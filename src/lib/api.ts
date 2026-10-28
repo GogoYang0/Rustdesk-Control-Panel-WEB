@@ -7,6 +7,8 @@ import type {
   DeviceUpdateRequest,
   Member,
   Me,
+  Policy,
+  PolicyRequest,
   Role,
   SessionDetail as SessionDetailPayload,
   SessionPage,
@@ -261,4 +263,35 @@ export function requestDeviceDisconnect(
     method: 'POST',
     body: JSON.stringify({ reason }),
   })
+}
+
+// ── connection policies ─────────────────────────────────────────────────────
+
+export type { Policy, PolicyRequest } from '../api/generated'
+
+export function fetchPolicies(orgId: number): Promise<Policy[]> {
+  return apiFetch<Policy[]>(`/api/v1/orgs/${orgId}/policies`)
+}
+
+export function createPolicy(orgId: number, input: PolicyRequest): Promise<Policy> {
+  return apiFetch<Policy>(`/api/v1/orgs/${orgId}/policies`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+/** `PUT` replaces the whole policy: every field must be present. */
+export function updatePolicy(
+  orgId: number,
+  policyId: number,
+  input: PolicyRequest,
+): Promise<Policy> {
+  return apiFetch<Policy>(`/api/v1/orgs/${orgId}/policies/${policyId}`, {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  })
+}
+
+export async function deletePolicy(orgId: number, policyId: number): Promise<void> {
+  await apiFetch<unknown>(`/api/v1/orgs/${orgId}/policies/${policyId}`, { method: 'DELETE' })
 }
