@@ -45,6 +45,7 @@ export default function DecisionDialog({
   const {
     currentData: approval,
     isLoading,
+    isFetching,
     error,
     refetch,
   } = useGetApprovalQuery({ orgId, approvalId }, { refetchOnMountOrArgChange: true })
@@ -98,7 +99,9 @@ export default function DecisionDialog({
   const actionable = isActionable(approval, new Date())
   const labels = approvalActionLabels(approval.kind)
   const state = ticketState(approval, new Date())
-  const allowed = actionable && canDecide && approval.status === 'pending'
+  // A cached row can be shown while the fresh read is still in flight; a
+  // decision taken then could race that read and be overwritten by it.
+  const allowed = actionable && canDecide && approval.status === 'pending' && !isFetching
 
   async function submit() {
     if (!allowed) return
@@ -164,6 +167,11 @@ export default function DecisionDialog({
         </>
       }
     >
+      {isFetching && !isLoading ? (
+        <div className="help mb-14" role="status">
+          正在核对最新状态…
+        </div>
+      ) : null}
       {message ? (
         <div className="banner danger mb-14" style={{ padding: '9px 11px' }}>
           <div>{message}</div>
