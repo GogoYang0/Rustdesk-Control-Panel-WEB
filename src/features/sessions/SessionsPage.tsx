@@ -112,10 +112,12 @@ export default function SessionsPage() {
   const filters = parseFilters(searchParams)
   const { origin, status, deviceId, range, page } = filters
 
-  // `since` is derived from a timestamp frozen per range: recomputing "now" on
-  // a page change would slide the window and make rows at the cutoff appear
-  // twice or vanish.
-  const rangeNow = useMemo(() => new Date(), [range])
+  // `since` is cut once per filter set: recomputing "now" on a page change
+  // would slide the window and make rows at the cutoff appear twice or vanish.
+  // Changing a filter, the organization or an explicit retry does move it.
+  const [refreshNonce, setRefreshNonce] = useState(0)
+  const cutoffKey = `${id}|${origin}|${status}|${deviceId}|${range}|${refreshNonce}`
+  const rangeNow = useMemo(() => new Date(), [cutoffKey])
   const queryString = useMemo(
     () => toRequestQuery({ origin, status, deviceId, range, page }, rangeNow).toString(),
     [origin, status, deviceId, range, page, rangeNow],
@@ -270,7 +272,12 @@ export default function SessionsPage() {
             className="btn outline sm"
             type="button"
             style={{ marginTop: 8 }}
-            onClick={() => void refetch()}
+            onClick={() => {
+              setRefreshNonce((nonce) => nonce + 1)
+              // `all` sends no since, so the query string is unchanged and the
+              // new cutoff alone would not trigger a request.
+              if (range === 'all') void refetch()
+            }}
           >
             重试
           </button>
@@ -493,7 +500,11 @@ function SessionDetailSheet({
             </div>
           ) : null}
           {!alerts.isLoading && !alerts.error && relatedAlerts.length === 0 ? (
-            <div className="help">没有关联告警</div>
+            <div className="help">
+              {alerts.data && alerts.data.total > alerts.data.items.length
+                ? '已加载的告警中没有该会话的记录；其余告警未加载，可能仍有关联记录'
+                : '没有关联告警'}
+            </div>
           ) : null}
           {relatedAlerts.length > 0 ? (
             <div className="alert-list">
