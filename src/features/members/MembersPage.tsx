@@ -41,6 +41,14 @@ function roleColor(kind?: string): string {
   }
 }
 
+/** Arrow keys wrap around the radio group; Enter/Space select the focused one. */
+const ARROW_STEP: Record<string, number> = {
+  ArrowDown: 1,
+  ArrowRight: 1,
+  ArrowUp: -1,
+  ArrowLeft: -1,
+}
+
 export default function MembersPage() {
   const { orgId } = useParams()
   const id = Number(orgId)
@@ -464,7 +472,9 @@ function RoleDialog({
       </div>
       <div className="field">
         <label className="form-label">新角色</label>
-        <div className="vstack" style={{ gap: 6 }} role="radiogroup" aria-label="新角色">
+        {/* Persistent live region: the save button disables itself when the query
+            fails or returns nothing, so the reason must be announced too. */}
+        <div role="status" aria-live="polite">
           {isLoading ? <div className="help">正在加载角色…</div> : null}
           {loadError ? (
             <div className="help" style={{ color: 'var(--danger)' }}>
@@ -474,15 +484,31 @@ function RoleDialog({
           {!isLoading && !loadError && assignable.length === 0 ? (
             <div className="help">没有可分配的角色</div>
           ) : null}
-          {assignable.map((role) => (
+        </div>
+        <div className="vstack" style={{ gap: 6 }} role="radiogroup" aria-label="新角色">
+          {assignable.map((role, index) => (
             <label
               key={role.id}
               className={`radio ${roleId === role.id ? 'on' : ''}`}
               role="radio"
               aria-checked={roleId === role.id}
-              tabIndex={0}
+              // Roving tabindex, as the radio pattern requires: one stop for the
+              // whole group, arrows move both focus and selection.
+              tabIndex={roleId === role.id || (roleId === null && index === 0) ? 0 : -1}
               onClick={() => setRoleId(role.id)}
               onKeyDown={(event) => {
+                const step = ARROW_STEP[event.key] ?? 0
+                if (step !== 0) {
+                  event.preventDefault()
+                  const next = (index + step + assignable.length) % assignable.length
+                  setRoleId(assignable[next].id)
+                  const items =
+                    event.currentTarget.parentElement?.querySelectorAll<HTMLElement>(
+                      '[role="radio"]',
+                    )
+                  items?.[next]?.focus()
+                  return
+                }
                 if (event.key === 'Enter' || event.key === ' ') {
                   event.preventDefault()
                   setRoleId(role.id)
