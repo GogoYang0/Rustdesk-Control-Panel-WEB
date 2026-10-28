@@ -51,7 +51,7 @@ export default function AlertsPage() {
   // Freeze the cutoff per filter set: recomputing it per page would slide the
   // window and make pages incomparable.
   const [refreshNonce, setRefreshNonce] = useState(0)
-  const cutoffKey = `${severity}|${kind}|${range}|${refreshNonce}`
+  const cutoffKey = `${id}|${severity}|${kind}|${range}|${refreshNonce}`
   const rangeNow = useMemo(() => new Date(), [cutoffKey])
   const queryString = useMemo(
     () => toAlertRequestQuery({ severity, kind, range, page }, rangeNow).toString(),
