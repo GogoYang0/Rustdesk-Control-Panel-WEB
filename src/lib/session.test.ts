@@ -52,10 +52,8 @@ describe('session refresh', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 503 }))
     expect(await refreshAccessToken()).toEqual({ access: null, invalid: false })
     expect(getRefreshToken()).toBe('r1')
-
-    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('network down'))
-    expect(await refreshAccessToken()).toEqual({ access: null, invalid: false })
-    expect(getRefreshToken()).toBe('r1')
+    // The outcome was unknown, so the retry is refused rather than replayed;
+    // that behaviour is covered by the replay-protection suite below.
   })
 })
 
@@ -117,4 +115,65 @@ describe('refresh responses that are not a usable pair', () => {
       expect(getRefreshToken()).toBeNull()
     },
   )
+})
+
+describe('unsafe replay protection', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    clearSession()
+  })
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('refuses to resend a token whose earlier attempt never reported back', async () => {
+    setTokens({ access_token: 'old', refresh_token: 'r1' })
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('socket hang up'))
+    // Unknown outcome: the token is kept, and the marker records the doubt.
+    expect(await refreshAccessToken()).toEqual({ access: null, invalid: false })
+    expect(getRefreshToken()).toBe('r1')
+
+    expect(await refreshAccessToken()).toEqual({ access: null, invalid: true })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(getRefreshToken()).toBeNull()
+  })
+
+  it.each([
+    ['null', 'null'],
+    ['data not an object', '{"data":"x"}'],
+    ['numeric tokens', '{"data":{"access_token":1,"refresh_token":2}}'],
+    ['only refresh_token', '{"data":{"refresh_token":"r2"}}'],
+  ])('rejects a 2xx whose body has %s', async (_label, body) => {
+    setTokens({ access_token: 'old', refresh_token: 'r1' })
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(body, { status: 200 }))
+    expect(await refreshAccessToken()).toEqual({ access: null, invalid: true })
+    expect(getRefreshToken()).toBeNull()
+  })
+})
+
+describe('web locks branch', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    clearSession()
+  })
+  afterEach(() => {
+    vi.restoreAllMocks()
+    Reflect.deleteProperty(navigator, 'locks')
+  })
+
+  it('reports transient without fetching when the lock is unavailable', async () => {
+    setTokens({ access_token: 'old', refresh_token: 'r1' })
+    Object.defineProperty(navigator, 'locks', {
+      configurable: true,
+      value: {
+        request: async (_name: string, _opts: unknown, cb: (lock: unknown) => Promise<void>) =>
+          cb(null),
+      },
+    })
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+    // The waiter then follows the published token; here nothing is published, so
+    // the bounded wait ends as a transient failure.
+    expect(await refreshAccessToken()).toEqual({ access: null, invalid: false })
+    expect(fetchMock).not.toHaveBeenCalled()
+  }, 15_000)
 })

@@ -29,7 +29,9 @@ export default function RolesPage() {
   const id = Number(orgId)
   // currentData is undefined until *this* organization's query resolves, so a
   // same-route organization switch never renders the previous org's roles.
-  const { currentData: data, isLoading, error } = useGetRolesQuery(id, { skip: !id })
+  const { currentData: data, isLoading, isFetching, error } = useGetRolesQuery(id, { skip: !id })
+  // Same window as the members page: fetching the new organization is not empty.
+  const loadingCurrent = isLoading || (isFetching && data === undefined)
   const roles = data ?? []
   const custom = roles.filter((role) => role.kind === 'custom').length
 
@@ -69,7 +71,7 @@ export default function RolesPage() {
             </div>
           </div>
           <div className="card-body tight" style={{ overflowX: 'auto' }}>
-            {isLoading ? (
+            {loadingCurrent ? (
               <div className="help" style={{ padding: '14px 0' }}>
                 正在加载角色…
               </div>

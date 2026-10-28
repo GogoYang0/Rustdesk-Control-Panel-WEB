@@ -47,7 +47,10 @@ export default function MembersPage() {
   const { data: me } = useGetMeQuery()
   // currentData is undefined until *this* organization's query resolves, so a
   // switch never shows the previous organization's members.
-  const { currentData: data, isLoading, error } = useGetMembersQuery(id, { skip: !id })
+  const { currentData: data, isLoading, isFetching, error } = useGetMembersQuery(id, { skip: !id })
+  // A switched organization keeps isFetching true while its first response is on
+  // the way; that window must show loading, not an empty list.
+  const loadingCurrent = isLoading || (isFetching && data === undefined)
   const current = me?.orgs.find((org) => org.id === id)
   const perms = new Set(current?.permissions ?? [])
   const canManage = perms.has('member.manage')
@@ -158,7 +161,7 @@ export default function MembersPage() {
             </div>
           </div>
           <div className="card-body tight">
-            {isLoading ? (
+            {loadingCurrent ? (
               <div className="help" style={{ padding: '14px 0' }}>
                 正在加载成员…
               </div>

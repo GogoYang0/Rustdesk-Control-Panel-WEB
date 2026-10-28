@@ -5,6 +5,16 @@
 const REFRESH_KEY = 'rdp-panel-refresh'
 const LOCK_KEY = 'rdp-panel-refresh-lock'
 const STALE_LOCK_MS = 30_000
+// Cross-tab marker: a refresh whose outcome is unknown may already have consumed
+// the token. Re-sending it would be a replay (which revokes the whole family), so
+// the next attempt fails closed instead and asks for a fresh sign-in.
+const INFLIGHT_KEY = 'rdp-panel-refresh-inflight'
+
+function fingerprint(token: string): string {
+  let hash = 0
+  for (let i = 0; i < token.length; i += 1) hash = (hash * 31 + token.charCodeAt(i)) | 0
+  return `${token.length}:${hash}`
+}
 
 let accessToken: string | null = null
 let refreshing: Promise<RefreshResult> | null = null
@@ -117,6 +127,16 @@ async function doRefresh(): Promise<RefreshResult> {
   const startedAt = epoch
   const refresh = getRefreshToken()
   if (!refresh) return { access: null, invalid: true }
+  const tag = fingerprint(refresh)
+  if (localStorage.getItem(INFLIGHT_KEY) === tag) {
+    // An earlier attempt with this exact token never reported back. It may have
+    // been consumed, so refuse rather than replay.
+    localStorage.removeItem(INFLIGHT_KEY)
+    if (startedAt === epoch) clearSession()
+    return { access: null, invalid: true }
+  }
+  localStorage.setItem(INFLIGHT_KEY, tag)
+  const settle = () => localStorage.removeItem(INFLIGHT_KEY)
   try {
     const res = await fetch('/api/v1/auth/refresh', {
       method: 'POST',
@@ -126,33 +146,51 @@ async function doRefresh(): Promise<RefreshResult> {
     if (!res.ok) {
       // Only 400/401 mean the server rejected the token. A 5xx, a 429 or a
       // gateway error says nothing about it: the session must survive those, or
-      // one blip signs every tab out.
+      // one blip signs every tab out. The marker then stays, so the retry fails
+      // closed instead of assuming the token was not spent.
       const invalid = res.status === 400 || res.status === 401
-      if (invalid && startedAt === epoch) clearSession()
+      if (invalid) {
+        settle()
+        if (startedAt === epoch) clearSession()
+      }
       return { access: null, invalid }
     }
     // A 2xx means the token was consumed. An unparsable body is therefore just
     // as fatal as a missing pair: keeping the old token would replay it.
-    let body: { data?: Partial<TokenPair> | null }
+    let body: unknown
     try {
-      body = (await res.json()) as { data?: Partial<TokenPair> | null }
+      body = await res.json()
     } catch {
-      if (startedAt === epoch) clearSession()
-      return { access: null, invalid: true }
+      body = null
     }
-    if (!body.data?.access_token || !body.data?.refresh_token) {
+    const pair = readPair(body)
+    if (!pair) {
       // A 2xx means the server consumed and rotated the token. Keeping the old
       // one would replay a spent token on the next attempt.
+      settle()
       if (startedAt === epoch) clearSession()
       return { access: null, invalid: true }
     }
-    setTokens(body.data as TokenPair, startedAt)
-    return { access: startedAt === epoch ? body.data.access_token : null, invalid: false }
+    settle()
+    setTokens(pair, startedAt)
+    return { access: startedAt === epoch ? pair.access_token : null, invalid: false }
   } catch {
     // A network blip must not wipe a working session: keep the refresh token so
-    // the next request can try again.
+    // the next request can try again. The marker stays too — the request may
+    // still have reached the server.
     return { access: null, invalid: false }
   }
+}
+
+/** The response is only usable when it is an object carrying two non-empty strings. */
+function readPair(body: unknown): TokenPair | null {
+  if (typeof body !== 'object' || body === null) return null
+  const data = (body as { data?: unknown }).data
+  if (typeof data !== 'object' || data === null) return null
+  const { access_token: access, refresh_token: refresh } = data as Record<string, unknown>
+  if (typeof access !== 'string' || access === '') return null
+  if (typeof refresh !== 'string' || refresh === '') return null
+  return { access_token: access, refresh_token: refresh }
 }
 
 /** Exchanges the refresh token for a new pair; concurrent callers share one flight. */
