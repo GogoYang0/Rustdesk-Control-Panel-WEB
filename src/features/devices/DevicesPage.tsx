@@ -24,14 +24,15 @@ import {
   ToggleDeviceDialog,
 } from './DeviceDialogs'
 
-type Dialog =
+type DialogKind =
   | { kind: 'register' }
   | { kind: 'toggle'; device: Device }
   | { kind: 'owner'; device: Device }
   | { kind: 'note'; device: Device }
   | { kind: 'rebind'; device: Device }
   | { kind: 'disconnect'; device: Device }
-  | null
+
+type Dialog = (DialogKind & { generation: number }) | null
 
 export default function DevicesPage() {
   const { orgId } = useParams()
@@ -87,8 +88,13 @@ export default function DevicesPage() {
   // A result that lands after the scope moved must not close the new dialog or
   // keep a stale sheet open.
   const scopeRef = useRef(id)
+  const scopeGenerationRef = useRef(0)
   useLayoutEffect(() => {
+    if (scopeRef.current === id) return
     scopeRef.current = id
+    // A→B→A comes back to the same id, so the id alone cannot tell a stale
+    // write callback from a current one; the generation can.
+    scopeGenerationRef.current += 1
   }, [id])
 
   useEffect(() => {
@@ -117,8 +123,12 @@ export default function DevicesPage() {
     if (data && page > pages) change({ page: pages })
   }, [orgChanged, data, page, pages, change])
 
-  function afterWrite() {
-    if (scopeRef.current !== id) return
+  function openDialog(next: DialogKind) {
+    setDialog({ ...next, generation: scopeGenerationRef.current })
+  }
+
+  function afterWrite(generation: number) {
+    if (scopeRef.current !== id || generation !== scopeGenerationRef.current) return
     setDialog(null)
     setSelected(null)
   }
@@ -139,7 +149,7 @@ export default function DevicesPage() {
             type="button"
             disabled={!canWrite}
             title={canWrite ? '登记设备' : '需要 device.write 权限'}
-            onClick={() => setDialog({ kind: 'register' })}
+            onClick={() => openDialog({ kind: 'register' })}
           >
             登记设备
           </button>
@@ -285,7 +295,7 @@ export default function DevicesPage() {
                             style={device.disabled ? undefined : { color: 'var(--danger)' }}
                             disabled={!canWrite}
                             title={canWrite ? undefined : '需要 device.write 权限'}
-                            onClick={() => setDialog({ kind: 'toggle', device })}
+                            onClick={() => openDialog({ kind: 'toggle', device })}
                           >
                             {device.disabled ? '恢复' : '停用'}
                           </button>
@@ -345,21 +355,25 @@ export default function DevicesPage() {
           onAction={(kind) => {
             // Stacking a dialog over the sheet would put two focus traps and two
             // Escape handlers on the document; close the sheet first.
-            setDialog({ kind, device: activeSelected })
+            openDialog({ kind, device: activeSelected })
             setSelected(null)
           }}
         />
       ) : null}
 
       {activeDialog?.kind === 'register' ? (
-        <RegisterDialog orgId={id} onClose={() => setDialog(null)} onDone={afterWrite} />
+        <RegisterDialog
+          orgId={id}
+          onClose={() => setDialog(null)}
+          onDone={() => afterWrite(activeDialog.generation)}
+        />
       ) : null}
       {activeDialog?.kind === 'toggle' ? (
         <ToggleDeviceDialog
           orgId={id}
           device={activeDialog.device}
           onClose={() => setDialog(null)}
-          onDone={afterWrite}
+          onDone={() => afterWrite(activeDialog.generation)}
         />
       ) : null}
       {activeDialog?.kind === 'owner' && membersReady ? (
@@ -368,7 +382,7 @@ export default function DevicesPage() {
           device={activeDialog.device}
           members={(members ?? []).filter((member) => !member.disabled)}
           onClose={() => setDialog(null)}
-          onDone={afterWrite}
+          onDone={() => afterWrite(activeDialog.generation)}
         />
       ) : null}
       {activeDialog?.kind === 'note' ? (
@@ -376,7 +390,7 @@ export default function DevicesPage() {
           orgId={id}
           device={activeDialog.device}
           onClose={() => setDialog(null)}
-          onDone={afterWrite}
+          onDone={() => afterWrite(activeDialog.generation)}
         />
       ) : null}
       {activeDialog?.kind === 'rebind' ? (
@@ -385,7 +399,7 @@ export default function DevicesPage() {
           device={activeDialog.device}
           action="rebind"
           onClose={() => setDialog(null)}
-          onDone={afterWrite}
+          onDone={() => afterWrite(activeDialog.generation)}
         />
       ) : null}
       {activeDialog?.kind === 'disconnect' ? (
@@ -394,7 +408,7 @@ export default function DevicesPage() {
           device={activeDialog.device}
           action="disconnect"
           onClose={() => setDialog(null)}
-          onDone={afterWrite}
+          onDone={() => afterWrite(activeDialog.generation)}
         />
       ) : null}
     </section>
