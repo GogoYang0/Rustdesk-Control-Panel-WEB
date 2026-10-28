@@ -9,3 +9,53 @@
   --semi-color-primary-active: #0b3a63;
   --semi-color-primary-light-default: #e9f1f9;
 }
+
+#root {
+  height: 100%;
+}
+
+/* 组织切换浮层（原型 .orgPop 的最小实现） */
+.org-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+.org-pop {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 41;
+  min-width: 240px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.org-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-1);
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.org-opt:hover {
+  background: var(--fill-0);
+}
+.org-opt.on {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+.org-opt .nm {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

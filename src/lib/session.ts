@@ -79,3 +79,14 @@ export function refreshAccessToken(): Promise<string | null> {
   }
   return refreshing
 }
+
+/**
+ * First paint must not fire requests without an access token: on every reload the
+ * access token is gone by design, so a refresh is guaranteed to be needed. Doing
+ * it once here keeps the console from logging a 401 per page load.
+ */
+export async function bootstrapSession(): Promise<void> {
+  if (!getAccessToken() && getRefreshToken()) {
+    await refreshAccessToken()
+  }
+}

@@ -1,117 +1,175 @@
-import { Avatar, Button, Layout, Select, Spin, Tag, Typography } from '@douyinfe/semi-ui'
-import { useEffect } from 'react'
-import { Navigate, Outlet, useNavigate, useParams } from 'react-router'
+import { Toast } from '@douyinfe/semi-ui'
+import { useEffect, useMemo, useState, type ReactElement } from 'react'
+import { Navigate, Outlet, useLocation, useNavigate, useParams } from 'react-router'
 
 import { logout, setLogoutHandler } from '../lib/session'
 import { useGetMeQuery } from '../store/api'
-
-const { Sider, Header, Content } = Layout
-const { Text } = Typography
 
 interface NavEntry {
   key: string
   label: string
   permission?: string
   ready?: boolean
+  icon: ReactElement
 }
 
-const NAV_GROUPS: { title: string; items: NavEntry[] }[] = [
+const ICONS: Record<string, ReactElement> = {
+  devices: (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <rect x="2.5" y="3.5" width="13" height="8.5" rx="1.5" />
+      <path d="M6 15h6M9 12v3" />
+    </svg>
+  ),
+  members: (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+      <circle cx="7" cy="6.5" r="2.5" />
+      <path d="M2.8 15c.5-2.3 2.2-3.6 4.2-3.6s3.7 1.3 4.2 3.6" />
+      <path d="M12 5.4a2.2 2.2 0 010 4.2" />
+    </svg>
+  ),
+  addressbook: (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round">
+      <path d="M4 2.5h8.5A1.5 1.5 0 0114 4v10a1.5 1.5 0 01-1.5 1.5H4z" />
+      <path d="M4 2.5v13" />
+      <path d="M7 6.5h4M7 9.5h4" />
+    </svg>
+  ),
+  sessions: (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+      <circle cx="9" cy="9" r="6.2" />
+      <path d="M9 5.5V9l2.5 1.6" />
+    </svg>
+  ),
+  access: (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round">
+      <path d="M9 2.5l5.5 2.2v4.1c0 3.1-2.2 5.6-5.5 6.7-3.3-1.1-5.5-3.6-5.5-6.7V4.7z" />
+      <path d="M6.8 8.8l1.6 1.6 2.9-3" />
+    </svg>
+  ),
+  audit: (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+      <rect x="3" y="2.5" width="12" height="13" rx="1.5" />
+      <path d="M6 6h6M6 9h6M6 12h4" />
+    </svg>
+  ),
+  builds: (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round">
+      <path d="M9 2.5l5.5 3v5c0 2.6-2.3 4.4-5.5 5.5-3.2-1.1-5.5-2.9-5.5-5.5v-5z" />
+      <path d="M6.8 9l1.5 1.5 2.9-3" />
+    </svg>
+  ),
+}
+
+const GROUPS: { title: string; items: NavEntry[] }[] = [
   {
     title: '资产与身份',
     items: [
-      { key: 'devices', label: '设备', permission: 'device.read' },
-      { key: 'members', label: '组织与成员', permission: 'device.read', ready: true },
-      { key: 'addressbook', label: '地址簿', permission: 'device.read' },
+      { key: 'devices', label: '设备', permission: 'device.read', icon: ICONS.devices },
+      { key: 'members', label: '组织与成员', ready: true, icon: ICONS.members },
+      { key: 'addressbook', label: '地址簿', permission: 'device.read', icon: ICONS.addressbook },
     ],
   },
   {
     title: '会话与策略',
     items: [
-      { key: 'sessions', label: '会话记录', permission: 'device.read' },
-      { key: 'access', label: '访问控制', permission: 'access.manage' },
+      { key: 'sessions', label: '会话记录', permission: 'device.read', icon: ICONS.sessions },
+      { key: 'access', label: '访问控制', permission: 'access.manage', icon: ICONS.access },
     ],
   },
   {
     title: '运维与审计',
     items: [
-      { key: 'audit', label: '审计与日志', permission: 'audit.read' },
-      { key: 'builds', label: '客户端生成器', permission: 'client_build.manage' },
+      { key: 'audit', label: '审计与日志', permission: 'audit.read', icon: ICONS.audit },
+      { key: 'builds', label: '客户端生成器', permission: 'client_build.manage', icon: ICONS.builds },
     ],
   },
 ]
 
+type ThemeMode = 'light' | 'dark' | 'auto'
+const THEME_KEY = 'rdp-panel-theme'
+
+function applyTheme(mode: ThemeMode) {
+  const dark = mode === 'dark' || (mode === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches)
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+}
+
 export default function AppShell() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { orgId } = useParams()
   const { data: me, isLoading, error } = useGetMeQuery()
+  const [collapsed, setCollapsed] = useState(false)
+  const [orgOpen, setOrgOpen] = useState(false)
+  const [theme, setTheme] = useState<ThemeMode>(
+    () => (localStorage.getItem(THEME_KEY) as ThemeMode | null) ?? 'light',
+  )
 
   useEffect(() => {
-    // Any 401 that survives a refresh means the session is gone.
     setLogoutHandler(() => navigate('/login', { replace: true }))
     return () => setLogoutHandler(() => undefined)
   }, [navigate])
 
+  useEffect(() => {
+    applyTheme(theme)
+    localStorage.setItem(THEME_KEY, theme)
+    if (theme !== 'auto') return
+    const mq = matchMedia('(prefers-color-scheme: dark)')
+    const onChange = () => applyTheme('auto')
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [theme])
+
+  const current = me?.orgs.find((org) => String(org.id) === orgId) ?? me?.orgs[0]
+  const perms = useMemo(() => new Set(current?.permissions ?? []), [current])
+  const activeKey = location.pathname.endsWith('/members') ? 'members' : 'members'
+
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Spin size="large" />
+      <div className="shell">
+        <div className="main" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="help">正在加载会话…</div>
+        </div>
       </div>
     )
   }
-  if (error || !me) {
-    return <Navigate to="/login" replace />
-  }
-
-  const current = me.orgs.find((org) => String(org.id) === orgId) ?? me.orgs[0]
-  if (!current) {
-    return <Navigate to="/" replace />
-  }
-  const perms = new Set(current.permissions)
+  if (error || !me) return <Navigate to="/login" replace />
+  if (!current) return <Navigate to="/" replace />
 
   return (
-    <Layout className="h-screen">
-      <Sider className="border-r border-[var(--semi-color-border)] bg-[var(--semi-color-bg-0)]">
-        <div className="flex h-14 items-center gap-2 px-4">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--semi-color-primary)] text-sm font-bold text-white">
-            R
-          </span>
-          <div className="leading-tight">
-            <div className="text-sm font-semibold">RustDesk Panel</div>
-            <div className="text-[10px] tracking-[0.18em] text-[var(--semi-color-text-2)]">CONTROL · PANEL</div>
+    <div className="shell">
+      <aside className="side" data-collapsed={collapsed ? 'true' : 'false'}>
+        <div className="side-head">
+          <div className="brand-logo">R</div>
+          <div className="brand">
+            <b>RustDesk Panel</b>
+            <span>C O N T R O L · P A N E L</span>
           </div>
         </div>
-        <nav className="mt-2 flex flex-col gap-1 px-2">
-          {NAV_GROUPS.map((group) => (
+
+        <nav className="side-nav">
+          {GROUPS.map((group) => (
             <div key={group.title}>
-              <div className="px-2 pb-1 pt-3 text-[11px] tracking-wide text-[var(--semi-color-text-2)]">
-                {group.title}
-              </div>
+              <div className="nav-group">{group.title}</div>
               {group.items.map((item) => {
                 const allowed = item.permission ? perms.has(item.permission) : true
-                const active = item.key === 'members'
                 return (
                   <button
                     key={item.key}
                     type="button"
+                    className={`nav-item ${item.key === activeKey ? 'active' : ''}`}
                     disabled={!item.ready || !allowed}
+                    title={item.ready ? item.label : `${item.label}（后续波次）`}
                     onClick={() => {
-                      if (item.ready) return
+                      if (!item.ready) {
+                        Toast.info('该域在后续波次接入')
+                        return
+                      }
+                      navigate(`/orgs/${current.id}/members`)
                     }}
-                    className={[
-                      'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] transition',
-                      active
-                        ? 'bg-[var(--semi-color-primary-light-default)] font-medium text-[var(--semi-color-primary)]'
-                        : 'text-[var(--semi-color-text-1)] hover:bg-[var(--semi-color-fill-0)]',
-                      !item.ready || !allowed ? 'cursor-not-allowed opacity-45 hover:bg-transparent' : '',
-                    ].join(' ')}
                   >
-                    <span className="h-1.5 w-1.5 rounded-full bg-current opacity-50" />
-                    <span>{item.label}</span>
-                    {item.ready ? null : (
-                      <span className="ml-auto rounded border border-[var(--semi-color-border)] px-1 text-[10px] text-[var(--semi-color-text-2)]">
-                        后续
-                      </span>
-                    )}
+                    <span className="ic">{item.icon}</span>
+                    <span className="txt">{item.label}</span>
+                    {item.ready ? null : <span className="nav-badge soft">后续</span>}
                   </button>
                 )
               })}
@@ -119,45 +177,127 @@ export default function AppShell() {
           ))}
         </nav>
 
-        <div className="absolute bottom-0 w-full px-4 py-3 text-[10px] text-[var(--semi-color-text-2)]">
-          <div>TLS 1.3 · 审计开启</div>
-          <div className="mt-1 opacity-70">© 2026 RustDesk Panel</div>
-        </div>
-      </Sider>
-
-      <Layout>
-        <Header className="flex items-center gap-4 border-b border-[var(--semi-color-border)] bg-[var(--semi-color-bg-0)] px-5">
-          <Select
-            value={current.id}
-            style={{ width: 220 }}
-            onChange={(value) => navigate(`/orgs/${value}/members`)}
-            optionList={me.orgs.map((org) => ({ label: org.name, value: org.id }))}
-          />
-          <Tag color="blue" size="small">
-            {current.role_kind}
-          </Tag>
-          <div className="ml-auto flex items-center gap-3">
-            <Text type="secondary" size="small">
-              {me.user.email}
-            </Text>
-            <Avatar size="small" color="light-blue">
-              {me.user.email.slice(0, 1).toUpperCase()}
-            </Avatar>
-            <Button
-              size="small"
-              type="tertiary"
-              onClick={() => {
-                logout()
-              }}
-            >
-              退出
-            </Button>
+        <div className="side-foot">
+          <div className="secure-pill side-secure">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round">
+              <path d="M6 1.5l4 1.6v2.7c0 2.2-1.6 4-4 4.7-2.4-.7-4-2.5-4-4.7V3.1z" />
+              <path d="M4.5 6l1.1 1.1 2-2.1" />
+            </svg>
+            <span className="sp-txt">TLS 1.3 · 审计开启</span>
           </div>
-        </Header>
-        <Content className="overflow-auto bg-[var(--semi-color-fill-0)] p-5">
+          <div className="ver-row">
+            <span className="live" />
+            <span>
+              API <b>v0.11.0</b> · Web <b>v0.1.0</b>
+            </span>
+          </div>
+          <div className="copyright">© 2026 RustDesk Panel</div>
+        </div>
+
+        <button
+          type="button"
+          className="side-toggle"
+          title={collapsed ? '展开侧栏' : '收起侧栏'}
+          onClick={() => setCollapsed((v) => !v)}
+        >
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9.5 4L5.5 8l4 4" />
+          </svg>
+        </button>
+      </aside>
+
+      <div className="main">
+        <header className="topbar">
+          <div className="spacer" />
+          <button className="top-search" type="button" title="全局搜索（后续波次）">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <circle cx="7" cy="7" r="4.4" />
+              <path d="M10.4 10.4l3 3" />
+            </svg>
+            搜索设备 / 会话 / 成员
+            <kbd>⌘K</kbd>
+          </button>
+
+          <div style={{ position: 'relative' }}>
+            <button
+              className="org-switch"
+              type="button"
+              title="切换组织"
+              onClick={() => setOrgOpen((v) => !v)}
+            >
+              <span className="org-ava">{current.name.slice(0, 1).toUpperCase()}</span>
+              <span className="nm">{current.name}</span>
+              <span className="tag primary">{current.role_kind}</span>
+              <svg className="chev" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                <path d="M3 4.5L6 7.5l3-3" />
+              </svg>
+            </button>
+            {orgOpen ? (
+              <>
+                <div className="org-scrim" onClick={() => setOrgOpen(false)} />
+                <div className="org-pop card">
+                  {me.orgs.map((org) => (
+                    <button
+                      key={org.id}
+                      type="button"
+                      className={`org-opt ${org.id === current.id ? 'on' : ''}`}
+                      onClick={() => {
+                        setOrgOpen(false)
+                        navigate(`/orgs/${org.id}/members`)
+                      }}
+                    >
+                      <span className="org-ava">{org.name.slice(0, 1).toUpperCase()}</span>
+                      <span className="nm">{org.name}</span>
+                      <span className="tag primary">{org.role_kind}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : null}
+          </div>
+
+          <div className="theme-switch" title="配色模式">
+            <button type="button" className={theme === 'light' ? 'on' : ''} title="浅色" onClick={() => setTheme('light')}>
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                <circle cx="8" cy="8" r="3" />
+                <path d="M8 1.6v1.4M8 13v1.4M1.6 8h1.4M13 8h1.4M3.5 3.5l1 1M11.5 11.5l1 1M12.5 3.5l-1 1M4.5 11.5l-1 1" />
+              </svg>
+            </button>
+            <button type="button" className={theme === 'dark' ? 'on' : ''} title="深色" onClick={() => setTheme('dark')}>
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round">
+                <path d="M13 9.4A5.6 5.6 0 016.6 3 5.6 5.6 0 1013 9.4z" />
+              </svg>
+            </button>
+            <button type="button" className={theme === 'auto' ? 'on' : ''} title="跟随系统" onClick={() => setTheme('auto')}>
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round">
+                <rect x="2" y="3" width="12" height="8" rx="1.4" />
+                <path d="M5.5 13.5h5M8 11v2.5" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="user-chip">
+            <div className="avatar">{me.user.email.slice(0, 1).toUpperCase()}</div>
+            <div className="desk-only">
+              <div className="nm">{me.user.email}</div>
+              <div className="rl">{current.role_kind}</div>
+            </div>
+            <button className="btn tertiary sm" type="button" onClick={() => logout()}>
+              退出
+            </button>
+          </div>
+        </header>
+
+        <div className="tabbar" role="tablist">
+          <button className="tab-item on" type="button" role="tab" aria-selected="true">
+            <span className="tt">组织与成员</span>
+          </button>
+        </div>
+
+        <div className="content">
           <Outlet />
-        </Content>
-      </Layout>
-    </Layout>
+        </div>
+      </div>
+    </div>
   )
 }
