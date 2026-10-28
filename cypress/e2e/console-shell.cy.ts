@@ -34,7 +34,9 @@ function signIn() {
     cy.contains('.page-head button', '邀请成员').click()
     cy.get('#modalRoot .mask').should('be.visible')
     cy.get('#modalRoot .modal-head').should('have.text', '邀请成员')
-    cy.get('#modalRoot .modal').should('have.css', 'position', 'static').and('not.be.visible').or('be.visible')
+    cy.get('#modalRoot .mask').should(($mask) => {
+      expect(getComputedStyle($mask[0]).position).to.eq('fixed')
+    })
     cy.get('#modalRoot .mask').click(4, 4)
     cy.get('#modalRoot .mask').should('not.exist')
   })

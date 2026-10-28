@@ -4,6 +4,7 @@ import { Navigate, Outlet, useLocation, useNavigate, useParams } from 'react-rou
 
 import StateBlock from '../components/StateBlock'
 import { logout, setLogoutHandler } from '../lib/session'
+import { closeTabFrom, evictionCandidate, pushTab } from '../lib/tabs'
 import { applyThemeMode, getStoredTheme, type ThemeMode } from '../lib/theme'
 import { useGetMeQuery } from '../store/api'
 
@@ -89,6 +90,7 @@ const GROUPS: { title: string; items: NavEntry[] }[] = [
 ]
 
 const TAB_LABELS: Record<string, string> = { members: '组织与成员', roles: '角色与权限' }
+const PAGE_KEYS = Object.keys(TAB_LABELS)
 
 export default function AppShell() {
   const navigate = useNavigate()
@@ -113,27 +115,26 @@ export default function AppShell() {
 
   // A wrong organization id in the URL must not silently render the first org:
   // that made 404s look like a successful load of somebody else's scope.
-  const requestedOrgId = orgId ? Number(orgId) : undefined
-  const current = requestedOrgId
-    ? me?.orgs.find((org) => org.id === requestedOrgId)
-    : me?.orgs[0]
+  // `Number("abc")` is NaN, which is falsy: selecting on it explicitly (rather
+  // than `requested ? find : first`) keeps an invalid id from showing org #1.
+  const requestedOrgId = orgId === undefined ? undefined : Number(orgId)
+  const current =
+    orgId === undefined
+      ? me?.orgs[0]
+      : me?.orgs.find((org) => Number.isInteger(requestedOrgId) && org.id === requestedOrgId)
   const perms = useMemo(() => new Set(current?.permissions ?? []), [current])
-  const activeKey = location.pathname.endsWith('/roles') ? 'roles' : 'members'
+  const activeKey = PAGE_KEYS.find((key) => location.pathname.endsWith(`/${key}`)) ?? 'members'
 
   useEffect(() => {
-    setTabs((prev) => (prev[prev.length - 1] === activeKey ? prev : [...prev.filter((k) => k !== activeKey), activeKey]))
+    setTabs((prev) => pushTab(prev, activeKey))
   }, [activeKey])
 
   // Overflow drops the least recently used tab; the active one never goes.
   useEffect(() => {
     const el = tabbarRef.current
     if (!el || el.clientWidth === 0) return
-    while (el.scrollWidth > el.clientWidth + 1 && tabs.length > 1) {
-      const victim = tabs.find((key) => key !== activeKey)
-      if (!victim) return
-      setTabs((prev) => prev.filter((key) => key !== victim))
-      return
-    }
+    const victim = evictionCandidate(tabs, activeKey)
+    if (victim && el.scrollWidth > el.clientWidth + 1) setTabs((prev) => closeTabFrom(prev, victim))
   }, [tabs, activeKey])
 
   if (isLoading) {
@@ -189,11 +190,15 @@ export default function AppShell() {
                     key={item.key}
                     type="button"
                     className={`nav-item ${item.key === activeKey ? 'active' : ''}`}
-                    disabled={!item.ready || !allowed}
+                    aria-disabled={!item.ready || !allowed}
                     title={item.ready ? item.label : `${item.label}（后续波次）`}
                     onClick={() => {
                       if (!item.ready) {
                         Toast.info('该域在后续波次接入')
+                        return
+                      }
+                      if (!allowed) {
+                        Toast.warning('当前角色没有该域的权限')
                         return
                       }
                       navigate(`/orgs/${current.id}/${item.key}`)
@@ -220,7 +225,7 @@ export default function AppShell() {
           <div className="ver-row">
             <span className="live" />
             <span>
-              API <b>v0.11.0</b> · Web <b>v0.1.0</b>
+              API <b>v0.12.0</b> · Web <b>v0.1.0</b>
             </span>
           </div>
           <div className="copyright">© 2026 RustDesk Panel</div>
@@ -267,12 +272,12 @@ export default function AppShell() {
             {orgOpen ? (
               <>
                 <div className="org-scrim" onClick={() => setOrgOpen(false)} />
-                <div className="org-pop card">
+                <div className="org-menu">
                   {me.orgs.map((org) => (
                     <button
                       key={org.id}
                       type="button"
-                      className={`org-opt ${org.id === current.id ? 'on' : ''}`}
+                      className={`org-menu-item ${org.id === current.id ? 'on' : ''}`}
                       onClick={() => {
                         setOrgOpen(false)
                         navigate(`/orgs/${org.id}/members`)
@@ -338,7 +343,7 @@ export default function AppShell() {
                   title="关闭"
                   onClick={(event) => {
                     event.stopPropagation()
-                    const remaining = tabs.filter((k) => k !== key)
+                    const remaining = closeTabFrom(tabs, key)
                     setTabs(remaining)
                     if (key === activeKey && remaining.length > 0) {
                       navigate(`/orgs/${current.id}/${remaining[remaining.length - 1]}`)

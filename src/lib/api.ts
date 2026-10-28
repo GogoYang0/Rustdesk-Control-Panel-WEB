@@ -1,4 +1,10 @@
-import { getAccessToken, refreshAccessToken, type TokenPair } from './session'
+import type { Member, Me, Role } from '../api/generated'
+import { getAccessToken, logout, refreshAccessToken, type TokenPair } from './session'
+
+export type { Member, Me, Role }
+export type RoleKind = Role['kind']
+export type MeUser = Me['user']
+export type MeOrg = Me['orgs'][number]
 
 /** Envelope from the panel: `{code, message, data}`. */
 interface Envelope<T> {
@@ -10,12 +16,15 @@ interface Envelope<T> {
 export class ApiError extends Error {
   readonly status: number
   readonly code: string
+  /** `data` of a failed envelope, e.g. the 2FA challenge on a 403 login. */
+  readonly detail: unknown
 
-  constructor(status: number, code: string, message: string) {
+  constructor(status: number, code: string, message: string, detail?: unknown) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     this.code = code
+    this.detail = detail
   }
 }
 
@@ -43,7 +52,7 @@ async function once<T>(path: string, options: RequestOptions): Promise<T> {
     }
   }
   if (!res.ok) {
-    throw new ApiError(res.status, body.code ?? 'internal', body.message ?? res.statusText)
+    throw new ApiError(res.status, body.code ?? 'internal', body.message ?? res.statusText, body.data)
   }
   return body.data as T
 }
@@ -54,61 +63,63 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   try {
     return await once<T>(path, init)
   } catch (err) {
-    if (retryOn401 && err instanceof ApiError && err.status === 401) {
-      const next = await refreshAccessToken()
-      if (next) return once<T>(path, init)
+    if (!(err instanceof ApiError) || err.status !== 401 || !retryOn401) throw err
+    const next = await refreshAccessToken()
+    if (!next) {
+      // The session is over: clear it and let the shell route to /login instead
+      // of rendering cached data next to an "unauthorized" banner.
+      logout()
+      throw err
     }
-    throw err
+    return once<T>(path, init)
   }
 }
 
-// ── contract types (mirrors openapi.yaml 0.12.0) ─────────────────────────────
+// ── auth ────────────────────────────────────────────────────────────────────
 
-export type RoleKind = 'owner' | 'admin' | 'member' | 'custom'
-
-export interface MeUser {
-  id: number
-  email: string
-  email_verified: boolean
-  totp_enabled: boolean
-  has_password: boolean
+export interface TwoFactorChallenge {
+  challenge_token: string
+  methods?: string[]
 }
 
-export interface MeOrg {
-  id: number
-  name: string
-  role_id: number
-  role_kind: RoleKind
-  permissions: string[]
+export interface CaptchaInfo {
+  enabled: boolean
+  provider?: string
 }
 
-export interface Me {
-  user: MeUser
-  orgs: MeOrg[]
+export function login(email: string, password: string): Promise<TokenPair> {
+  return apiFetch<TokenPair>('/api/v1/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+    retryOn401: false,
+  })
 }
 
-export interface Member {
-  id: number
-  user_id: number
-  email: string
-  role: string
-  role_id: number
-  role_name: string
-  role_kind?: RoleKind
-  disabled: boolean
-  created_at: string
+/** Second login step for accounts with TOTP enabled. */
+export function verifyTwoFactor(challengeToken: string, code: string): Promise<TokenPair> {
+  return apiFetch<TokenPair>('/api/v1/auth/2fa/verify', {
+    method: 'POST',
+    body: JSON.stringify({ challenge_token: challengeToken, code }),
+    retryOn401: false,
+  })
 }
 
-export interface Role {
-  id: number
-  name: string
-  kind: RoleKind
-  permissions: string[]
-  audit_scope: string
-  builtin: boolean
-  created_at: string
-  updated_at: string
+export function fetchProviders(): Promise<{
+  oidc: { enabled: boolean; name?: string }
+  ldap: { enabled: boolean }
+}> {
+  return apiFetch('/api/v1/auth/providers')
 }
+
+export function fetchCaptcha(): Promise<CaptchaInfo> {
+  return apiFetch('/api/v1/auth/captcha')
+}
+
+export function fetchMe(): Promise<Me> {
+  return apiFetch<Me>('/api/v1/me')
+}
+
+// ── organization ────────────────────────────────────────────────────────────
 
 export interface Invitation {
   id: number
@@ -119,29 +130,6 @@ export interface Invitation {
 
 export interface MemberMutation {
   revoked_sessions?: number
-}
-
-export interface AuthProviders {
-  oidc: { enabled: boolean; name?: string }
-  ldap: { enabled: boolean }
-}
-
-export type LoginResult = TokenPair
-
-export function login(email: string, password: string): Promise<LoginResult> {
-  return apiFetch<LoginResult>('/api/v1/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ email, password }),
-    retryOn401: false,
-  })
-}
-
-export function fetchMe(): Promise<Me> {
-  return apiFetch<Me>('/api/v1/me')
-}
-
-export function fetchProviders(): Promise<AuthProviders> {
-  return apiFetch<AuthProviders>('/api/v1/auth/providers')
 }
 
 export function fetchMembers(orgId: number): Promise<Member[]> {

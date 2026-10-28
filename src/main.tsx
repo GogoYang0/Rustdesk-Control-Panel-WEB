@@ -9,7 +9,7 @@ import { RouterProvider } from 'react-router/dom'
 import './styles/global.css'
 // Prototype baseline last so its tokens win over Tailwind/Semi resets.
 import './styles/prototype.css'
-import { bootstrapSession } from './lib/session'
+import { bootstrapSession, watchSessionAcrossTabs } from './lib/session'
 import { applyThemeMode, getStoredTheme } from './lib/theme'
 import { router } from './router'
 import { store } from './store'
@@ -20,6 +20,7 @@ if (!container) {
 }
 
 applyThemeMode(getStoredTheme())
+watchSessionAcrossTabs()
 
 // Refresh first (if a refresh token exists) so the first data request carries an
 // access token instead of 401-ing once per page load.

@@ -20,7 +20,13 @@
   inset: 0;
   z-index: 40;
 }
-.org-pop {
+.org-menu {
+  /* The surface lives here rather than on .card: prototype.css loads later and
+     .card{position:relative} would win over this absolute placement. */
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-pop);
   position: absolute;
   right: 0;
   top: calc(100% + 6px);
@@ -31,7 +37,7 @@
   flex-direction: column;
   gap: 2px;
 }
-.org-opt {
+.org-menu-item {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -45,14 +51,14 @@
   cursor: pointer;
   text-align: left;
 }
-.org-opt:hover {
+.org-menu-item:hover {
   background: var(--fill-0);
 }
-.org-opt.on {
+.org-menu-item.on {
   background: var(--primary-soft);
   color: var(--primary);
 }
-.org-opt .nm {
+.org-menu-item .nm {
   flex: 1;
   min-width: 0;
   overflow: hidden;

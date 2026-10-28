@@ -20,6 +20,14 @@ type Dialog =
   | { kind: 'remove'; member: Member }
   | null
 
+// Member carries the role *name* (builtin names are owner/admin/member), not a
+// kind: the contract has no role_kind field, so derive it instead of trusting a
+// field that would always be undefined.
+function memberKind(member: Member): string {
+  const name = member.role_name || member.role
+  return name === 'owner' || name === 'admin' || name === 'member' ? name : 'custom'
+}
+
 function roleColor(kind?: string): string {
   switch (kind) {
     case 'owner':
@@ -44,6 +52,7 @@ export default function MembersPage() {
   const isOwner = current?.role_kind === 'owner'
   const [dialog, setDialog] = useState<Dialog>(null)
   const [updateMember] = useUpdateMemberMutation()
+  const [busy, setBusy] = useState(false)
 
   const members = data ?? []
   const active = members.filter((m) => !m.disabled).length
@@ -153,7 +162,7 @@ export default function MembersPage() {
                           <div className="mono help">user #{member.user_id}</div>
                         </td>
                         <td>
-                          <span className={`tag ${roleColor(member.role_kind)}`}>{member.role_name}</span>
+                          <span className={`tag ${roleColor(memberKind(member))}`}>{member.role_name}</span>
                         </td>
                         <td>
                           {member.disabled ? (
@@ -167,13 +176,13 @@ export default function MembersPage() {
                           <div className="hstack" style={{ gap: 4, justifyContent: 'flex-end' }}>
                             <ActionButton
                               label="改角色"
-                              disabled={!isOwner || self || member.role_kind === 'owner'}
+                              disabled={!isOwner || self || memberKind(member) === 'owner'}
                               title={
                                 !isOwner
                                   ? '仅 owner 可改角色'
                                   : self
                                     ? '不能修改自己的角色'
-                                    : member.role_kind === 'owner'
+                                    : memberKind(member) === 'owner'
                                       ? 'owner 角色不可通过此端点变更'
                                       : '变更角色'
                               }
@@ -181,7 +190,7 @@ export default function MembersPage() {
                             />
                             <ActionButton
                               label={member.disabled ? '恢复' : '停用'}
-                              disabled={!canManage || self}
+                              disabled={!canManage || self || (memberKind(member) === 'owner' && !isOwner)}
                               title={
                                 !canManage ? '需要 member.manage' : self ? '不能停用自己' : '停用会撤销其 compat 会话'
                               }
@@ -194,7 +203,7 @@ export default function MembersPage() {
                             <ActionButton
                               label="移除"
                               danger
-                              disabled={!canManage || self}
+                              disabled={!canManage || self || (memberKind(member) === 'owner' && !isOwner)}
                               title={!canManage ? '需要 member.manage' : self ? '不能移除自己' : '移除成员'}
                               onClick={() => setDialog({ kind: 'remove', member })}
                             />
@@ -227,6 +236,7 @@ export default function MembersPage() {
             </>
           }
           confirmLabel="停用"
+          busy={busy}
           onConfirm={() => toggleDisabled(dialog.member, true)}
           onClose={() => setDialog(null)}
         />
@@ -238,6 +248,7 @@ export default function MembersPage() {
   )
 
   async function toggleDisabled(member: Member, disabled: boolean) {
+    setBusy(true)
     try {
       const result = await updateMember({ orgId: id, userId: member.user_id, patch: { disabled } }).unwrap()
       setDialog(null)
@@ -248,6 +259,8 @@ export default function MembersPage() {
       )
     } catch (err) {
       Toast.error((err as ApiError).message || '操作失败')
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -363,7 +376,7 @@ function RoleDialog({ orgId, member, onClose }: { orgId: number; member: Member;
         </div>
       ) : null}
       <div className="help mb-14">
-        成员：<b>{member.email}</b> · 当前 <span className={`tag ${roleColor(member.role_kind)}`}>{member.role_name}</span>
+        成员：<b>{member.email}</b> · 当前 <span className={`tag ${roleColor(memberKind(member))}`}>{member.role_name}</span>
       </div>
       <div className="field">
         <label className="form-label">新角色</label>
@@ -440,12 +453,14 @@ function ConfirmDialog({
   title,
   body,
   confirmLabel,
+  busy,
   onConfirm,
   onClose,
 }: {
   title: string
   body: React.ReactNode
   confirmLabel: string
+  busy?: boolean
   onConfirm: () => void
   onClose: () => void
 }) {
@@ -455,11 +470,11 @@ function ConfirmDialog({
       onClose={onClose}
       footer={
         <>
-          <button className="btn tertiary" type="button" onClick={onClose}>
+          <button className="btn tertiary" type="button" disabled={busy} onClick={onClose}>
             取消
           </button>
-          <button className="btn primary" type="button" onClick={onConfirm}>
-            {confirmLabel}
+          <button className="btn primary" type="button" disabled={busy} onClick={onConfirm}>
+            {busy ? '处理中…' : confirmLabel}
           </button>
         </>
       }
@@ -517,5 +532,12 @@ function formatTime(value: string): string {
   if (!value) return '—'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
-  return date.toISOString().slice(0, 16).replace('T', ' ')
+  return new Intl.DateTimeFormat('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(date)
 }
