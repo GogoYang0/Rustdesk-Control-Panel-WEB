@@ -7,3 +7,5 @@ cypress/videos/
 # Vendored verbatim from prototypes/rustdesk-console-app.html (design D8);
 # reformatting it would break the copy-of-record property.
 src/styles/prototype.css
+# Local process ledgers are never committed.
+.superpowers/
