@@ -99,6 +99,28 @@ export interface Member {
   created_at: string
 }
 
+export interface Role {
+  id: number
+  name: string
+  kind: RoleKind
+  permissions: string[]
+  audit_scope: string
+  builtin: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface Invitation {
+  id: number
+  email: string
+  role: string
+  expires_at: string
+}
+
+export interface MemberMutation {
+  revoked_sessions?: number
+}
+
 export interface AuthProviders {
   oidc: { enabled: boolean; name?: string }
   ldap: { enabled: boolean }
@@ -124,4 +146,30 @@ export function fetchProviders(): Promise<AuthProviders> {
 
 export function fetchMembers(orgId: number): Promise<Member[]> {
   return apiFetch<Member[]>(`/api/v1/orgs/${orgId}/members`)
+}
+
+export function fetchRoles(orgId: number): Promise<Role[]> {
+  return apiFetch<Role[]>(`/api/v1/orgs/${orgId}/roles`)
+}
+
+export function inviteMember(orgId: number, email: string, role: 'admin' | 'member'): Promise<Invitation> {
+  return apiFetch<Invitation>(`/api/v1/orgs/${orgId}/invitations`, {
+    method: 'POST',
+    body: JSON.stringify({ email, role }),
+  })
+}
+
+export function updateMember(
+  orgId: number,
+  userId: number,
+  patch: { role_id?: number; disabled?: boolean },
+): Promise<MemberMutation> {
+  return apiFetch<MemberMutation>(`/api/v1/orgs/${orgId}/members/${userId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  })
+}
+
+export function removeMember(orgId: number, userId: number): Promise<MemberMutation> {
+  return apiFetch<MemberMutation>(`/api/v1/orgs/${orgId}/members/${userId}`, { method: 'DELETE' })
 }
