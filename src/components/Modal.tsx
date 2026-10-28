@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 
 interface ModalProps {
   title: string
@@ -8,12 +9,31 @@ interface ModalProps {
   width?: number
 }
 
+function modalRoot(): HTMLElement {
+  let root = document.getElementById('modalRoot')
+  if (!root) {
+    root = document.createElement('div')
+    root.id = 'modalRoot'
+    document.body.appendChild(root)
+  }
+  return root
+}
+
 /**
- * Modal built from the prototype's own classes (`.mask/.modal/.modal-*`) rather
- * than a component library dialog, so the console keeps one visual language.
+ * Modal rendered through the prototype's own #modalRoot container and classes
+ * (.mask/.modal/.modal-*), so dialogs look and behave like the design baseline
+ * instead of a component library's dialog.
  */
 export default function Modal({ title, children, footer, onClose, width }: ModalProps) {
-  return (
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return createPortal(
     <div className="mask" onClick={onClose}>
       <div
         className="modal"
@@ -27,6 +47,7 @@ export default function Modal({ title, children, footer, onClose, width }: Modal
         <div className="modal-body">{children}</div>
         <div className="modal-foot">{footer}</div>
       </div>
-    </div>
+    </div>,
+    modalRoot(),
   )
 }
