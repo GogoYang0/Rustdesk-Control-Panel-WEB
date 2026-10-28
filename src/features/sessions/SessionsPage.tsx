@@ -522,9 +522,10 @@ function SessionDetailSheet({
               ))}
             </div>
           ) : null}
-          {alerts.data && alerts.data.total > relatedAlerts.length ? (
+          {alerts.data && alerts.data.total > alerts.data.items.length ? (
             <div className="help" style={{ marginTop: 8 }}>
-              仅显示前 {relatedAlerts.length} 条（服务端共 {alerts.data.total} 条）
+              服务端还有未返回的告警（共 {alerts.data.total} 条，本次返回 {alerts.data.items.length}{' '}
+              条），未加载部分未参与匹配
             </div>
           ) : null}
         </>
