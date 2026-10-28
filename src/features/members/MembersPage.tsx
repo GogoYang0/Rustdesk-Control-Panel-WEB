@@ -4,6 +4,7 @@ import { useParams } from 'react-router'
 
 import Modal from '../../components/Modal'
 import { ApiError, type Member, type Role } from '../../lib/api'
+import { formatTime } from '../../lib/format'
 import {
   useGetMeQuery,
   useGetMembersQuery,
@@ -663,18 +664,4 @@ function summarizeRoles(members: Member[]): string {
 function currentRoleLabel(members: Member[], userId?: number): string {
   const mine = members.find((member) => member.user_id === userId)
   return mine?.role_name ?? '—'
-}
-
-function formatTime(value: string): string {
-  if (!value) return '—'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return new Intl.DateTimeFormat('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(date)
 }

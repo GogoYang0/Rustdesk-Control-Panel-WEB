@@ -1,4 +1,12 @@
-import type { Member, Me, Role } from '../api/generated'
+import type {
+  AlertPage,
+  DevicePage,
+  Member,
+  Me,
+  Role,
+  SessionDetail as SessionDetailPayload,
+  SessionPage,
+} from '../api/generated'
 import { getAccessToken, logout, refreshAccessToken, type TokenPair } from './session'
 
 export type { Member, Me, Role }
@@ -170,4 +178,38 @@ export function updateMember(
 
 export function removeMember(orgId: number, userId: number): Promise<MemberMutation> {
   return apiFetch<MemberMutation>(`/api/v1/orgs/${orgId}/members/${userId}`, { method: 'DELETE' })
+}
+
+// ── sessions ────────────────────────────────────────────────────────────────
+// Shapes come from the generated contract client: hand-written copies drift,
+// and they promote optional fields (the API omits unset ones instead of sending
+// null — that already broke the native-session actor once).
+
+export type {
+  Alert,
+  AlertPage,
+  Device,
+  DevicePage,
+  Session,
+  SessionDetail,
+  SessionEvent,
+  SessionPage,
+} from '../api/generated'
+
+export function fetchSessions(orgId: number, query: URLSearchParams): Promise<SessionPage> {
+  return apiFetch<SessionPage>(`/api/v1/orgs/${orgId}/sessions?${query.toString()}`)
+}
+
+export function fetchSession(orgId: number, sessionId: number): Promise<SessionDetailPayload> {
+  return apiFetch<SessionDetailPayload>(`/api/v1/orgs/${orgId}/sessions/${sessionId}`)
+}
+
+/** Alerts caused by one session; requires the contract's `sessionId` filter. */
+export function fetchSessionAlerts(orgId: number, sessionId: number): Promise<AlertPage> {
+  return apiFetch<AlertPage>(`/api/v1/orgs/${orgId}/alerts?sessionId=${sessionId}&pageSize=200`)
+}
+
+/** One page of devices, used as a name dictionary for the session list. */
+export function fetchDevices(orgId: number, pageSize = 200): Promise<DevicePage> {
+  return apiFetch<DevicePage>(`/api/v1/orgs/${orgId}/devices?page=1&pageSize=${pageSize}`)
 }
