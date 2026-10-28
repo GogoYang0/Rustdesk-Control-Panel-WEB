@@ -61,7 +61,13 @@ export default function DevicesPage() {
   const loadingCurrent = isLoading || (isFetching && data === undefined)
 
   const { data: me } = useGetMeQuery()
-  const { data: members, isSuccess: membersReady } = useGetMembersQuery(id, { skip: !id })
+  // Both are required: `data` may still be the previous organization's list
+  // during a switch, and `isSuccess` can stay true after a failed refetch while
+  // `currentData` is retained. Editing ownership needs both to hold.
+  const { currentData: members, isSuccess: membersQuerySuccess } = useGetMembersQuery(id, {
+    skip: !id,
+  })
+  const membersReady = membersQuerySuccess && members !== undefined
   const current = me?.orgs.find((org) => org.id === id)
   const perms = useMemo(() => new Set(current?.permissions ?? []), [current])
   const canWrite = perms.has('device.write')
