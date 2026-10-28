@@ -36,4 +36,10 @@ describe('device write errors', () => {
   it('treats a non-API failure as a network problem', () => {
     expect(deviceWriteError(new TypeError('Failed to fetch'))).toBe('网络异常，请稍后重试')
   })
+
+  it('localises the status-0 wrapper that hides a failed fetch', () => {
+    expect(deviceWriteError(new ApiError(0, 'internal', 'TypeError: Failed to fetch'))).toBe(
+      '网络异常，请稍后重试',
+    )
+  })
 })

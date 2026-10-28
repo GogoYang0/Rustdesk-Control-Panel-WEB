@@ -6,6 +6,9 @@ import { ApiError } from './api'
  */
 export function deviceWriteError(err: unknown, action?: 'disconnect'): string {
   if (err instanceof ApiError) {
+    // `wrap()` turns a failed fetch into ApiError(0, …, String(err)); its
+    // message is an implementation detail, not operator copy.
+    if (err.status === 0) return '网络异常，请稍后重试'
     if (action === 'disconnect' && err.status === 409) {
       return '该设备已有待消费的断连请求：请等客户端下次心跳消费，或 15 分钟过期后重试'
     }

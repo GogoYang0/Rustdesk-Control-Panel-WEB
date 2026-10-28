@@ -61,7 +61,7 @@ export default function DevicesPage() {
   const loadingCurrent = isLoading || (isFetching && data === undefined)
 
   const { data: me } = useGetMeQuery()
-  const { data: members } = useGetMembersQuery(id, { skip: !id })
+  const { data: members, isSuccess: membersReady } = useGetMembersQuery(id, { skip: !id })
   const current = me?.orgs.find((org) => org.id === id)
   const perms = useMemo(() => new Set(current?.permissions ?? []), [current])
   const canWrite = perms.has('device.write')
@@ -330,6 +330,7 @@ export default function DevicesPage() {
           device={selected}
           canWrite={canWrite}
           canDisconnect={canDisconnect}
+          membersReady={membersReady}
           onClose={() => setSelected(null)}
           onAction={(kind) => {
             // Stacking a dialog over the sheet would put two focus traps and two
@@ -351,7 +352,7 @@ export default function DevicesPage() {
           onDone={afterWrite}
         />
       ) : null}
-      {dialog?.kind === 'owner' ? (
+      {dialog?.kind === 'owner' && membersReady ? (
         <OwnerDialog
           orgId={id}
           device={dialog.device}
@@ -394,12 +395,14 @@ function DeviceSheet({
   device,
   canWrite,
   canDisconnect,
+  membersReady,
   onClose,
   onAction,
 }: {
   device: Device
   canWrite: boolean
   canDisconnect: boolean
+  membersReady: boolean
   onClose: () => void
   onAction: (kind: 'toggle' | 'owner' | 'note' | 'rebind' | 'disconnect') => void
 }) {
@@ -460,8 +463,14 @@ function DeviceSheet({
         <button
           className="btn outline sm"
           type="button"
-          disabled={!canWrite}
-          title={canWrite ? undefined : '需要 device.write 权限'}
+          disabled={!canWrite || !membersReady}
+          title={
+            !canWrite
+              ? '需要 device.write 权限'
+              : !membersReady
+                ? '成员列表未就绪（加载中或加载失败）：暂不能改归属'
+                : undefined
+          }
           onClick={() => onAction('owner')}
         >
           归属
