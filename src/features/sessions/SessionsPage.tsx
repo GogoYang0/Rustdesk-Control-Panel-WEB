@@ -6,6 +6,7 @@ import SideSheet from '../../components/SideSheet'
 import { formatDuration, formatTime } from '../../lib/format'
 import type { Alert, Device, Session, SessionDetail, SessionEvent } from '../../lib/api'
 import {
+  DEFAULT_FILTERS,
   PAGE_SIZE,
   parseFilters,
   toRequestQuery,
@@ -109,6 +110,10 @@ export default function SessionsPage() {
   const { orgId } = useParams()
   const id = Number(orgId)
   const [searchParams, setSearchParams] = useSearchParams()
+  // Decided during render, before any effect runs: the render that changes
+  // organization still carries the previous organization's filters in the URL.
+  const previousOrg = useRef(id)
+  const orgChanged = previousOrg.current !== id
   const filters = parseFilters(searchParams)
   const { origin, status, deviceId, range, page } = filters
 
@@ -123,13 +128,20 @@ export default function SessionsPage() {
     [origin, status, deviceId, range, page, rangeNow],
   )
 
+  // On the switching render, ask for the defaults instead: reusing the old
+  // filters would request a combination about to be discarded and could even
+  // hit that organization's cache and flash a wrongly filtered page.
+  const requestQueryString = orgChanged
+    ? toRequestQuery(DEFAULT_FILTERS, rangeNow).toString()
+    : queryString
+
   const {
     currentData: data,
     isLoading,
     isFetching,
     error,
     refetch,
-  } = useGetSessionsQuery({ orgId: id, queryString }, { skip: !id })
+  } = useGetSessionsQuery({ orgId: id, queryString: requestQueryString }, { skip: !id })
   const loadingCurrent = isLoading || (isFetching && data === undefined)
   // currentData: a dictionary from the previous organization must never label
   // the current one's rows while its own query is still in flight.
@@ -140,11 +152,8 @@ export default function SessionsPage() {
   // The page instance survives an in-place organization change (a hand-edited
   // URL, or a future in-page switcher): drop the selection and the filters,
   // which describe the previous organization.
-  const previousOrg = useRef(id)
-  // Decided during render, before either effect runs: the page correction below
-  // must not write the previous organization's filters back in the same commit
-  // that clears them.
-  const orgChanged = previousOrg.current !== id
+  // The page correction below must not write the previous organization's
+  // filters back in the same commit that clears them.
   useEffect(() => {
     if (!orgChanged) return
     previousOrg.current = id
