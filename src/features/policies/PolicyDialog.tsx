@@ -5,6 +5,7 @@ import Modal from '../../components/Modal'
 import type { Policy } from '../../lib/api'
 import { policyWriteError } from '../../lib/policy-errors'
 import {
+  applyFormPatch,
   currentOffsetEast,
   emptyPolicyForm,
   formatMinute,
@@ -61,7 +62,7 @@ export default function PolicyDialog({
   const busy = createState.isLoading || updateState.isLoading
 
   function patch(next: Partial<PolicyForm>) {
-    setForm((prev) => ({ ...prev, ...next }))
+    setForm((prev) => applyFormPatch(prev, next))
     // Clear only the messages the edited fields own, so a stale error does not
     // sit next to a value that already changed.
     setErrors((prev) => {
@@ -134,11 +135,16 @@ export default function PolicyDialog({
             maxLength={128}
             aria-label="策略名称"
             aria-invalid={Boolean(errors.name)}
+            aria-describedby={errors.name ? 'policy-name-error' : undefined}
             placeholder="例如：工作日 9-18 点"
             onChange={(event) => patch({ name: event.target.value })}
           />
         </div>
-        {errors.name ? <div className="help err">{errors.name}</div> : null}
+        {errors.name ? (
+          <div className="help err" id="policy-name-error">
+            {errors.name}
+          </div>
+        ) : null}
         <div className="help">同一组织内名称唯一。</div>
       </div>
 
@@ -177,6 +183,8 @@ export default function PolicyDialog({
               className="input-time"
               type="time"
               aria-label="允许时段开始"
+              aria-invalid={Boolean(errors.window)}
+              aria-describedby={errors.window ? 'policy-window-error' : undefined}
               value={formatMinute(form.startMinute)}
               onChange={(event) => {
                 const next = parseTimeValue(event.target.value)
@@ -188,6 +196,8 @@ export default function PolicyDialog({
               className="input-time"
               type="time"
               aria-label="允许时段结束"
+              aria-invalid={Boolean(errors.window)}
+              aria-describedby={errors.window ? 'policy-window-error' : undefined}
               value={formatMinute(form.endMinute)}
               onChange={(event) => {
                 const next = parseTimeValue(event.target.value)
@@ -197,7 +207,11 @@ export default function PolicyDialog({
             <span className="help">跨零点：让开始晚于结束</span>
           </div>
         )}
-        {errors.window ? <div className="help err">{errors.window}</div> : null}
+        {errors.window ? (
+          <div className="help err" id="policy-window-error">
+            {errors.window}
+          </div>
+        ) : null}
         <div className="help">
           按本地时区（{formatOffset(offset)}）编辑，服务端按 UTC 分钟保存与评估。
         </div>
@@ -222,12 +236,17 @@ export default function PolicyDialog({
               min={1}
               aria-label="并发会话上限"
               aria-invalid={Boolean(errors.maxConcurrent)}
+              aria-describedby={errors.maxConcurrent ? 'policy-concurrency-error' : undefined}
               value={form.maxConcurrent}
               onChange={(event) => patch({ maxConcurrent: event.target.value })}
             />
           </div>
         )}
-        {errors.maxConcurrent ? <div className="help err">{errors.maxConcurrent}</div> : null}
+        {errors.maxConcurrent ? (
+          <div className="help err" id="policy-concurrency-error">
+            {errors.maxConcurrent}
+          </div>
+        ) : null}
         <div className="help">只统计进行中且由面板签发的会话；native 只告警不阻断。</div>
       </div>
 
@@ -250,13 +269,16 @@ export default function PolicyDialog({
               min={1}
               aria-label="单会话时长上限（分钟）"
               aria-invalid={Boolean(errors.maxSessionMinutes)}
+              aria-describedby={errors.maxSessionMinutes ? 'policy-duration-error' : undefined}
               value={form.maxSessionMinutes}
               onChange={(event) => patch({ maxSessionMinutes: event.target.value })}
             />
           </div>
         )}
         {errors.maxSessionMinutes ? (
-          <div className="help err">{errors.maxSessionMinutes}</div>
+          <div className="help err" id="policy-duration-error">
+            {errors.maxSessionMinutes}
+          </div>
         ) : null}
         <div className="help">单位分钟；超限由后台任务记账并告警，不掐断连接。</div>
       </div>

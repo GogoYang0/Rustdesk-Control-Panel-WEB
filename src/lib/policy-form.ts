@@ -122,6 +122,13 @@ function parsePositiveInt(value: string): number | null {
   return Number.isSafeInteger(n) && n >= 1 ? n : null
 }
 
+/** Applies a form edit. Touching the window settles a legacy half-window row,
+ * otherwise the flag would keep rejecting every submission. */
+export function applyFormPatch(form: PolicyForm, next: Partial<PolicyForm>): PolicyForm {
+  const touchesWindow = 'allDay' in next || 'startMinute' in next || 'endMinute' in next
+  return { ...form, ...next, ...(touchesWindow ? { windowIncomplete: false } : {}) }
+}
+
 /** Field-keyed messages, empty when the form can be submitted. */
 export function validatePolicyForm(form: PolicyForm): Record<string, string> {
   const errors: Record<string, string> = {}

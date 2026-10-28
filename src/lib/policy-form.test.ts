@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { Policy } from '../api/generated'
 import {
+  applyFormPatch,
   emptyPolicyForm,
   formatMinute,
   formatOffset,
@@ -130,6 +131,19 @@ describe('validation', () => {
     expect(form.allDay).toBe(false)
     expect(form.windowIncomplete).toBe(true)
     expect(validatePolicyForm({ ...form, name: '遗留策略' }).window).toContain('只有一端有值')
+  })
+
+  it('lets an explicit window edit settle a legacy half-window row', () => {
+    const legacy = policyToForm(policy({ allowed_start_minute: 60 }), EAST8)
+    expect(validatePolicyForm({ ...legacy, name: '遗留' }).window).toContain('只有一端有值')
+    const asAllDay = applyFormPatch(legacy, { allDay: true })
+    expect(asAllDay.windowIncomplete).toBe(false)
+    expect(validatePolicyForm({ ...asAllDay, name: '遗留' })).toEqual({})
+    const editedTime = applyFormPatch(legacy, { startMinute: 600, endMinute: 700 })
+    expect(editedTime.windowIncomplete).toBe(false)
+    expect(validatePolicyForm({ ...editedTime, name: '遗留' })).toEqual({})
+    // A name edit alone must not clear it.
+    expect(applyFormPatch(legacy, { name: '改名' }).windowIncomplete).toBe(true)
   })
 
   it('does not require a window when all-day is on', () => {
