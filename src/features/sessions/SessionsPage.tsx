@@ -1,5 +1,5 @@
 import { Banner, Empty } from '@douyinfe/semi-ui'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router'
 
 import SideSheet from '../../components/SideSheet'
@@ -129,13 +129,22 @@ export default function SessionsPage() {
     refetch,
   } = useGetSessionsQuery({ orgId: id, queryString }, { skip: !id })
   const loadingCurrent = isLoading || (isFetching && data === undefined)
-  const { data: devicesPage } = useGetDevicesQuery(id, { skip: !id })
-  const { data: members } = useGetMembersQuery(id, { skip: !id })
+  // currentData: a dictionary from the previous organization must never label
+  // the current one's rows while its own query is still in flight.
+  const { currentData: devicesPage } = useGetDevicesQuery(id, { skip: !id })
+  const { currentData: members } = useGetMembersQuery(id, { skip: !id })
 
   const [selected, setSelected] = useState<number | null>(null)
+  // The page instance survives an in-place organization change (a hand-edited
+  // URL, or a future in-page switcher): drop the selection and the filters,
+  // which describe the previous organization.
+  const previousOrg = useRef(id)
   useEffect(() => {
+    if (previousOrg.current === id) return
+    previousOrg.current = id
     setSelected(null)
-  }, [id])
+    if (searchParams.toString()) setSearchParams(new URLSearchParams(), { replace: true })
+  }, [id, searchParams, setSearchParams])
 
   const devices = useMemo(() => {
     const map = new Map<number, Device>()
