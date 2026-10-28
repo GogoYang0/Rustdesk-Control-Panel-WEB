@@ -1,5 +1,8 @@
 import type {
   AlertPage,
+  Approval,
+  ApprovalDecisionRequest,
+  ApprovalPage,
   Device,
   DeviceCreateRequest,
   DeviceDisconnect,
@@ -262,6 +265,36 @@ export function requestDeviceDisconnect(
   return apiFetch<DeviceDisconnect>(`/api/v1/orgs/${orgId}/devices/${deviceId}/disconnect`, {
     method: 'POST',
     body: JSON.stringify({ reason }),
+  })
+}
+
+// ── approvals ───────────────────────────────────────────────────────────────
+
+export type {
+  Approval,
+  ApprovalDecision,
+  ApprovalDecisionRequest,
+  ApprovalKind,
+  ApprovalPage,
+  ApprovalStatus,
+} from '../api/generated'
+
+export function fetchApprovalPage(orgId: number, query: URLSearchParams): Promise<ApprovalPage> {
+  return apiFetch<ApprovalPage>(`/api/v1/orgs/${orgId}/approvals?${query.toString()}`)
+}
+
+export function fetchApproval(orgId: number, approvalId: number): Promise<Approval> {
+  return apiFetch<Approval>(`/api/v1/orgs/${orgId}/approvals/${approvalId}`)
+}
+
+export function submitApprovalDecision(
+  orgId: number,
+  approvalId: number,
+  request: ApprovalDecisionRequest,
+): Promise<Approval> {
+  return apiFetch<Approval>(`/api/v1/orgs/${orgId}/approvals/${approvalId}/decision`, {
+    method: 'POST',
+    body: JSON.stringify(request),
   })
 }
 

@@ -12,16 +12,22 @@ import {
   fetchSessions,
   createPolicy,
   deletePolicy,
+  fetchApproval,
+  fetchApprovalPage,
   fetchPolicies,
   inviteMember,
   rebindDevice,
   registerDevice,
   removeMember,
   requestDeviceDisconnect,
+  submitApprovalDecision,
   updateDevice,
   updateMember,
   updatePolicy,
   type AlertPage,
+  type Approval,
+  type ApprovalDecisionRequest,
+  type ApprovalPage,
   type Device,
   type DeviceDisconnect,
   type DevicePage,
@@ -55,7 +61,17 @@ async function wrap<T>(fn: () => Promise<T>): Promise<{ data: T } | { error: Api
 export const panelApi = createApi({
   reducerPath: 'panelApi',
   baseQuery: fakeBaseQuery<ApiError>(),
-  tagTypes: ['Me', 'Members', 'Sessions', 'Session', 'SessionAlerts', 'Devices', 'Policies'],
+  tagTypes: [
+    'Me',
+    'Members',
+    'Sessions',
+    'Session',
+    'SessionAlerts',
+    'Devices',
+    'Policies',
+    'Approvals',
+    'Approval',
+  ],
   endpoints: (build) => ({
     getMe: build.query<Me, void>({
       queryFn: () => wrap(fetchMe),
@@ -153,6 +169,35 @@ export const panelApi = createApi({
         invalidatesTags: (_result, _error, { orgId }) => [{ type: 'Policies', id: orgId }],
       },
     ),
+    getApprovalPage: build.query<ApprovalPage, { orgId: number; queryString: string }>({
+      queryFn: ({ orgId, queryString }) =>
+        wrap(() => fetchApprovalPage(orgId, new URLSearchParams(queryString))),
+      providesTags: (_result, _error, { orgId }) => [{ type: 'Approvals', id: orgId }],
+    }),
+    getApproval: build.query<Approval, { orgId: number; approvalId: number }>({
+      queryFn: ({ orgId, approvalId }) => wrap(() => fetchApproval(orgId, approvalId)),
+      providesTags: (_result, _error, { orgId, approvalId }) => [
+        { type: 'Approval', id: `${orgId}-${approvalId}` },
+      ],
+    }),
+    decideApproval: build.mutation<
+      Approval,
+      { orgId: number; approvalId: number; request: ApprovalDecisionRequest }
+    >({
+      queryFn: ({ orgId, approvalId, request }) =>
+        wrap(() => submitApprovalDecision(orgId, approvalId, request)),
+      async onQueryStarted({ orgId, approvalId }, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled
+          // The decision response is authoritative for this row; patch the
+          // detail cache and let every list of this organization refetch.
+          dispatch(panelApi.util.updateQueryData('getApproval', { orgId, approvalId }, () => data))
+          dispatch(panelApi.util.invalidateTags([{ type: 'Approvals', id: orgId }]))
+        } catch {
+          // Failures surface through unwrap(); nothing to cache.
+        }
+      },
+    }),
     deletePolicy: build.mutation<void, { orgId: number; policyId: number }>({
       queryFn: async ({ orgId, policyId }) => {
         const result = await wrap(() => deletePolicy(orgId, policyId))
@@ -183,4 +228,7 @@ export const {
   useCreatePolicyMutation,
   useUpdatePolicyMutation,
   useDeletePolicyMutation,
+  useGetApprovalPageQuery,
+  useGetApprovalQuery,
+  useDecideApprovalMutation,
 } = panelApi
