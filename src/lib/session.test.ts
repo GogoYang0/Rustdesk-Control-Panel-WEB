@@ -8,13 +8,52 @@ import {
   setTokens,
 } from './session'
 
+const LOCK = 'rdp-panel-refresh'
+
+/**
+ * jsdom has no Web Locks, and the console refuses to refresh without one
+ * (localStorage cannot prove mutual exclusion). This stand-in serialises like the
+ * real lock manager; a test plays "another tab" by pre-holding the returned set.
+ */
+function installLocks(): Set<string> {
+  const held = new Set<string>()
+  Object.defineProperty(navigator, 'locks', {
+    configurable: true,
+    value: {
+      async request(name: string, _opts: unknown, cb: (lock: unknown) => Promise<void>) {
+        if (held.has(name)) {
+          await cb(null)
+          return
+        }
+        held.add(name)
+        try {
+          await cb({ name })
+        } finally {
+          held.delete(name)
+        }
+      },
+    },
+  })
+  return held
+}
+
+function pairResponse(access: string, refresh: string, status = 200): Response {
+  return new Response(JSON.stringify({ data: { access_token: access, refresh_token: refresh } }), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  })
+}
+
+afterEach(() => {
+  vi.restoreAllMocks()
+  Reflect.deleteProperty(navigator, 'locks')
+})
+
 describe('session refresh', () => {
   beforeEach(() => {
     localStorage.clear()
     clearSession()
-  })
-  afterEach(() => {
-    vi.restoreAllMocks()
+    installLocks()
   })
 
   it('stores the refresh token in localStorage and keeps access in memory', () => {
@@ -26,12 +65,7 @@ describe('session refresh', () => {
 
   it('shares one refresh flight between concurrent callers', async () => {
     setTokens({ access_token: 'old', refresh_token: 'r1' })
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ data: { access_token: 'new', refresh_token: 'r2' } }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    )
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(pairResponse('new', 'r2'))
     const [a, b] = await Promise.all([refreshAccessToken(), refreshAccessToken()])
     expect(a.access).toBe('new')
     expect(b.access).toBe('new')
@@ -62,15 +96,11 @@ describe('refresh across tabs', () => {
     localStorage.clear()
     clearSession()
   })
-  afterEach(() => {
-    vi.restoreAllMocks()
-    localStorage.removeItem('rdp-panel-refresh-lock')
-  })
 
   it('does not spend the token while another tab holds the lock', { timeout: 15_000 }, async () => {
+    const held = installLocks()
     setTokens({ access_token: 'old', refresh_token: 'r1' })
-    // jsdom has no navigator.locks, so this exercises the storage fallback.
-    localStorage.setItem('rdp-panel-refresh-lock', `${Date.now()}-other`)
+    held.add(LOCK) // another tab is inside its refresh
     const fetchMock = vi.spyOn(globalThis, 'fetch')
     expect(await refreshAccessToken()).toEqual({ access: null, invalid: false })
     expect(fetchMock).not.toHaveBeenCalled()
@@ -78,19 +108,15 @@ describe('refresh across tabs', () => {
   })
 
   it('rotates with the token the holder published, once the lock frees', async () => {
+    const held = installLocks()
     setTokens({ access_token: 'old', refresh_token: 'r1' })
-    localStorage.setItem('rdp-panel-refresh-lock', `${Date.now()}-other`)
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ data: { access_token: 'a2', refresh_token: 'r2' } }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    )
+    held.add(LOCK)
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(pairResponse('a2', 'r2'))
     const pending = refreshAccessToken()
     // The holder finishes: it publishes a new token and releases the lock.
     setTimeout(() => {
       localStorage.setItem('rdp-panel-refresh', 'r2')
-      localStorage.removeItem('rdp-panel-refresh-lock')
+      held.delete(LOCK)
     }, 150)
     const result = await pending
     expect(result.access).toBe('a2')
@@ -104,6 +130,7 @@ describe('refresh responses that are not a usable pair', () => {
   beforeEach(() => {
     localStorage.clear()
     clearSession()
+    installLocks()
   })
 
   it.each(['{}', '{"data":{}}', '{"data":{"access_token":"a"}}', 'not-json'])(
@@ -121,9 +148,7 @@ describe('unsafe replay protection', () => {
   beforeEach(() => {
     localStorage.clear()
     clearSession()
-  })
-  afterEach(() => {
-    vi.restoreAllMocks()
+    installLocks()
   })
 
   it('refuses to resend a token whose earlier attempt never reported back', async () => {
@@ -149,31 +174,44 @@ describe('unsafe replay protection', () => {
     expect(await refreshAccessToken()).toEqual({ access: null, invalid: true })
     expect(getRefreshToken()).toBeNull()
   })
+
+  it('keeps the doubt marker when the new pair cannot be published', async () => {
+    setTokens({ access_token: 'old', refresh_token: 'r1' })
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(pairResponse('a2', 'r2'))
+    // A tab can die, or storage can reject the write, between the response and
+    // the publish. The marker must survive that, or the next tab replays r1.
+    const setItem = Storage.prototype.setItem
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (
+      this: Storage,
+      key: string,
+      value: string,
+    ) {
+      if (key === 'rdp-panel-refresh') throw new Error('quota exceeded')
+      setItem.call(this, key, value)
+    })
+
+    expect(await refreshAccessToken()).toEqual({ access: null, invalid: false })
+    expect(localStorage.getItem('rdp-panel-refresh-inflight')).not.toBeNull()
+
+    spy.mockRestore()
+    expect(await refreshAccessToken()).toEqual({ access: null, invalid: true })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(getRefreshToken()).toBeNull()
+  })
 })
 
-describe('web locks branch', () => {
+describe('browsers without Web Locks', () => {
   beforeEach(() => {
     localStorage.clear()
     clearSession()
-  })
-  afterEach(() => {
-    vi.restoreAllMocks()
     Reflect.deleteProperty(navigator, 'locks')
   })
 
-  it('reports transient without fetching when the lock is unavailable', async () => {
+  it('signs out instead of refreshing without a real cross-tab mutex', async () => {
     setTokens({ access_token: 'old', refresh_token: 'r1' })
-    Object.defineProperty(navigator, 'locks', {
-      configurable: true,
-      value: {
-        request: async (_name: string, _opts: unknown, cb: (lock: unknown) => Promise<void>) =>
-          cb(null),
-      },
-    })
     const fetchMock = vi.spyOn(globalThis, 'fetch')
-    // The waiter then follows the published token; here nothing is published, so
-    // the bounded wait ends as a transient failure.
-    expect(await refreshAccessToken()).toEqual({ access: null, invalid: false })
+    expect(await refreshAccessToken()).toEqual({ access: null, invalid: true })
     expect(fetchMock).not.toHaveBeenCalled()
-  }, 15_000)
+    expect(getRefreshToken()).toBeNull()
+  })
 })

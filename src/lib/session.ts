@@ -3,8 +3,6 @@
 // across tabs — the server rotates the refresh token, and replaying an old one
 // revokes the whole family, which would sign every tab out at once.
 const REFRESH_KEY = 'rdp-panel-refresh'
-const LOCK_KEY = 'rdp-panel-refresh-lock'
-const STALE_LOCK_MS = 30_000
 // Cross-tab marker: a refresh whose outcome is unknown may already have consumed
 // the token. Re-sending it would be a replay (which revokes the whole family), so
 // the next attempt fails closed instead and asks for a fresh sign-in.
@@ -57,7 +55,6 @@ export function setLogoutHandler(fn: (() => void) | null): void {
 export function logout(): void {
   epoch += 1
   clearSession()
-  localStorage.removeItem(LOCK_KEY)
   logoutHandler?.()
 }
 
@@ -73,54 +70,30 @@ export function watchSessionAcrossTabs(): void {
   window.addEventListener('storage', onStorage)
 }
 
+/**
+ * Web Locks is the only mechanism here that gives a real mutex: it serialises tabs
+ * and the browser releases it when a tab dies. localStorage cannot — it has no
+ * compare-and-swap, so two tabs can both read an empty key, both write, and both
+ * believe they won. Refreshing without this guarantee is skipped (see
+ * `refreshAccessToken`), because a replayed one-shot token revokes the family.
+ */
+function hasRefreshLocks(): boolean {
+  return typeof navigator !== 'undefined' && 'locks' in navigator
+}
+
 async function withRefreshLock<T>(
   fn: () => Promise<T>,
 ): Promise<{ acquired: boolean; result?: T }> {
-  // Web Locks gives real mutual exclusion and releases the lock if the tab dies,
-  // which the localStorage key cannot do. `ifAvailable` keeps the "someone else
-  // is refreshing" answer immediate; the caller then follows their published
-  // token instead of racing them.
-  if (typeof navigator !== 'undefined' && 'locks' in navigator) {
-    let acquired = false
-    let result: T | undefined
-    await navigator.locks.request('rdp-panel-refresh', { ifAvailable: true }, async (lock) => {
-      if (!lock) return
-      acquired = true
-      result = await fn()
-    })
-    return acquired ? { acquired, result } : { acquired: false }
-  }
-  return lockViaStorage(fn)
-}
-
-async function lockViaStorage<T>(fn: () => Promise<T>): Promise<{ acquired: boolean; result?: T }> {
-  const mine = `${Date.now()}-${Math.random().toString(36).slice(2)}`
-  // Short acquire budget: the caller has its own wait loop for a held lock.
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    const held = localStorage.getItem(LOCK_KEY)
-    const heldAt = held ? Number(held.split('-')[0]) : 0
-    if (held && Date.now() - heldAt > STALE_LOCK_MS) {
-      // The holder vanished mid-flight. Clearing the lock is safe; refreshing is
-      // not, because it may already have consumed the token — the caller treats
-      // this round as transient and the next request tries with a fresh read.
-      localStorage.removeItem(LOCK_KEY)
-      return { acquired: false }
-    }
-    if (!held) {
-      localStorage.setItem(LOCK_KEY, mine)
-      // Re-read: two tabs can write in the same tick; only the survivor keeps it.
-      await sleep(40)
-      if (localStorage.getItem(LOCK_KEY) === mine) {
-        try {
-          return { acquired: true, result: await fn() }
-        } finally {
-          if (localStorage.getItem(LOCK_KEY) === mine) localStorage.removeItem(LOCK_KEY)
-        }
-      }
-    }
-    await sleep(120)
-  }
-  return { acquired: false }
+  // `ifAvailable` keeps the "someone else is refreshing" answer immediate; the
+  // caller then follows their published token instead of racing them.
+  let acquired = false
+  let result: T | undefined
+  await navigator.locks.request('rdp-panel-refresh', { ifAvailable: true }, async (lock) => {
+    if (!lock) return
+    acquired = true
+    result = await fn()
+  })
+  return acquired ? { acquired, result } : { acquired: false }
 }
 
 async function doRefresh(): Promise<RefreshResult> {
@@ -128,15 +101,16 @@ async function doRefresh(): Promise<RefreshResult> {
   const refresh = getRefreshToken()
   if (!refresh) return { access: null, invalid: true }
   const tag = fingerprint(refresh)
+  const settle = () => localStorage.removeItem(INFLIGHT_KEY)
   if (localStorage.getItem(INFLIGHT_KEY) === tag) {
     // An earlier attempt with this exact token never reported back. It may have
-    // been consumed, so refuse rather than replay.
-    localStorage.removeItem(INFLIGHT_KEY)
+    // been consumed, so refuse rather than replay. Drop the token before the
+    // marker: dying in between must not leave a token without its marker.
     if (startedAt === epoch) clearSession()
+    settle()
     return { access: null, invalid: true }
   }
   localStorage.setItem(INFLIGHT_KEY, tag)
-  const settle = () => localStorage.removeItem(INFLIGHT_KEY)
   try {
     const res = await fetch('/api/v1/auth/refresh', {
       method: 'POST',
@@ -150,8 +124,9 @@ async function doRefresh(): Promise<RefreshResult> {
       // closed instead of assuming the token was not spent.
       const invalid = res.status === 400 || res.status === 401
       if (invalid) {
-        settle()
+        // Same order as above: token first, marker second.
         if (startedAt === epoch) clearSession()
+        settle()
       }
       return { access: null, invalid }
     }
@@ -167,17 +142,20 @@ async function doRefresh(): Promise<RefreshResult> {
     if (!pair) {
       // A 2xx means the server consumed and rotated the token. Keeping the old
       // one would replay a spent token on the next attempt.
-      settle()
       if (startedAt === epoch) clearSession()
+      settle()
       return { access: null, invalid: true }
     }
-    settle()
+    // Publish the new pair first, then drop the marker. A tab that dies in
+    // between leaves the marker behind, which makes the next attempt fail closed
+    // instead of replaying the token the server already consumed.
     setTokens(pair, startedAt)
+    settle()
     return { access: startedAt === epoch ? pair.access_token : null, invalid: false }
   } catch {
     // A network blip must not wipe a working session: keep the refresh token so
     // the next request can try again. The marker stays too — the request may
-    // still have reached the server.
+    // still have reached the server, and a publish failure lands here as well.
     return { access: null, invalid: false }
   }
 }
@@ -198,6 +176,14 @@ export function refreshAccessToken(): Promise<RefreshResult> {
   if (!refreshing) {
     refreshing = (async () => {
       const startedWith = getRefreshToken()
+      if (!hasRefreshLocks()) {
+        // No real mutex means two tabs can both spend the same one-shot token,
+        // and a replay revokes the whole family. The API has no idempotent
+        // refresh to recover with, so the only safe answer is a fresh sign-in.
+        // Web Locks is available in every browser this console targets.
+        if (startedWith) clearSession()
+        return { access: null, invalid: true }
+      }
       const locked = await withRefreshLock(doRefresh)
       if (locked.acquired) return locked.result ?? { access: null, invalid: false }
       // Another tab holds the lock. Never send the token we started with: it may
