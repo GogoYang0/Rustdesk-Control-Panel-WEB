@@ -1,5 +1,5 @@
 import { Banner, Empty, Toast } from '@douyinfe/semi-ui'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router'
 
 import Modal from '../../components/Modal'
@@ -54,8 +54,12 @@ export default function MembersPage() {
   const [updateMember] = useUpdateMemberMutation()
   const [busy, setBusy] = useState(false)
   // A result that lands after the scope moved must not close the new dialog.
+  // Committed in a layout effect: a render-time assignment can expose an org id
+  // whose render was interrupted.
   const scopeRef = useRef(id)
-  scopeRef.current = id
+  useLayoutEffect(() => {
+    scopeRef.current = id
+  }, [id])
 
   // The page is not remounted when :orgId changes, so a dialog opened for a
   // member of the previous organization would PATCH the same user id under the

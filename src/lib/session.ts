@@ -142,7 +142,12 @@ export function refreshAccessToken(): Promise<RefreshResult> {
         await sleep(120)
         const current = getRefreshToken()
         if (!current) return { access: null, invalid: true }
-        if (current !== startedWith) return doRefresh()
+        if (current === startedWith) continue
+        // The holder published a new token. Several waiters may see it at once,
+        // so re-race for the lock and read the token *inside* it — refreshing
+        // here would let two tabs spend the same one-shot token.
+        const retry = await withRefreshLock(doRefresh)
+        if (retry.acquired) return retry.result ?? { access: null, invalid: false }
       }
       return { access: null, invalid: false }
     })().finally(() => {
