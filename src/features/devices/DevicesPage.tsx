@@ -32,7 +32,7 @@ type DialogKind =
   | { kind: 'rebind'; device: Device }
   | { kind: 'disconnect'; device: Device }
 
-type Dialog = (DialogKind & { generation: number }) | null
+type Dialog = (DialogKind & { generation: number; instance: number }) | null
 
 export default function DevicesPage() {
   const { orgId } = useParams()
@@ -89,6 +89,10 @@ export default function DevicesPage() {
   // keep a stale sheet open.
   const scopeRef = useRef(id)
   const scopeGenerationRef = useRef(0)
+  const dialogSeqRef = useRef(0)
+  // Mirrors the instance of the dialog on screen, so a callback from an older
+  // dialog (same organization, same generation) cannot close a newer one.
+  const currentDialogRef = useRef(0)
   useLayoutEffect(() => {
     if (scopeRef.current === id) return
     scopeRef.current = id
@@ -100,6 +104,7 @@ export default function DevicesPage() {
   useEffect(() => {
     if (!orgChanged) return
     previousOrg.current = id
+    currentDialogRef.current = 0
     setSelected(null)
     setDialog(null)
     if (searchParams.toString()) setSearchParams(new URLSearchParams(), { replace: true })
@@ -124,11 +129,24 @@ export default function DevicesPage() {
   }, [orgChanged, data, page, pages, change])
 
   function openDialog(next: DialogKind) {
-    setDialog({ ...next, generation: scopeGenerationRef.current })
+    dialogSeqRef.current += 1
+    currentDialogRef.current = dialogSeqRef.current
+    setDialog({
+      ...next,
+      generation: scopeGenerationRef.current,
+      instance: dialogSeqRef.current,
+    })
   }
 
-  function afterWrite(generation: number) {
+  function closeDialog(instance: number) {
+    if (currentDialogRef.current === instance) currentDialogRef.current = 0
+    setDialog(null)
+  }
+
+  function afterWrite(instance: number, generation: number) {
     if (scopeRef.current !== id || generation !== scopeGenerationRef.current) return
+    if (currentDialogRef.current !== instance) return
+    currentDialogRef.current = 0
     setDialog(null)
     setSelected(null)
   }
@@ -364,16 +382,16 @@ export default function DevicesPage() {
       {activeDialog?.kind === 'register' ? (
         <RegisterDialog
           orgId={id}
-          onClose={() => setDialog(null)}
-          onDone={() => afterWrite(activeDialog.generation)}
+          onClose={() => closeDialog(activeDialog.instance)}
+          onDone={() => afterWrite(activeDialog.instance, activeDialog.generation)}
         />
       ) : null}
       {activeDialog?.kind === 'toggle' ? (
         <ToggleDeviceDialog
           orgId={id}
           device={activeDialog.device}
-          onClose={() => setDialog(null)}
-          onDone={() => afterWrite(activeDialog.generation)}
+          onClose={() => closeDialog(activeDialog.instance)}
+          onDone={() => afterWrite(activeDialog.instance, activeDialog.generation)}
         />
       ) : null}
       {activeDialog?.kind === 'owner' && membersReady ? (
@@ -381,16 +399,16 @@ export default function DevicesPage() {
           orgId={id}
           device={activeDialog.device}
           members={(members ?? []).filter((member) => !member.disabled)}
-          onClose={() => setDialog(null)}
-          onDone={() => afterWrite(activeDialog.generation)}
+          onClose={() => closeDialog(activeDialog.instance)}
+          onDone={() => afterWrite(activeDialog.instance, activeDialog.generation)}
         />
       ) : null}
       {activeDialog?.kind === 'note' ? (
         <NoteDialog
           orgId={id}
           device={activeDialog.device}
-          onClose={() => setDialog(null)}
-          onDone={() => afterWrite(activeDialog.generation)}
+          onClose={() => closeDialog(activeDialog.instance)}
+          onDone={() => afterWrite(activeDialog.instance, activeDialog.generation)}
         />
       ) : null}
       {activeDialog?.kind === 'rebind' ? (
@@ -398,8 +416,8 @@ export default function DevicesPage() {
           orgId={id}
           device={activeDialog.device}
           action="rebind"
-          onClose={() => setDialog(null)}
-          onDone={() => afterWrite(activeDialog.generation)}
+          onClose={() => closeDialog(activeDialog.instance)}
+          onDone={() => afterWrite(activeDialog.instance, activeDialog.generation)}
         />
       ) : null}
       {activeDialog?.kind === 'disconnect' ? (
@@ -407,8 +425,8 @@ export default function DevicesPage() {
           orgId={id}
           device={activeDialog.device}
           action="disconnect"
-          onClose={() => setDialog(null)}
-          onDone={() => afterWrite(activeDialog.generation)}
+          onClose={() => closeDialog(activeDialog.instance)}
+          onDone={() => afterWrite(activeDialog.instance, activeDialog.generation)}
         />
       ) : null}
     </section>
