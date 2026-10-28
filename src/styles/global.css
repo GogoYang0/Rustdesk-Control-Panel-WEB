@@ -1,3 +1,11 @@
 /* Tailwind v4：不引入 preflight，避免与 Semi Design 的 reset 冲突（设计文档 C4） */
 @import 'tailwindcss/theme.css' layer(theme);
 @import 'tailwindcss/utilities.css' layer(utilities);
+
+/* Semi 主题：主色沿用原型的深海蓝（设计 D8） */
+:root {
+  --semi-color-primary: #0f4c81;
+  --semi-color-primary-hover: #1d5f97;
+  --semi-color-primary-active: #0b3a63;
+  --semi-color-primary-light-default: #e9f1f9;
+}

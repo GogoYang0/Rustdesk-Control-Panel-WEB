@@ -14,6 +14,15 @@ export default defineConfig({
   output: {
     distPath: { root: 'dist' },
   },
+  server: {
+    port: 5173,
+    // Same-origin proxy: the panel API has no CORS middleware, so the browser
+    // only ever talks to this dev server. Production uses the same shape behind
+    // nginx (design D1).
+    proxy: {
+      '/api': { target: 'http://localhost:8080', changeOrigin: true },
+    },
+  },
   resolve: {
     alias: {
       // Semi 2.x 的 exports 字段未暴露 dist/css/*，这里直接指向实际文件以引入全量样式

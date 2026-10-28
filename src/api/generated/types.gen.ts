@@ -4,6 +4,286 @@ export type ClientOptions = {
     baseUrl: 'http://localhost:8080' | (string & {});
 };
 
+export type Identity = {
+    id: number;
+    provider: string;
+    issuer: string;
+    /**
+     * IdP 侧的主体标识，仅对账户本人可见
+     */
+    subject: string;
+    /**
+     * 绑定时的 IdP 邮箱（不是账户邮箱的权威来源）
+     */
+    email: string;
+    linked_at: string;
+    last_login_at?: string | null;
+    /**
+     * 非空表示绑定已冲突，SSO 拒绝直到管理员 reset
+     */
+    conflict_at?: string | null;
+};
+
+export type IdentityList = {
+    /**
+     * 当前部署启用的外部身份源（oidc / ldap / 空串）
+     */
+    active_provider: string;
+    identities: Array<Identity>;
+};
+
+export type IdentityListResponse = {
+    code: ErrorCode;
+    message: string;
+    data: IdentityList;
+};
+
+export type IdentityUnlinkRequest = {
+    identity_id: number;
+    /**
+     * passkey step-up 令牌（与 password 二选一）
+     */
+    stepup_token?: string;
+    /**
+     * 当前密码（与 stepup_token 二选一）
+     */
+    password?: string;
+};
+
+export type LdapLoginRequest = {
+    /**
+     * 目录用户名（usernameAttribute 的值）；按 RFC 4515 转义后进 filter
+     */
+    username: string;
+    /**
+     * 目录密码；只进 bind 请求，不落日志
+     */
+    password: string;
+    captcha?: CaptchaProof;
+};
+
+export type OidcExchangeRequest = {
+    /**
+     * 回调重定向里的一次性 ticket
+     */
+    ticket: string;
+};
+
+export type OidcStartRequest = {
+    /**
+     * 登录成功后回到的站内路径；缺省 `/`
+     */
+    redirect_path?: string;
+};
+
+export type OidcStart = {
+    /**
+     * 浏览器应跳转的 IdP 授权地址（含 state / nonce / PKCE challenge）
+     */
+    authorization_url: string;
+    /**
+     * 一次性 state；仅供客户端关联，无需回传
+     */
+    state: string;
+};
+
+export type OidcStartResponse = {
+    code: ErrorCode;
+    message: string;
+    data: OidcStart;
+};
+
+export type AuthProviderStatus = {
+    enabled: boolean;
+    name?: string;
+};
+
+export type AuthProviders = {
+    oidc: AuthProviderStatus;
+    ldap: AuthProviderStatus;
+};
+
+export type AuthProvidersResponse = {
+    code: ErrorCode;
+    message: string;
+    data: AuthProviders;
+};
+
+export type Passkey = {
+    id: number;
+    /**
+     * 用户可见的凭据名（1-64 字符，缺省为 `Passkey`）
+     */
+    name: string;
+    created_at: string;
+    last_used_at?: string | null;
+    /**
+     * 认证器自报的传输方式（usb/nfc/ble/internal/hybrid）
+     */
+    transports: Array<string>;
+    /**
+     * 该凭据是否可被备份/同步（同步型 passkey 为 true）
+     */
+    backup_eligible: boolean;
+    /**
+     * 该凭据当前是否已被备份
+     */
+    backup_state: boolean;
+    /**
+     * 认证器型号标识；空串表示认证器未提供
+     */
+    aaguid: string;
+    /**
+     * 曾检测到签名计数器回退（疑似克隆），需重新绑定
+     */
+    clone_warning: boolean;
+};
+
+export type PasskeyResponse = {
+    code: ErrorCode;
+    message: string;
+    data: Passkey;
+};
+
+export type PasskeyCeremony = {
+    /**
+     * 一次性 ceremony 句柄；有效期由部署配置 `webauthn.ceremonyTTL` 决定（默认 5 分钟）
+     */
+    ceremony_token: string;
+    /**
+     * W3C PublicKeyCredentialCreationOptions / RequestOptions 的 JSON 形态，
+     * 顶层键为 `publicKey`。字段名与标准一致，服务端只填充不重写；但**二进制
+     * 字段是 base64url 字符串**（`challenge`、`user.id`、`excludeCredentials[].id`，
+     * 登录时为 `allowCredentials[].id`）。
+     *
+     * ⚠️ **不能直接把这些对象交给浏览器**：`navigator.credentials.create()` /
+     * `get()` 要求上述字段是 `ArrayBuffer` / `TypedArray`。客户端必须先解码
+     * base64url（去掉 `-`/`_` 还原为 `+`/`/` 并补 `=`），再调用 WebAuthn API；
+     * 返回值方向相反——`response.clientDataJSON`、`attestationObject`、
+     * `authenticatorData`、`signature`、`userHandle` 都是 `ArrayBuffer`，需再编码
+     * 回 base64url 才能提交。参考实现见仓库 `docs/reference/passkey-smoke.html`
+     * 的 `b64urlToBuf`，以及注册向的 `prepareCreationOptions`、登录向的
+     * `prepareRequestOptions`。
+     *
+     */
+    options: {
+        [key: string]: unknown;
+    };
+};
+
+export type PasskeyCeremonyResponse = {
+    code: ErrorCode;
+    message: string;
+    data: PasskeyCeremony;
+};
+
+export type StepupToken = {
+    stepup_token: string;
+    /**
+     * 有效期（秒），固定 120
+     */
+    expires_in: number;
+};
+
+export type StepupTokenResponse = {
+    code: ErrorCode;
+    message: string;
+    data: StepupToken;
+};
+
+export type PasswordRemoveRequest = {
+    password: string;
+    stepup_token: string;
+};
+
+export type PasswordRemoveResult = {
+    /**
+     * 连带影响说明：`compat_login_disabled` 表示原生客户端将无法再用该账户登录；
+     * `keep_a_second_passkey` 表示恢复只能依赖另一个 passkey。
+     *
+     */
+    warnings: Array<string>;
+};
+
+export type PasswordRemoveResponse = {
+    code: ErrorCode;
+    message: string;
+    data: PasswordRemoveResult;
+};
+
+export type PasswordSetRequest = {
+    new_password: string;
+    stepup_token: string;
+};
+
+export type PasskeyList = {
+    items: Array<Passkey>;
+    /**
+     * 账户是否还有本地密码（false 表示 passkey-only）
+     */
+    has_password: boolean;
+    /**
+     * 账户是否启用了 TOTP
+     */
+    totp_enabled: boolean;
+};
+
+export type PasskeyListResponse = {
+    code: ErrorCode;
+    message: string;
+    data: PasskeyList;
+};
+
+export type PasskeyNameRequest = {
+    name: string;
+};
+
+export type PasskeyLoginBeginRequest = {
+    /**
+     * 密码登录返回的短期挑战令牌（第二步用 passkey 代替 TOTP）
+     */
+    challenge_token?: string;
+    /**
+     * 可选邮箱提示，只用于收窄 allowCredentials，不构成账户存在性判断
+     */
+    email?: string;
+};
+
+export type PasskeyLoginRequest = {
+    ceremony_token: string;
+    /**
+     * 浏览器 `PublicKeyCredential` 的 JSON 形态
+     * （id/rawId/type/response.clientDataJSON/authenticatorData/signature/userHandle）。
+     *
+     * 二进制字段（`rawId`、`clientDataJSON`、`authenticatorData`、`signature`、
+     * `userHandle`）必须是 **base64url 字符串**；`userHandle` 可为 `null`，
+     * `transports` 可缺失。服务端缺失兼容见 `docs/api-spec.md` §3.16。
+     *
+     */
+    credential: {
+        [key: string]: unknown;
+    };
+};
+
+export type PasskeyRegistrationRequest = {
+    ceremony_token: string;
+    /**
+     * 浏览器 `PublicKeyCredential` 的 JSON 形态
+     * （id/rawId/type/response.clientDataJSON/response.attestationObject）。
+     *
+     * `rawId`、`clientDataJSON`、`attestationObject` 必须是 **base64url 字符串**
+     * （不能是数组或 base64 标准编码）；`transports` 可缺失。
+     *
+     */
+    credential: {
+        [key: string]: unknown;
+    };
+    /**
+     * 可选的凭据名；空或缺失时使用 `Passkey`
+     */
+    name?: string;
+};
+
 /**
  * 机器可读错误码：
  * - ok：成功
@@ -11,24 +291,75 @@ export type ClientOptions = {
  * - unauthorized：未认证或令牌无效
  * - forbidden：权限不足
  * - not_found：资源不存在
- * - conflict：状态冲突（重复创建、邀请过期或已使用）
+ * - conflict：状态冲突（重复创建、邀请过期或已使用、验证令牌无效）
  * - rate_limited：触发限流
  * - internal：服务端错误
+ * - email_not_verified：邮箱未验证（登录被拒）
+ * - captcha_required：已启用验证码但请求未携带（400）
+ * - captcha_invalid：验证码挑战缺失、过期、已使用或答案错误（400）
+ * - captcha_unavailable：验证码提供商不可达且配置为 fail closed（503）
+ * - approval_required：票据签发被策略的事前审批要求阻断（409，`data.approval_id` 为待审批请求）
  *
  */
-export type ErrorCode = 'ok' | 'invalid_request' | 'unauthorized' | 'forbidden' | 'not_found' | 'conflict' | 'rate_limited' | 'internal';
+export type ErrorCode = 'ok' | 'invalid_request' | 'unauthorized' | 'forbidden' | 'not_found' | 'conflict' | 'rate_limited' | 'internal' | 'email_not_verified' | 'approval_required' | 'two_factor_required' | 'captcha_required' | 'captcha_invalid' | 'captcha_unavailable';
 
 export type ErrorResponse = {
     code: ErrorCode;
     message: string;
+    /**
+     * 错误上下文；多数错误为 null。`code=approval_required` 时带
+     * `approval_id`（int64，待审批请求 id），客户端据此跳转审批中心。
+     * `code=two_factor_required` 时带 `challenge_token`（短期挑战令牌）与
+     * `methods`（字符串数组：`totp`，以及该账户已绑定 passkey 时的
+     * `passkey`）。客户端用 `challenge_token` 调用 `POST /auth/2fa/verify`
+     * 或 `POST /auth/passkey/login/begin` 完成第二步。
+     *
+     */
     data?: {
         [key: string]: unknown;
-    };
+    } | null;
 };
 
 export type LoginRequest = {
     email: string;
     password: string;
+    captcha?: CaptchaProof;
+};
+
+export type CaptchaProof = {
+    /**
+     * 提供商相关的验证凭据。`altcha` 传 `payload`（widget 返回的 base64
+     * payload）；`geetest` 传 `lot_number`、`captcha_output`、`pass_token`、
+     * `gen_time`；`cap` 传 `response`。
+     *
+     */
+    response: {
+        [key: string]: string;
+    };
+};
+
+export type CaptchaChallengePayload = {
+    /**
+     * 提供商公开参数：`altcha` 为挑战 JSON（algorithm/challenge/maxnumber/
+     * salt/signature）；`geetest` 为 `captcha_id`/`script_url`；`cap` 为
+     * `api_endpoint`/`site_key`。
+     *
+     */
+    params: {
+        [key: string]: unknown;
+    };
+};
+
+export type CaptchaChallenge = {
+    enabled: boolean;
+    provider?: string;
+    challenge?: CaptchaChallengePayload;
+};
+
+export type CaptchaChallengeResponse = {
+    code: ErrorCode;
+    message: string;
+    data?: CaptchaChallenge;
 };
 
 export type RefreshRequest = {
@@ -48,6 +379,150 @@ export type TokenResponse = {
     code: ErrorCode;
     message: string;
     data: TokenPair;
+};
+
+export type ApiToken = {
+    id: number;
+    organization_id: number;
+    name: string;
+    /**
+     * 令牌前 8 个字符，用于列表辨识（不足以重放）
+     */
+    token_prefix: string;
+    /**
+     * 申请时的权限子集；有效权限还要与该用户当前角色取交集
+     */
+    permissions: Array<string>;
+    expires_at: string;
+    last_used_at?: string | null;
+    revoked_at?: string | null;
+    created_at: string;
+};
+
+export type IssuedApiToken = {
+    token: ApiToken;
+    /**
+     * 明文令牌，只在本响应出现一次，服务端不保存
+     */
+    plaintext: string;
+};
+
+export type ApiTokenListResponse = {
+    code: ErrorCode;
+    message: string;
+    data: Array<ApiToken>;
+};
+
+export type IssuedApiTokenResponse = {
+    code: ErrorCode;
+    message: string;
+    data: IssuedApiToken;
+};
+
+export type TokenCreateRequest = {
+    /**
+     * 用户可读标签
+     */
+    name: string;
+    /**
+     * 令牌绑定的组织；请求必须来自该组织的有效会籍
+     */
+    organization_id: number;
+    /**
+     * 省略时取当前角色的全部权限；给出时必须是当前角色权限的子集
+     */
+    permissions?: Array<string>;
+    expires_in_days?: number;
+};
+
+export type TotpSetup = {
+    /**
+     * Base32 编码的 TOTP 秘密（尚未启用）
+     */
+    secret: string;
+    /**
+     * 供验证器 App 扫码/导入的 `otpauth://totp/...` URI
+     */
+    otpauth_uri: string;
+};
+
+export type TotpSetupResponse = {
+    code: ErrorCode;
+    message: string;
+    data: TotpSetup;
+};
+
+export type TotpCodeRequest = {
+    /**
+     * 6 位 TOTP 码或恢复码
+     */
+    code: string;
+};
+
+export type TotpDisableRequest = {
+    password: string;
+    /**
+     * TOTP 码或一次性恢复码
+     */
+    code: string;
+};
+
+export type TotpRecoveryCodes = {
+    /**
+     * 10 个一次性恢复码，只在本响应出现一次
+     */
+    codes: Array<string>;
+};
+
+export type TotpRecoveryCodesResponse = {
+    code: ErrorCode;
+    message: string;
+    data: TotpRecoveryCodes;
+};
+
+export type TotpVerifyRequest = {
+    challenge_token: string;
+    /**
+     * TOTP 码或一次性恢复码
+     */
+    code: string;
+    captcha?: CaptchaProof;
+};
+
+export type MeResponse = {
+    code: ErrorCode;
+    message: string;
+    data: Me;
+};
+
+export type Me = {
+    user: MeUser;
+    /**
+     * 按组织 id 升序；无有效会籍时为空数组
+     */
+    orgs: Array<MeOrg>;
+};
+
+export type MeUser = {
+    id: number;
+    email: string;
+    email_verified: boolean;
+    totp_enabled: boolean;
+    /**
+     * passkey-only 账户为 false（密码哈希为空哨兵）
+     */
+    has_password: boolean;
+};
+
+export type MeOrg = {
+    id: number;
+    name: string;
+    role_id: number;
+    role_kind: 'owner' | 'admin' | 'member' | 'custom';
+    /**
+     * 该角色的权限码集合（只读快照，不构成授权）
+     */
+    permissions: Array<string>;
 };
 
 export type Org = {
@@ -76,7 +551,32 @@ export type Member = {
     id: number;
     user_id: number;
     email: string;
-    role: 'owner' | 'admin' | 'member';
+    /**
+     * 兼容字段，等同于 `role_name`；自定义角色名不限于内置三种
+     */
+    role: string;
+    /**
+     * 会籍引用的角色 id（`memberships.role_id`）
+     */
+    role_id: number;
+    /**
+     * 角色展示名（内置 owner/admin/member 或自定义名称）
+     */
+    role_name: string;
+    /**
+     * 成员的控制角色 id（v0.10.0）；`null` 表示未分配、回退组织内置 `default`。
+     * 角色名称由 `GET /control-roles` 的列表解析（避免成员列表逐行 JOIN）。
+     *
+     */
+    control_role_id?: number | null;
+    /**
+     * 成员默认策略 id（v0.10.0）；作用于其拥有且无设备/组层分配的设备
+     */
+    strategy_id?: number | null;
+    /**
+     * 会籍是否已停用；停用后不能登录或访问该组织
+     */
+    disabled: boolean;
     created_at: string;
 };
 
@@ -90,6 +590,675 @@ export type MemberListResponse = {
     code: ErrorCode;
     message: string;
     data: Array<Member>;
+};
+
+/**
+ * 按字段更新会籍，至少给出 `role_id` 或 `disabled` 之一。
+ * - `role_id`：授予本组织内的内置 admin/member 或自定义角色（不能授予 owner）；
+ * 需要 `org.admin`（仅 owner）。
+ * - `disabled`：停用或恢复会籍；需要 `member.manage`。不能停用自己或末位 owner；
+ * 停用会在同一事务内撤销该用户在本组织的活跃 compat 会话。
+ *
+ */
+export type MemberUpdateRequest = {
+    /**
+     * 目标角色 id；owner 角色不可通过本端点授予
+     */
+    role_id?: number;
+    /**
+     * true 停用，false 恢复
+     */
+    disabled?: boolean;
+};
+
+export type MemberMutation = {
+    /**
+     * 本次撤销的活跃 compat 会话数
+     */
+    revoked_sessions: number;
+};
+
+export type MemberMutationResponse = {
+    code: ErrorCode;
+    message: string;
+    data: MemberMutation;
+};
+
+export type Permission = {
+    /**
+     * 权限码，如 `member.manage`
+     */
+    code: string;
+    description: string;
+    /**
+     * 自定义角色是否可以包含该权限码；false 为 owner 专属
+     */
+    delegable: boolean;
+};
+
+export type PermissionListResponse = {
+    code: ErrorCode;
+    message: string;
+    data: Array<Permission>;
+};
+
+/**
+ * 审计可见范围：`global` 可查全组织审计；`individual` 只查自己作为操作者
+ * 或目标（用户类目标）的条目。仅对持有 `audit.read` 的角色有意义。
+ *
+ */
+export type RoleAuditScope = 'global' | 'individual';
+
+/**
+ * - owner/admin/member：内置角色，权限集固定，不可修改或删除
+ * - custom：组织自建角色，权限只能是目录中 `delegable=true` 的子集
+ *
+ */
+export type RoleKind = 'owner' | 'admin' | 'member' | 'custom';
+
+export type Role = {
+    id: number;
+    name: string;
+    kind: RoleKind;
+    /**
+     * 角色持有的权限码集合
+     */
+    permissions: Array<string>;
+    audit_scope: RoleAuditScope;
+    /**
+     * true 表示内置角色（不可编辑/删除/授予 owner）
+     */
+    builtin: boolean;
+    created_at: string;
+    updated_at: string;
+};
+
+export type RoleCreateRequest = {
+    /**
+     * 自定义角色名；不能与内置角色或已有角色重名
+     */
+    name: string;
+    /**
+     * 权限码子集；必须全部来自权限目录且 `delegable=true`
+     */
+    permissions: Array<string>;
+    /**
+     * 省略时默认 `individual`
+     */
+    audit_scope?: RoleAuditScope;
+};
+
+export type RoleUpdateRequest = {
+    name: string;
+    permissions: Array<string>;
+    audit_scope?: RoleAuditScope;
+};
+
+export type RoleResponse = {
+    code: ErrorCode;
+    message: string;
+    data: Role;
+};
+
+export type RoleListResponse = {
+    code: ErrorCode;
+    message: string;
+    data: Array<Role>;
+};
+
+/**
+ * - default：每个组织唯一的内置角色，不可删除，未分配角色的成员回退到它
+ * - custom：管理员创建的角色
+ *
+ */
+export type ControlRoleKind = 'default' | 'custom';
+
+/**
+ * 单项权限的三态（对齐 RustDesk Server Pro）：
+ * - use_client：不覆盖被控端本地设置
+ * - enable：显式启用（覆盖本地设置）
+ * - disable：显式禁用（覆盖本地设置）
+ *
+ */
+export type ControlPermissionState = 'use_client' | 'enable' | 'disable';
+
+/**
+ * 14 个权限键到三态的映射，键与 RustDesk 客户端 `ControlPermissions.Permission`
+ * 枚举一一对应（bit 序号即声明顺序）：`keyboard`、`remote_printer`、
+ * `clipboard`、`file`、`audio`、`camera`、`terminal`、`tunnel`、`restart`、
+ * `recording`、`block_input`、`remote_modify`、`privacy_mode`、`usb`。
+ * 未知键或非法状态整单拒绝；缺失键按 `use_client` 补全。
+ *
+ */
+export type ControlPermissionStates = {
+    [key: string]: ControlPermissionState;
+};
+
+export type ControlRole = {
+    id: number;
+    name: string;
+    kind: ControlRoleKind;
+    permissions: ControlPermissionStates;
+    /**
+     * true 表示内置 `default` 角色（不可删除、不可改名）
+     */
+    builtin: boolean;
+    created_at: string;
+    updated_at: string;
+};
+
+export type ControlRoleCreateRequest = {
+    name: string;
+    permissions: ControlPermissionStates;
+};
+
+export type ControlRoleUpdateRequest = {
+    name?: string;
+    permissions?: ControlPermissionStates;
+};
+
+export type ControlRoleListResponse = {
+    code: ErrorCode;
+    message: string;
+    data: Array<ControlRole>;
+};
+
+export type ControlRoleResponse = {
+    code: ErrorCode;
+    message: string;
+    data: ControlRole;
+};
+
+export type ControlRoleAssignmentRequest = {
+    /**
+     * 目标控制角色 id；`null` 表示回到组织内置 default 角色
+     */
+    control_role_id: number | null;
+};
+
+export type Strategy = {
+    id: number;
+    name: string;
+    /**
+     * 下发给客户端的选项键值。**只允许以下 20 个键**（大小写与空格敏感，
+     * 必须逐字匹配）：
+     *
+     * `enable-audio`、`enable-clipboard`、`enable-file-transfer`、
+     * `enable-file-copy-paste`、`enable-camera`、`enable-terminal`、
+     * `enable-tunnel`、`enable-remote-restart`、`enable-record-session`、
+     * `enable-block-input`、`enable-privacy-mode`、`enable-remote-modify`、
+     * `enable-remote-printer`、`enable-check-update`、`disable-change-id`、
+     * `disable-settings`、`disable-installation`、`disable-unlock-pin`、
+     * `disable-tcp-listen`、`disable-ab`。
+     *
+     * 值按客户端原样字符串下发：开关类用 `Y`/`N`；**空值**表示清除该键、
+     * 回到客户端内置默认。客户端会把下发的键标记为「固定」，用户无法在
+     * 本机改回。
+     *
+     * 网络类键（`api-server`、`custom-rendezvous-server`、`relay-server`、
+     * `key`、`whitelist` 等）一律拒绝：它们能改设备指向的服务器或密钥，
+     * 等于设备接管。
+     *
+     */
+    config_options: {
+        [key: string]: string;
+    };
+    /**
+     * 下发版本；作为心跳响应的 `modified_at` 交给客户端比对
+     */
+    version: number;
+    /**
+     * 已从 `config_options` 移除、仍以空值随下发回传的键（v0.10.0）。
+     * 客户端只写收到的键，删除键必须显式清除，否则旧值会一直保留。
+     *
+     */
+    cleared_keys?: Array<string>;
+    /**
+     * false 表示停用（保留行与分配，但心跳不下发）
+     */
+    enabled: boolean;
+    created_at: string;
+    updated_at: string;
+};
+
+export type StrategyAssignmentRequest = {
+    /**
+     * 目标策略 id；`null` 表示清除该层分配
+     */
+    strategy_id: number | null;
+};
+
+export type StrategyCreateRequest = {
+    name: string;
+    /**
+     * 省略或空对象表示「不下发任何选项」（占位策略）
+     */
+    config_options?: {
+        [key: string]: string;
+    };
+};
+
+export type StrategyUpdateRequest = {
+    name?: string;
+    config_options?: {
+        [key: string]: string;
+    };
+    enabled?: boolean;
+};
+
+export type StrategyListResponse = {
+    code: ErrorCode;
+    message: string;
+    data: Array<Strategy>;
+};
+
+export type StrategyResponse = {
+    code: ErrorCode;
+    message: string;
+    data: Strategy;
+};
+
+export type DeviceDisconnectRequest = {
+    /**
+     * 断连原因；写入审计，供事后追溯
+     */
+    reason: string;
+};
+
+export type DeviceDisconnect = {
+    id: number;
+    device_id: number;
+    reason: string;
+    /**
+     * - `pending`：已记录，等待客户端心跳消费
+     * - `fulfilled`：某次心跳带回了活跃连接，`disconnect` 已下发
+     * - `expired`：15 分钟内没有可断开的连接，请求作废
+     *
+     */
+    status: 'pending' | 'fulfilled' | 'expired';
+    requested_at: string;
+    fulfilled_at?: string | null;
+    expires_at: string;
+    /**
+     * 消费该请求的那次心跳里客户端报告的连接数
+     */
+    conn_count?: number;
+};
+
+export type DeviceDisconnectResponse = {
+    code: ErrorCode;
+    message: string;
+    data: DeviceDisconnect;
+};
+
+/**
+ * - everyone：每个组织唯一的保留组，成员隐式（全部组织成员），不可改名/删除，
+ * 成员集合不可编辑
+ * - custom：组织自建组，成员由管理面显式维护
+ *
+ */
+export type UserGroupKind = 'everyone' | 'custom';
+
+export type UserGroup = {
+    id: number;
+    name: string;
+    kind: UserGroupKind;
+    /**
+     * 显式成员 id；everyone 组恒为空
+     */
+    member_ids: Array<number>;
+    created_at: string;
+    updated_at: string;
+};
+
+export type UserGroupListResponse = {
+    code: ErrorCode;
+    message: string;
+    data: Array<UserGroup>;
+};
+
+export type UserGroupResponse = {
+    code: ErrorCode;
+    message: string;
+    data: UserGroup;
+};
+
+export type UserGroupCreateRequest = {
+    /**
+     * 组名；`everyone` 为保留名（不区分大小写）
+     */
+    name: string;
+};
+
+export type UserGroupRenameRequest = {
+    name: string;
+};
+
+export type UserGroupMembersRequest = {
+    /**
+     * 全量成员集合；所有 id 必须属于本组织，否则整单 400
+     */
+    user_ids: Array<number>;
+};
+
+export type UserGroupMemberMutation = {
+    /**
+     * 本次新增的成员数
+     */
+    added: number;
+    /**
+     * 本次移除的成员数
+     */
+    removed: number;
+};
+
+export type UserGroupMembersResponse = {
+    code: ErrorCode;
+    message: string;
+    data: UserGroupMemberMutation;
+};
+
+export type UserGroupDeleteData = {
+    /**
+     * 随组级联删除的访问规则数（以该组为源，或以该组为 `user_group` 目标）
+     */
+    removed_rules: number;
+    /**
+     * 随组级联删除的共享地址簿授权数（以该组为授权主体）
+     */
+    removed_grants: number;
+};
+
+export type UserGroupDeleteResponse = {
+    code: ErrorCode;
+    message: string;
+    data: UserGroupDeleteData;
+};
+
+export type DeviceGroup = {
+    id: number;
+    name: string;
+    /**
+     * 当前属于该组的设备 id；一台设备只属于一个组
+     */
+    device_ids: Array<number>;
+    /**
+     * 组层策略 id（v0.10.0）；设备层分配优先
+     */
+    strategy_id?: number | null;
+    created_at: string;
+    updated_at: string;
+};
+
+export type DeviceGroupListResponse = {
+    code: ErrorCode;
+    message: string;
+    data: Array<DeviceGroup>;
+};
+
+export type DeviceGroupResponse = {
+    code: ErrorCode;
+    message: string;
+    data: DeviceGroup;
+};
+
+export type DeviceGroupCreateRequest = {
+    name: string;
+};
+
+export type DeviceGroupRenameRequest = {
+    name: string;
+};
+
+export type DeviceGroupDevicesRequest = {
+    /**
+     * 全量设备集合；所有 id 必须属于本组织，否则整单 400
+     */
+    device_ids: Array<number>;
+};
+
+export type DeviceGroupMemberMutation = {
+    /**
+     * 本次移入本组的设备数（含从其他组移入）
+     */
+    added: number;
+    /**
+     * 本次从本组释放为未分组的设备数
+     */
+    removed: number;
+};
+
+export type DeviceGroupDevicesResponse = {
+    code: ErrorCode;
+    message: string;
+    data: DeviceGroupMemberMutation;
+};
+
+export type DeviceGroupDeleteData = {
+    /**
+     * 随组级联删除的访问规则数
+     */
+    removed_rules: number;
+    /**
+     * 解除分组（device_group_id 置空）的设备数
+     */
+    ungrouped_devices: number;
+};
+
+export type DeviceGroupDeleteResponse = {
+    code: ErrorCode;
+    message: string;
+    data: DeviceGroupDeleteData;
+};
+
+/**
+ * - device_group：规则指向一个设备组（`target_group_id` 必填）
+ * - user_group：规则指向一个用户组，展开为该组显式成员所拥有的设备
+ * （v0.10.0；`target_group_id` 必填）。目标为内置 `everyone` 组时语义是
+ * 「所有由**有效成员**归属的设备」（停用/无角色/已移除会籍的归属人贡献空集）
+ * - all_devices：规则指向组织内全部设备（`target_group_id` 必须为空）
+ *
+ */
+export type AccessRuleTargetKind = 'device_group' | 'user_group' | 'all_devices';
+
+export type AccessRule = {
+    id: number;
+    source_group_id: number;
+    /**
+     * 源用户组名（含内置 `everyone`）
+     */
+    source_group_name: string;
+    target_kind: AccessRuleTargetKind;
+    /**
+     * 目标组 id（设备组或用户组，按 `target_kind` 解释）；`all_devices` 时为 null
+     */
+    target_group_id: number | null;
+    /**
+     * 目标组名；`all_devices` 时为空字符串
+     */
+    target_group_name: string;
+    created_at: string;
+};
+
+export type AccessRuleListResponse = {
+    code: ErrorCode;
+    message: string;
+    data: Array<AccessRule>;
+};
+
+export type AccessRuleCreateRequest = {
+    /**
+     * 本组织的用户组 id（含 `everyone`）
+     */
+    source_group_id: number;
+    target_kind: AccessRuleTargetKind;
+    /**
+     * 目标组 id（设备组或用户组）；`device_group`/`user_group` 时必填，`all_devices` 时不得给出
+     */
+    target_group_id?: number | null;
+};
+
+export type AccessRuleResponse = {
+    code: ErrorCode;
+    message: string;
+    data: AccessRule;
+};
+
+export type AuditLog = {
+    id: number;
+    /**
+     * 组织内连续序号
+     */
+    seq: number;
+    /**
+     * 操作者；0 表示系统动作
+     */
+    actor_user_id: number;
+    action: string;
+    target_type: string;
+    target_id: string;
+    /**
+     * 解析后的 `detail` JSON 对象；若历史记录不是合法 JSON，则返回原始字符串
+     * （不丢数据）。查询与导出本身不修改审计内容。
+     *
+     */
+    detail?: unknown;
+    created_at: string;
+};
+
+/**
+ * 客户端上报的一条连接记录（`POST /api/audit/conn`）。`new` 建行、`close` 关闭；
+ * 与面板签发的 session 是两套记录，后者见 `Session`。
+ *
+ */
+export type ConnectionLog = {
+    id: number;
+    organization_id: number;
+    device_id: number;
+    rustdesk_id: string;
+    conn_id: number;
+    session_id: number;
+    ip?: string;
+    status: 'open' | 'closed';
+    started_at: string;
+    ended_at?: string | null;
+    note?: string;
+    conn_audit_ref?: string;
+    created_at: string;
+};
+
+export type ConnectionLogPage = {
+    items: Array<ConnectionLog>;
+    page: number;
+    page_size: number;
+    total: number;
+};
+
+export type ConnectionLogListResponse = {
+    code: ErrorCode;
+    message: string;
+    data: ConnectionLogPage;
+};
+
+/**
+ * 客户端上报的一条文件传输记录（`POST /api/audit/file`）。`files` 是上游截断到
+ * 10 项的 `[name, size]` 数组；`info` 为客户端原始 JSON 文本，便于排障。
+ *
+ */
+export type FileLog = {
+    id: number;
+    organization_id: number;
+    device_id: number;
+    rustdesk_id: string;
+    peer_id?: string;
+    conn_id?: number;
+    direction: 'send' | 'receive';
+    path?: string;
+    is_file?: boolean;
+    file_count?: number;
+    files?: Array<Array<unknown>>;
+    ip?: string;
+    name?: string;
+    /**
+     * 客户端上传的原始 info JSON 文本
+     */
+    info?: string;
+    created_at: string;
+};
+
+export type FileLogPage = {
+    items: Array<FileLog>;
+    page: number;
+    page_size: number;
+    total: number;
+};
+
+export type FileLogListResponse = {
+    code: ErrorCode;
+    message: string;
+    data: FileLogPage;
+};
+
+export type AuditLogPage = {
+    items: Array<AuditLog>;
+    page: number;
+    page_size: number;
+    total: number;
+};
+
+export type AuditLogListResponse = {
+    code: ErrorCode;
+    message: string;
+    data: AuditLogPage;
+};
+
+export type AuditRetention = {
+    /**
+     * 0 = 永久保留；正值为保留天数
+     */
+    audit_retention_days: number;
+    /**
+     * 最近一次成功归档的摘要（`at`、`rows`、`path`）；从未归档时为 null。
+     *
+     */
+    last_archive?: {
+        [key: string]: unknown;
+    } | null;
+};
+
+export type AuditRetentionResponse = {
+    code: ErrorCode;
+    message: string;
+    data: AuditRetention;
+};
+
+export type AuditRetentionRequest = {
+    days: number;
+};
+
+export type ProvisioningUpdateRequest = {
+    /**
+     * true 允许供应（异步部署），false 关闭并下线
+     */
+    enabled: boolean;
+};
+
+export type ProvisioningStatus = {
+    enabled: boolean;
+    state: 'disabled' | 'pending' | 'provisioning' | 'deployed' | 'failed';
+    /**
+     * `enabled=false` 时是否仍有待清理的部署行（teardown 未确认）。
+     * true 表示开关已关但容器清理仍待完成（在途部署回滚或重复关闭重试）；
+     * false 表示没有遗留部署行。其他状态下恒为 false。
+     *
+     */
+    cleanup_pending: boolean;
+};
+
+export type ProvisioningResponse = {
+    code: ErrorCode;
+    message: string;
+    data: ProvisioningStatus;
 };
 
 export type InvitationCreateRequest = {
@@ -113,6 +1282,7 @@ export type InvitationResponse = {
 export type InvitationAcceptRequest = {
     token: string;
     password: string;
+    captcha?: CaptchaProof;
 };
 
 export type Device = {
@@ -121,6 +1291,36 @@ export type Device = {
     rustdesk_id: string;
     status: 'online' | 'offline';
     last_seen_at: string | null;
+    /**
+     * 是否已绑定某个客户端实例（重置绑定后为 false）
+     */
+    bound: boolean;
+    /**
+     * 设备是否已被停用（停用期间拒绝认领、心跳与票据兑换）
+     */
+    disabled: boolean;
+    /**
+     * 设备所属设备组 id；null 表示未分组。一台设备只能属于一个设备组。
+     */
+    device_group_id: number | null;
+    /**
+     * 设备层策略 id（v0.10.0）；`null` 表示回落到设备组或成员层
+     */
+    strategy_id?: number | null;
+    /**
+     * 设备归属的用户 id；null 表示未归属。归属人始终能在客户端看到并连接该设备
+     * （设备停用或会籍停用时除外），组→组规则也按归属展开。
+     *
+     */
+    owner_user_id?: number | null;
+    /**
+     * 归属人邮箱（只读展示用）；未归属或用户已不存在时为 null
+     */
+    owner_email?: string | null;
+    /**
+     * 运维备注（管理面或客户端 --assign 写入）
+     */
+    note?: string;
 };
 
 export type DeviceCreateRequest = {
@@ -132,6 +1332,865 @@ export type DeviceResponse = {
     code: ErrorCode;
     message: string;
     data: Device;
+};
+
+export type DeviceRebindRequest = {
+    /**
+     * 重置绑定的理由，随审计留存
+     */
+    reason: string;
+};
+
+/**
+ * 按字段更新设备，至少一个字段。`disabled` 与两个归属字段可同时出现，
+ * 各自校验并各自写一条审计。
+ *
+ */
+export type DeviceUpdateRequest = {
+    /**
+     * true 停用设备，false 恢复
+     */
+    disabled?: boolean;
+    /**
+     * 归属人 id；`null` 清空归属，`0` 非法。目标必须是本组织的有效成员，
+     * 否则 404。
+     *
+     */
+    owner_user_id?: number | null;
+    /**
+     * 运维备注；`null` 视作清空
+     */
+    note?: string | null;
+};
+
+export type DevicePage = {
+    items: Array<Device>;
+    page: number;
+    page_size: number;
+    total: number;
+};
+
+export type DeviceListResponse = {
+    code: ErrorCode;
+    message: string;
+    data: DevicePage;
+};
+
+export type OkResponse = {
+    code: ErrorCode;
+    message: string;
+};
+
+export type EmailVerificationRequest = {
+    token: string;
+};
+
+export type ResendVerificationRequest = {
+    email: string;
+};
+
+export type AddressBookCreateRequest = {
+    name: string;
+    scope: 'personal' | 'shared';
+};
+
+export type AddressBookUpdateRequest = {
+    name: string;
+};
+
+export type AddressBookPeer = {
+    /**
+     * RustDesk 设备 ID
+     */
+    peer_id: string;
+    alias?: string;
+    username?: string;
+    hostname?: string;
+    platform?: string;
+    tags?: Array<string>;
+};
+
+export type AddressBookTag = {
+    name: string;
+    /**
+     * RGB 颜色值（同 RustDesk 客户端 tag_colors 语义）
+     */
+    color?: number;
+};
+
+export type AddressBookRecycleBinItem = {
+    peer_id: string;
+    alias?: string;
+    username?: string;
+    hostname?: string;
+    platform?: string;
+    tags?: Array<string>;
+    /**
+     * 删除时间；30 天后由后台清扫永久删除
+     */
+    deleted_at: string;
+    /**
+     * 删除人；0 表示系统清扫
+     */
+    deleted_by: number;
+};
+
+export type AddressBookRecycleBinResponse = {
+    code: ErrorCode;
+    message: string;
+    data: Array<AddressBookRecycleBinItem>;
+};
+
+export type AddressBookGrantKind = 'user' | 'everyone' | 'user_group';
+
+/**
+ * - read：只读（当前共享簿默认成员可读，显式 everyone/user 授权可覆盖）
+ * - write：可替换 peers/tags
+ * - full：可改名、删除簿、管理授权
+ *
+ */
+export type AddressBookGrantAccess = 'read' | 'write' | 'full';
+
+export type AddressBookGrant = {
+    id: number;
+    subject_kind: AddressBookGrantKind;
+    /**
+     * `user` 主体为用户 id；`everyone` 与 `user_group` 为 null
+     */
+    subject_user_id?: number | null;
+    /**
+     * `user_group` 主体为用户组 id；`user` 与 `everyone` 为 null
+     */
+    subject_group_id?: number | null;
+    access: AddressBookGrantAccess;
+    created_by: number;
+    created_at: string;
+};
+
+export type AddressBookGrantRequest = {
+    subject_kind: AddressBookGrantKind;
+    /**
+     * `subject_kind=user` 时必填且必须是本组织成员；`everyone` 与 `user_group` 时必须省略或为 null
+     */
+    subject_user_id?: number | null;
+    /**
+     * `subject_kind=user_group` 时必填且必须是本组织的用户组；`user` 与 `everyone` 时必须省略或为 null
+     */
+    subject_group_id?: number | null;
+    access: AddressBookGrantAccess;
+};
+
+export type AddressBookGrantResponse = {
+    code: ErrorCode;
+    message: string;
+    data: AddressBookGrant;
+};
+
+export type AddressBookGrantListResponse = {
+    code: ErrorCode;
+    message: string;
+    data: Array<AddressBookGrant>;
+};
+
+export type AddressBook = {
+    id: number;
+    name: string;
+    scope: 'personal' | 'shared';
+    /**
+     * personal 时为所有者用户 id；shared 时为 null
+     */
+    owner_id?: number | null;
+    /**
+     * 内容修订号，每次 peers/tags 全量替换递增
+     */
+    revision: number;
+    peers?: Array<AddressBookPeer>;
+    tags?: Array<AddressBookTag>;
+    created_at: string;
+    updated_at: string;
+};
+
+export type AddressBookPeersReplaceRequest = {
+    peers: Array<AddressBookPeer>;
+};
+
+export type AddressBookTagsReplaceRequest = {
+    tags: Array<AddressBookTag>;
+};
+
+export type AddressBookResponse = {
+    code: ErrorCode;
+    message: string;
+    data: AddressBook;
+};
+
+export type AddressBookListResponse = {
+    code: ErrorCode;
+    message: string;
+    data: Array<AddressBook>;
+};
+
+export type LogEvent = {
+    id: number;
+    /**
+     * 关联设备；无法解析时为 null
+     */
+    device_id?: number | null;
+    source: 'hbbs' | 'hbbr';
+    level: 'info' | 'warn' | 'error';
+    kind: 'conn' | 'file' | 'error' | 'other';
+    detail?: {
+        [key: string]: unknown;
+    } | null;
+    occurred_at: string;
+};
+
+export type LogEventListResponse = {
+    code: ErrorCode;
+    message: string;
+    data: Array<LogEvent>;
+};
+
+/**
+ * 会话来源：
+ * - panel：面板签发（网页客户端 / 地址簿下发的连接票据），策略强制、可事前阻断
+ * - native：RustDesk 原生客户端直连，由 hbbs/hbbr 日志采集推断，只记录不阻断
+ *
+ */
+export type SessionOrigin = 'panel' | 'native';
+
+/**
+ * - open：进行中
+ * - closed：已结束
+ * - denied：签发阶段被策略拒绝（仅 panel 来源，用于留痕）
+ *
+ */
+export type SessionStatus = 'open' | 'closed' | 'denied';
+
+/**
+ * 会话生命周期（契约语义；实现见 M3 T4/T5/T7）：
+ *
+ * - **panel**：票据被兑换（`POST .../tickets/{ticketId}/redeem`）时创建，
+ * `started_at` 为兑换时刻。票据未兑换不产生会话、不占并发额度。
+ * - **native**：由 hbbs/hbbr 日志事件按 `device` 关联推断。归并规则按事件类型
+ * 分开，关键在于**连接事件与活动事件不是一回事**——日志里没有连接级标识
+ * （连接号 / 对端地址）时，"同设备 30 秒窗口"无法证明两条连接事件来自同一条
+ * 连接，把它们并起来就会漏记连接、连带漏掉该连接的违规告警（CWE-778）。
+ *
+ * **活动事件**（非连接建立类：文件传输、错误、心跳类）：
+ * - 只有**一个**未关闭候选 → 并入它：panel 会话只刷新 `last_activity_at`
+ * （面板远控也走本组织 hbbs/hbbr，不新建 native、不发 native 告警）；
+ * native 会话除刷新外记录该事件。
+ * - 有**多个**候选（同一设备的 panel 与 native 并发）→ **刷新所有候选的
+ * `last_activity_at`**，只把事件记在 native 会话上，不新建会话。不能"panel 优先"：
+ * 那会把 native 的活动算给 panel，让 native 会话按空闲超时关闭，随后真实连接
+ * 超过 `max_session_minutes` 时就再也产生不了时长告警——丢一次告警比多留一个
+ * 会话严重得多。设备彻底安静后所有候选一起按空闲超时关闭。
+ * - 没有候选 → 新建 native 会话。
+ *
+ * **连接事件** → **一个会话最多吸收一条**（吸收时记一条
+ * `SessionEvent.kind=connected`）：
+ * - 命中一个**尚未吸收连接事件**的 panel 会话 → 判定为该面板远控的连接，
+ * 只刷新 `last_activity_at`；
+ * - 命中一个**尚未吸收连接事件**的 native 会话 → 归属该会话；
+ * - 否则（候选都已有连接事件，或有多个候选无法判定）→ **新建 native 会话**。
+ *
+ * 取舍是单向的：宁可多记一条 native 会话，也不漏记一条连接。一台机器上
+ * 面板远控与原生直连并发时，第二条连接就这样被独立记下来。
+ * 关联不到组织设备的事件不建会话（`device_id` 必填，不做无主会话）。
+ * - 采集规则若能从日志中提取连接级标识，实现应按该标识精确匹配、取代上面的
+ * 保守规则；标识的有无属于采集层细节，不改变本契约的可观测语义。
+ * - **活动时钟**：`status=open` 的会话 `last_activity_at` 非空；为 null 时以
+ * `started_at` 作为空闲判定基线。日志事件命中会话即刷新。
+ * - **结束**：可识别的连接结束事件（采集规则映射为 `SessionEvent.kind=disconnected`，
+ * 规则随 T7 落地），或空闲超时（`last_activity_at` 之后默认 10 分钟、可由部署
+ * 配置覆盖）把状态置 `closed`；`end_reason` 取值见该字段的说明。
+ * **已关闭的会话不会被重新打开**：窗口内再来的事件新建会话（重连 = 新会话）。
+ * - **时长上限是后置处理**：`max_session_minutes` 超限时由后台任务把会话置
+ * `closed`（`end_reason=policy_exceeded`）并产生告警；面板不在信令链路上，
+ * **不会掐断真实连接**——时长策略是记账与告警语义，不是强制断连。
+ * - **denied**：仅 panel 来源，由 `POST .../tickets`（签发阶段被策略拒绝）写入
+ * 留痕行：`ticket_id=null`、`started_at`=`ended_at`=拒绝时刻、
+ * `end_reason=policy_denied`，不占并发额度。它不经兑换创建。
+ * - **并发口径**：`max_concurrent_sessions` 只统计 `status=open` 且
+ * `origin=panel` 的会话——native 只告警不阻断，计入会让策略不可执行。
+ *
+ * 面板不在信令链路上（设计 D10）：M3 的票据是面板侧记账凭据，不注入信令。
+ *
+ */
+export type Session = {
+    id: number;
+    organization_id: number;
+    /**
+     * 组织内设备行 id
+     */
+    device_id: number;
+    /**
+     * 设备对外 ID（RustDesk id），便于展示
+     */
+    rustdesk_id?: string;
+    /**
+     * 发起人；native 直连无法识别发起人时为 null
+     */
+    actor_user_id?: number | null;
+    origin: SessionOrigin;
+    status: SessionStatus;
+    /**
+     * 签发该会话的票据；native 会话为 null
+     */
+    ticket_id?: number | null;
+    /**
+     * 本次生效的策略中 `id` 最小者（多条策略各管不同维度时无法唯一归因，
+     * 因此固定取最小 id；具体约束以全部 enabled 策略的交集为准），
+     * 组织没有启用中的策略时为 null
+     *
+     */
+    policy_id?: number | null;
+    started_at: string;
+    ended_at?: string | null;
+    /**
+     * 最近一次关联事件时间：native 会话由日志事件驱动，panel 会话在日志事件
+     * 归并到它时刷新。`status=open` 的会话该值非空；为 null 时以 `started_at`
+     * 作为空闲判定基线。
+     *
+     */
+    last_activity_at?: string | null;
+    /**
+     * 结束原因（进行中的会话为 null）：
+     * - `disconnected`：日志中识别到连接结束事件
+     * - `idle_timeout`：空闲超时（默认 10 分钟无关联事件）
+     * - `policy_exceeded`：超过 `max_session_minutes`（后置关闭，不断连）
+     * - `policy_denied`：签发阶段被策略拒绝（仅 `denied` 会话）
+     *
+     */
+    end_reason?: string | null;
+    /**
+     * 兑换时从票据复制的权限位图（bit 序号同 `ControlPermissionStates`）。会话记录
+     * 的是开始时刻的授权，之后修改控制角色不会改写它。原生会话恒为 0：位图由
+     * hbbs 注入，面板不在信令链路。
+     *
+     */
+    control_permissions: number;
+    /**
+     * 会话记录修订号，每次状态变更递增
+     */
+    revision?: number;
+};
+
+export type SessionEvent = {
+    id: number;
+    /**
+     * 事件类型（自由字符串）。已知取值：`started`、`ticket_issued`、`approved`、
+     * `denied`、`disconnected`（日志中识别的连接结束）、`closed`。
+     *
+     */
+    kind: string;
+    at: string;
+    detail?: {
+        [key: string]: unknown;
+    } | null;
+};
+
+export type SessionDetail = {
+    session: Session;
+    /**
+     * 事件序列（按时间正序，取**最早** 200 条）。保留开头而非结尾：
+     * `started` / `ticket_issued` 这些审计上最关键的条目不能因为会话很长而丢失。
+     *
+     */
+    events: Array<SessionEvent>;
+    /**
+     * 事件超过 200 条时为 true（此时只返回最早的 200 条）
+     */
+    truncated: boolean;
+};
+
+export type SessionDetailResponse = {
+    code: ErrorCode;
+    message: string;
+    data: SessionDetail;
+};
+
+export type SessionListResponse = {
+    code: ErrorCode;
+    message: string;
+    data: SessionPage;
+};
+
+/**
+ * 策略请求体。`PUT` 是**全量替换**：`enabled` 与 `require_approval` 必填且必须
+ * 显式给出布尔值（缺失或 null → 400），避免"省略即按默认值"的静默绕过——
+ * 静默按 false 会把已启用的策略关掉或把审批要求取消。限额字段为 null（或省略）
+ * 表示不限。
+ *
+ * 服务端须从原始 JSON 判定这两个字段是否真的出现（生成的强类型默认值无法
+ * 区分「没给」与「给了 false」）；schema 本身已拒绝 null。
+ *
+ */
+export type PolicyRequest = {
+    name: string;
+    enabled: boolean;
+    /**
+     * 同一组织并发会话上限（只统计 open+panel 会话）；null 表示不限
+     */
+    max_concurrent_sessions?: number | null;
+    /**
+     * 单会话时长上限（分钟）；null 表示不限
+     */
+    max_session_minutes?: number | null;
+    /**
+     * 允许时段起点（UTC 当日分钟数，0 = 00:00）；与 `allowed_end_minute` 同为
+     * null 表示全天允许。起点大于终点表示跨零点窗口（如 1320–360 即
+     * 22:00–06:00）
+     *
+     */
+    allowed_start_minute?: number | null;
+    /**
+     * 允许时段终点（UTC 当日分钟数，不含）。必须与起点同时提供或同时为 null；
+     * 两者相等（`start == end`）不是合法窗口——全天请用 null——返回 400。
+     *
+     */
+    allowed_end_minute?: number | null;
+    /**
+     * 为 true 时，票据签发需先有已批准的审批请求。**必须显式给出 true/false**：
+     * 缺失或 null 返回 400。服务端不得依赖 bool 零值判断（零值无法区分「没给」
+     * 与「给了 false」，静默按 false 处理会把审批要求关掉），应从原始 JSON
+     * 判定字段存在性。
+     *
+     */
+    require_approval: boolean;
+};
+
+export type Policy = {
+    id: number;
+    organization_id: number;
+    name: string;
+    enabled: boolean;
+    /**
+     * null 表示不限
+     */
+    max_concurrent_sessions?: number | null;
+    /**
+     * null 表示不限
+     */
+    max_session_minutes?: number | null;
+    allowed_start_minute?: number | null;
+    allowed_end_minute?: number | null;
+    require_approval: boolean;
+    created_at: string;
+    updated_at: string;
+};
+
+export type PolicyResponse = {
+    code: ErrorCode;
+    message: string;
+    data: Policy;
+};
+
+export type PolicyListResponse = {
+    code: ErrorCode;
+    message: string;
+    data: Array<Policy>;
+};
+
+/**
+ * - pre_approval：事前审批——为**将要发起**的连接放行一次票据签发
+ * - ratification：事后追认——对**已发生**的原生直连违规会话（日志推断）做确认，
+ * 不产生票据
+ *
+ */
+export type ApprovalKind = 'pre_approval' | 'ratification';
+
+/**
+ * - pending：待审批
+ * - approved：已批准。`kind=pre_approval` 时可被**一次**票据签发消费；
+ * `kind=ratification` 时表示「已追认」，不可消费、不产生票据
+ * - denied：已拒绝
+ * - expired：超期未决策（后台任务标记）
+ *
+ */
+export type ApprovalStatus = 'pending' | 'approved' | 'denied' | 'expired';
+
+export type Approval = {
+    id: number;
+    organization_id: number;
+    device_id: number;
+    kind: ApprovalKind;
+    /**
+     * 事后追认关联的会话（`kind=ratification`）；事前审批为 null
+     */
+    session_id?: number | null;
+    /**
+     * 发起审批的成员
+     */
+    actor_user_id?: number;
+    status: ApprovalStatus;
+    requested_at: string;
+    /**
+     * 待审批请求的有效期；超期由后台任务置为 expired
+     */
+    expires_at: string;
+    /**
+     * 决策人（owner/admin）
+     */
+    decided_by?: number | null;
+    decided_at?: string | null;
+    /**
+     * 申请理由或拒绝理由
+     */
+    reason?: string | null;
+    /**
+     * 批准后被消费签发的票据（一次性绑定）
+     */
+    ticket_id?: number | null;
+};
+
+export type ApprovalResponse = {
+    code: ErrorCode;
+    message: string;
+    data: Approval;
+};
+
+export type ApprovalListResponse = {
+    code: ErrorCode;
+    message: string;
+    data: ApprovalPage;
+};
+
+/**
+ * 提交审批请求，按 `kind` 二选一：
+ *
+ * - `pre_approval`：必须提供 `device_id`
+ * - `ratification`（事后追认）：必须提供 `session_id`，且该会话必须属于本组织、
+ * `origin=native`（面板会话本身已受策略管控，无需追认）；`device_id` 由服务端
+ * 从会话派生
+ *
+ * 两者都给、都不给，或 `kind` 与字段不匹配，返回 `400 invalid_request`。
+ * 同一 actor + 设备已有 `pending` 的事前审批时**复用**该请求（返回 200）；
+ * 同一会话已有 `pending`/`approved` 的追认时同样复用，不重复创建。
+ *
+ */
+export type ApprovalCreateRequest = {
+    kind: ApprovalKind;
+    device_id?: number;
+    session_id?: number;
+    reason?: string;
+};
+
+/**
+ * - approve：批准（pre_approval 放行一次签发；ratification 即「已追认」）
+ * - deny：拒绝
+ *
+ */
+export type ApprovalDecision = 'approve' | 'deny';
+
+export type ApprovalDecisionRequest = {
+    decision: ApprovalDecision;
+    reason?: string;
+};
+
+export type TicketCreateRequest = {
+    device_id: number;
+    /**
+     * 票据有效期（秒），默认 300
+     */
+    ttl_seconds?: number;
+};
+
+export type Ticket = {
+    id: number;
+    organization_id: number;
+    device_id: number;
+    actor_user_id?: number;
+    /**
+     * 绑定的审批请求（审批放行时）
+     */
+    approval_id?: number | null;
+    /**
+     * 签发时生效的策略快照（审计与排障用）
+     */
+    policy_snapshot?: {
+        [key: string]: unknown;
+    } | null;
+    /**
+     * 签发时生效的控制角色 id；null 表示签发时未解析到角色（或服务未接线）。
+     *
+     */
+    control_role_id?: number | null;
+    /**
+     * 签发时生效的权限位图，bit 序号与 `ControlPermissionStates` 的声明顺序一致
+     * （keyboard=0 … usb=13），只有 `enable` 置位。0 表示「没有显式启用的权限」，
+     * 不是「未计算」。
+     *
+     * **原生会话不执行该位图**：hbbs 在信令消息里注入 `control_permissions`，
+     * 本面板不在信令链路（设计 D10），因此它只是票据快照，供网页客户端与审计使用。
+     *
+     */
+    control_permissions: number;
+    expires_at: string;
+    created_at: string;
+    /**
+     * 首次被兑换的时间；一次性，非 null 即不可再用
+     */
+    used_at?: string | null;
+    /**
+     * 撤销时间。没有独立的撤销端点：成员被移出组织、角色降级或组织停用时，
+     * 由 offboarding 路径撤销其**未兑换**的票据（T8）。
+     *
+     */
+    revoked_at?: string | null;
+};
+
+export type IssuedTicket = {
+    ticket: Ticket;
+    /**
+     * 明文票据令牌，**仅此响应返回一次**（服务端只存摘要）
+     */
+    token: string;
+};
+
+export type IssuedTicketResponse = {
+    code: ErrorCode;
+    message: string;
+    data: IssuedTicket;
+};
+
+/**
+ * 告警级别
+ */
+export type AlertSeverity = 'info' | 'warning' | 'critical';
+
+export type Alert = {
+    id: number;
+    organization_id: number;
+    session_id?: number | null;
+    device_id?: number | null;
+    /**
+     * 告警类型（自由字符串，已知取值）：
+     * - `concurrency_exceeded`：并发会话超限
+     * - `duration_exceeded`：会话时长超限
+     * - `outside_window`：时段外发起
+     *
+     * 事前审批阻断**不算告警**（正常的受控流程，每次都告警会让告警列表变成
+     * 噪音）；它体现在 `409 approval_required` 与审计里。原生直连无法事前审批
+     * （审批是签发的前提），所以 native 会话的告警只用 `duration_exceeded` /
+     * `outside_window` 表达实际违规。
+     *
+     */
+    kind: string;
+    severity: AlertSeverity;
+    detail?: {
+        [key: string]: unknown;
+    } | null;
+    created_at: string;
+};
+
+export type AlertListResponse = {
+    code: ErrorCode;
+    message: string;
+    data: AlertPage;
+};
+
+export type SessionPage = {
+    items: Array<Session>;
+    page: number;
+    page_size: number;
+    total: number;
+};
+
+export type ApprovalPage = {
+    items: Array<Approval>;
+    page: number;
+    page_size: number;
+    total: number;
+};
+
+export type AlertPage = {
+    items: Array<Alert>;
+    page: number;
+    page_size: number;
+    total: number;
+};
+
+export type TicketRedeemRequest = {
+    /**
+     * 签发响应里返回的明文票据令牌
+     */
+    token: string;
+};
+
+export type TicketResponse = {
+    code: ErrorCode;
+    message: string;
+    data: Ticket;
+};
+
+export type SessionResponse = {
+    code: ErrorCode;
+    message: string;
+    data: Session;
+};
+
+export type ClientBuildCapabilitiesResponse = {
+    code: ErrorCode;
+    message: string;
+    data: ClientBuildCapabilities;
+};
+
+export type ClientBuildCapabilities = {
+    enabled: boolean;
+    platforms: Array<'windows-x64' | 'linux-x64' | 'macos-arm64' | 'macos-x64' | 'android-arm64'>;
+    limits: ClientBuildLimits;
+    provisioning_state: 'deployed' | 'provisioning' | 'failed' | 'disabled' | 'missing';
+    defaults?: ClientBuildDefaults;
+};
+
+export type ClientBuildLimits = {
+    max_profiles_per_org: number;
+    max_concurrent_per_org: number;
+    max_active_builds: number;
+    max_artifact_bytes: number;
+    artifact_retention_days: number;
+};
+
+export type ClientBuildDefaults = {
+    server: string;
+    server_key: string;
+    api_server: string;
+};
+
+export type ClientBuildProfile = {
+    id: number;
+    name: string;
+    app_name: string;
+    has_logo: boolean;
+    logo_width: number;
+    logo_height: number;
+    logo_sha256: string;
+    created_at: string;
+    updated_at: string;
+};
+
+export type ClientBuildProfilePage = {
+    items: Array<ClientBuildProfile>;
+    page: number;
+    page_size: number;
+    total: number;
+};
+
+export type ClientBuildProfileListResponse = {
+    code: ErrorCode;
+    message: string;
+    data: ClientBuildProfilePage;
+};
+
+export type ClientBuildProfileResponse = {
+    code: ErrorCode;
+    message: string;
+    data: ClientBuildProfile;
+};
+
+export type ClientBuildProfileCreateRequest = {
+    name: string;
+    app_name: string;
+};
+
+export type ClientBuildProfileUpdateRequest = {
+    name?: string;
+    app_name?: string;
+};
+
+export type ClientBuildLogoUploadRequest = {
+    png_base64: string;
+};
+
+export type ClientBuildSummary = {
+    id: number;
+    profile_id: number;
+    profile_name: string;
+    app_name: string;
+    upstream_version: string;
+    platforms: Array<'windows-x64' | 'linux-x64' | 'macos-arm64' | 'macos-x64' | 'android-arm64'>;
+    status: 'pending' | 'dispatching' | 'dispatched' | 'running' | 'ingesting' | 'succeeded' | 'failed' | 'cancelled';
+    github_run_id?: number | null;
+    github_run_url?: string;
+    error_message?: string;
+    artifact_count: number;
+    artifacts_purged: boolean;
+    created_at: string;
+    dispatched_at?: string | null;
+    finished_at?: string | null;
+};
+
+export type ClientBuildManifest = {
+    schema_version: number;
+    build_id: number;
+    app_name: string;
+    server: string;
+    server_key: string;
+    api_server: string;
+    upstream_version: string;
+    platforms: Array<string>;
+    logo?: ClientBuildManifestLogo;
+};
+
+export type ClientBuildManifestLogo = {
+    sha256: string;
+    width: number;
+    height: number;
+};
+
+export type ClientBuildArtifact = {
+    id: number;
+    platform: string;
+    file_name: string;
+    size_bytes: number;
+    sha256: string;
+    created_at: string;
+};
+
+export type ClientBuildDetail = {
+    id: number;
+    profile_id: number;
+    profile_name: string;
+    app_name: string;
+    upstream_version: string;
+    platforms: Array<'windows-x64' | 'linux-x64' | 'macos-arm64' | 'macos-x64' | 'android-arm64'>;
+    status: 'pending' | 'dispatching' | 'dispatched' | 'running' | 'ingesting' | 'succeeded' | 'failed' | 'cancelled';
+    github_run_id?: number | null;
+    github_run_url?: string;
+    error_message?: string;
+    artifact_count: number;
+    artifacts_purged: boolean;
+    created_at: string;
+    dispatched_at?: string | null;
+    finished_at?: string | null;
+    manifest: ClientBuildManifest;
+    artifacts: Array<ClientBuildArtifact>;
+};
+
+export type ClientBuildPage = {
+    items: Array<ClientBuildSummary>;
+    page: number;
+    page_size: number;
+    total: number;
+};
+
+export type ClientBuildListResponse = {
+    code: ErrorCode;
+    message: string;
+    data: ClientBuildPage;
+};
+
+export type ClientBuildResponse = {
+    code: ErrorCode;
+    message: string;
+    data: ClientBuildDetail;
+};
+
+export type ClientBuildCreateRequest = {
+    profile_id: number;
+    platforms: Array<'windows-x64' | 'linux-x64' | 'macos-arm64' | 'macos-x64' | 'android-arm64'>;
 };
 
 export type GetHealthzData = {
@@ -169,9 +2228,17 @@ export type LoginErrors = {
      */
     401: ErrorResponse;
     /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
      * 触发限流
      */
     429: ErrorResponse;
+    /**
+     * 验证码提供商不可用（仅启用验证码且 failMode=closed 时）
+     */
+    503: ErrorResponse;
 };
 
 export type LoginError = LoginErrors[keyof LoginErrors];
@@ -184,6 +2251,303 @@ export type LoginResponses = {
 };
 
 export type LoginResponse = LoginResponses[keyof LoginResponses];
+
+export type ListAuthProvidersData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/providers';
+};
+
+export type ListAuthProvidersResponses = {
+    /**
+     * 登录方式
+     */
+    200: AuthProvidersResponse;
+};
+
+export type ListAuthProvidersResponse = ListAuthProvidersResponses[keyof ListAuthProvidersResponses];
+
+export type StartOidcLoginData = {
+    body?: OidcStartRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/oidc/start';
+};
+
+export type StartOidcLoginErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 触发限流
+     */
+    429: ErrorResponse;
+    /**
+     * OIDC 未启用或 IdP 不可达
+     */
+    503: ErrorResponse;
+};
+
+export type StartOidcLoginError = StartOidcLoginErrors[keyof StartOidcLoginErrors];
+
+export type StartOidcLoginResponses = {
+    /**
+     * 授权请求
+     */
+    200: OidcStartResponse;
+};
+
+export type StartOidcLoginResponse = StartOidcLoginResponses[keyof StartOidcLoginResponses];
+
+export type HandleOidcCallbackData = {
+    body?: never;
+    path?: never;
+    query?: {
+        state?: string;
+        code?: string;
+        /**
+         * IdP 的错误码；只用于判定失败，不记录原文
+         */
+        error?: string;
+    };
+    url: '/api/v1/auth/oidc/callback';
+};
+
+export type HandleOidcCallbackErrors = {
+    /**
+     * OIDC 未启用
+     */
+    503: ErrorResponse;
+};
+
+export type HandleOidcCallbackError = HandleOidcCallbackErrors[keyof HandleOidcCallbackErrors];
+
+export type ExchangeOidcLoginData = {
+    body: OidcExchangeRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/oidc/exchange';
+};
+
+export type ExchangeOidcLoginErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 触发限流
+     */
+    429: ErrorResponse;
+    /**
+     * OIDC 未启用
+     */
+    503: ErrorResponse;
+};
+
+export type ExchangeOidcLoginError = ExchangeOidcLoginErrors[keyof ExchangeOidcLoginErrors];
+
+export type ExchangeOidcLoginResponses = {
+    /**
+     * 登录成功
+     */
+    200: TokenResponse;
+};
+
+export type ExchangeOidcLoginResponse = ExchangeOidcLoginResponses[keyof ExchangeOidcLoginResponses];
+
+export type GetIdentitiesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/identity';
+};
+
+export type GetIdentitiesErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 外部身份源未启用
+     */
+    503: ErrorResponse;
+};
+
+export type GetIdentitiesError = GetIdentitiesErrors[keyof GetIdentitiesErrors];
+
+export type GetIdentitiesResponses = {
+    /**
+     * 绑定列表
+     */
+    200: IdentityListResponse;
+};
+
+export type GetIdentitiesResponse = GetIdentitiesResponses[keyof GetIdentitiesResponses];
+
+export type UnlinkIdentityData = {
+    body: IdentityUnlinkRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/identity/unlink';
+};
+
+export type UnlinkIdentityErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+    /**
+     * 触发限流
+     */
+    429: ErrorResponse;
+};
+
+export type UnlinkIdentityError = UnlinkIdentityErrors[keyof UnlinkIdentityErrors];
+
+export type UnlinkIdentityResponses = {
+    /**
+     * 已解绑
+     */
+    200: OkResponse;
+};
+
+export type UnlinkIdentityResponse = UnlinkIdentityResponses[keyof UnlinkIdentityResponses];
+
+export type ResetMemberIdentityData = {
+    body?: never;
+    path: {
+        orgId: number;
+        userId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/members/{userId}/identity/reset';
+};
+
+export type ResetMemberIdentityErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+    /**
+     * 服务端错误（如邀请邮件投递失败）
+     */
+    500: ErrorResponse;
+};
+
+export type ResetMemberIdentityError = ResetMemberIdentityErrors[keyof ResetMemberIdentityErrors];
+
+export type ResetMemberIdentityResponses = {
+    /**
+     * 已重置
+     */
+    200: OkResponse;
+};
+
+export type ResetMemberIdentityResponse = ResetMemberIdentityResponses[keyof ResetMemberIdentityResponses];
+
+export type LdapLoginData = {
+    body: LdapLoginRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/ldap/login';
+};
+
+export type LdapLoginErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 目录身份与已有绑定冲突（换用户名后撞新 subject 等）
+     */
+    409: ErrorResponse;
+    /**
+     * 触发限流
+     */
+    429: ErrorResponse;
+    /**
+     * LDAP 未启用或目录不可达
+     */
+    503: ErrorResponse;
+};
+
+export type LdapLoginError = LdapLoginErrors[keyof LdapLoginErrors];
+
+export type LdapLoginResponses = {
+    /**
+     * 登录成功
+     */
+    200: TokenResponse;
+};
+
+export type LdapLoginResponse = LdapLoginResponses[keyof LdapLoginResponses];
+
+export type GetCaptchaChallengeData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/captcha';
+};
+
+export type GetCaptchaChallengeErrors = {
+    /**
+     * 触发限流
+     */
+    429: ErrorResponse;
+    /**
+     * 验证码提供商不可用（构造挑战失败）
+     */
+    503: ErrorResponse;
+};
+
+export type GetCaptchaChallengeError = GetCaptchaChallengeErrors[keyof GetCaptchaChallengeErrors];
+
+export type GetCaptchaChallengeResponses = {
+    /**
+     * 当前验证码配置与挑战
+     */
+    200: CaptchaChallengeResponse;
+};
+
+export type GetCaptchaChallengeResponse = GetCaptchaChallengeResponses[keyof GetCaptchaChallengeResponses];
 
 export type RefreshTokensData = {
     body: RefreshRequest;
@@ -213,6 +2577,714 @@ export type RefreshTokensResponses = {
 };
 
 export type RefreshTokensResponse = RefreshTokensResponses[keyof RefreshTokensResponses];
+
+export type ListTokensData = {
+    body?: never;
+    path?: never;
+    query: {
+        organizationId: number;
+    };
+    url: '/api/v1/auth/tokens';
+};
+
+export type ListTokensErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+};
+
+export type ListTokensError = ListTokensErrors[keyof ListTokensErrors];
+
+export type ListTokensResponses = {
+    /**
+     * 令牌列表
+     */
+    200: ApiTokenListResponse;
+};
+
+export type ListTokensResponse = ListTokensResponses[keyof ListTokensResponses];
+
+export type CreateTokenData = {
+    body: TokenCreateRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/tokens';
+};
+
+export type CreateTokenErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+};
+
+export type CreateTokenError = CreateTokenErrors[keyof CreateTokenErrors];
+
+export type CreateTokenResponses = {
+    /**
+     * 已创建（含一次性明文）
+     */
+    201: IssuedApiTokenResponse;
+};
+
+export type CreateTokenResponse = CreateTokenResponses[keyof CreateTokenResponses];
+
+export type RevokeTokenData = {
+    body?: never;
+    path: {
+        tokenId: number;
+    };
+    query?: never;
+    url: '/api/v1/auth/tokens/{tokenId}';
+};
+
+export type RevokeTokenErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type RevokeTokenError = RevokeTokenErrors[keyof RevokeTokenErrors];
+
+export type RevokeTokenResponses = {
+    /**
+     * 已撤销
+     */
+    200: OkResponse;
+};
+
+export type RevokeTokenResponse = RevokeTokenResponses[keyof RevokeTokenResponses];
+
+export type SetupTotpData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/2fa/setup';
+};
+
+export type SetupTotpErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+};
+
+export type SetupTotpError = SetupTotpErrors[keyof SetupTotpErrors];
+
+export type SetupTotpResponses = {
+    /**
+     * 秘密与 provisioning URI
+     */
+    200: TotpSetupResponse;
+};
+
+export type SetupTotpResponse = SetupTotpResponses[keyof SetupTotpResponses];
+
+export type EnableTotpData = {
+    body: TotpCodeRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/2fa/enable';
+};
+
+export type EnableTotpErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+};
+
+export type EnableTotpError = EnableTotpErrors[keyof EnableTotpErrors];
+
+export type EnableTotpResponses = {
+    /**
+     * 已启用
+     */
+    200: OkResponse;
+};
+
+export type EnableTotpResponse = EnableTotpResponses[keyof EnableTotpResponses];
+
+export type DisableTotpData = {
+    body: TotpDisableRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/2fa/disable';
+};
+
+export type DisableTotpErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 账户没有本地密码（passkey-only），无法启用或维护 TOTP
+     */
+    409: ErrorResponse;
+};
+
+export type DisableTotpError = DisableTotpErrors[keyof DisableTotpErrors];
+
+export type DisableTotpResponses = {
+    /**
+     * 已关闭
+     */
+    200: OkResponse;
+};
+
+export type DisableTotpResponse = DisableTotpResponses[keyof DisableTotpResponses];
+
+export type RegenerateRecoveryCodesData = {
+    body: TotpDisableRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/2fa/recovery-codes';
+};
+
+export type RegenerateRecoveryCodesErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 账户没有本地密码（passkey-only），无法启用或维护 TOTP
+     */
+    409: ErrorResponse;
+};
+
+export type RegenerateRecoveryCodesError = RegenerateRecoveryCodesErrors[keyof RegenerateRecoveryCodesErrors];
+
+export type RegenerateRecoveryCodesResponses = {
+    /**
+     * 新的恢复码
+     */
+    200: TotpRecoveryCodesResponse;
+};
+
+export type RegenerateRecoveryCodesResponse = RegenerateRecoveryCodesResponses[keyof RegenerateRecoveryCodesResponses];
+
+export type VerifyTotpData = {
+    body: TotpVerifyRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/2fa/verify';
+};
+
+export type VerifyTotpErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 触发限流
+     */
+    429: ErrorResponse;
+    /**
+     * 验证码提供商不可用（仅启用验证码且 failMode=closed 时）
+     */
+    503: ErrorResponse;
+};
+
+export type VerifyTotpError = VerifyTotpErrors[keyof VerifyTotpErrors];
+
+export type VerifyTotpResponses = {
+    /**
+     * 登录成功
+     */
+    200: TokenResponse;
+};
+
+export type VerifyTotpResponse = VerifyTotpResponses[keyof VerifyTotpResponses];
+
+export type BeginPasskeyStepupData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/passkey/stepup/begin';
+};
+
+export type BeginPasskeyStepupErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+    /**
+     * 触发限流
+     */
+    429: ErrorResponse;
+    /**
+     * passkey 未启用
+     */
+    503: ErrorResponse;
+};
+
+export type BeginPasskeyStepupError = BeginPasskeyStepupErrors[keyof BeginPasskeyStepupErrors];
+
+export type BeginPasskeyStepupResponses = {
+    /**
+     * 断言挑战
+     */
+    200: PasskeyCeremonyResponse;
+};
+
+export type BeginPasskeyStepupResponse = BeginPasskeyStepupResponses[keyof BeginPasskeyStepupResponses];
+
+export type FinishPasskeyStepupData = {
+    body: PasskeyLoginRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/passkey/stepup/finish';
+};
+
+export type FinishPasskeyStepupErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 触发限流
+     */
+    429: ErrorResponse;
+    /**
+     * passkey 未启用
+     */
+    503: ErrorResponse;
+};
+
+export type FinishPasskeyStepupError = FinishPasskeyStepupErrors[keyof FinishPasskeyStepupErrors];
+
+export type FinishPasskeyStepupResponses = {
+    /**
+     * step-up 令牌
+     */
+    200: StepupTokenResponse;
+};
+
+export type FinishPasskeyStepupResponse = FinishPasskeyStepupResponses[keyof FinishPasskeyStepupResponses];
+
+export type RemovePasswordData = {
+    body: PasswordRemoveRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/password/remove';
+};
+
+export type RemovePasswordErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+    /**
+     * passkey 未启用
+     */
+    503: ErrorResponse;
+};
+
+export type RemovePasswordError = RemovePasswordErrors[keyof RemovePasswordErrors];
+
+export type RemovePasswordResponses = {
+    /**
+     * 已删除
+     */
+    200: PasswordRemoveResponse;
+};
+
+export type RemovePasswordResponse = RemovePasswordResponses[keyof RemovePasswordResponses];
+
+export type SetPasswordData = {
+    body: PasswordSetRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/password/set';
+};
+
+export type SetPasswordErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+    /**
+     * passkey 未启用
+     */
+    503: ErrorResponse;
+};
+
+export type SetPasswordError = SetPasswordErrors[keyof SetPasswordErrors];
+
+export type SetPasswordResponses = {
+    /**
+     * 已设置
+     */
+    200: OkResponse;
+};
+
+export type SetPasswordResponse = SetPasswordResponses[keyof SetPasswordResponses];
+
+export type ListPasskeysData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/passkeys';
+};
+
+export type ListPasskeysErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * passkey 未启用
+     */
+    503: ErrorResponse;
+};
+
+export type ListPasskeysError = ListPasskeysErrors[keyof ListPasskeysErrors];
+
+export type ListPasskeysResponses = {
+    /**
+     * 凭据列表
+     */
+    200: PasskeyListResponse;
+};
+
+export type ListPasskeysResponse = ListPasskeysResponses[keyof ListPasskeysResponses];
+
+export type DeletePasskeyData = {
+    body?: never;
+    path: {
+        passkeyId: number;
+    };
+    query?: never;
+    url: '/api/v1/auth/passkeys/{passkeyId}';
+};
+
+export type DeletePasskeyErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+    /**
+     * passkey 未启用
+     */
+    503: ErrorResponse;
+};
+
+export type DeletePasskeyError = DeletePasskeyErrors[keyof DeletePasskeyErrors];
+
+export type DeletePasskeyResponses = {
+    /**
+     * 已删除
+     */
+    200: OkResponse;
+};
+
+export type DeletePasskeyResponse = DeletePasskeyResponses[keyof DeletePasskeyResponses];
+
+export type RenamePasskeyData = {
+    body: PasskeyNameRequest;
+    path: {
+        passkeyId: number;
+    };
+    query?: never;
+    url: '/api/v1/auth/passkeys/{passkeyId}';
+};
+
+export type RenamePasskeyErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * passkey 未启用
+     */
+    503: ErrorResponse;
+};
+
+export type RenamePasskeyError = RenamePasskeyErrors[keyof RenamePasskeyErrors];
+
+export type RenamePasskeyResponses = {
+    /**
+     * 更新后的凭据
+     */
+    200: PasskeyResponse;
+};
+
+export type RenamePasskeyResponse = RenamePasskeyResponses[keyof RenamePasskeyResponses];
+
+export type BeginPasskeyLoginData = {
+    body?: PasskeyLoginBeginRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/passkey/login/begin';
+};
+
+export type BeginPasskeyLoginErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+    /**
+     * 触发限流
+     */
+    429: ErrorResponse;
+    /**
+     * passkey 未启用
+     */
+    503: ErrorResponse;
+};
+
+export type BeginPasskeyLoginError = BeginPasskeyLoginErrors[keyof BeginPasskeyLoginErrors];
+
+export type BeginPasskeyLoginResponses = {
+    /**
+     * 断言挑战
+     */
+    200: PasskeyCeremonyResponse;
+};
+
+export type BeginPasskeyLoginResponse = BeginPasskeyLoginResponses[keyof BeginPasskeyLoginResponses];
+
+export type FinishPasskeyLoginData = {
+    body: PasskeyLoginRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/passkey/login/finish';
+};
+
+export type FinishPasskeyLoginErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 触发限流
+     */
+    429: ErrorResponse;
+    /**
+     * passkey 未启用
+     */
+    503: ErrorResponse;
+};
+
+export type FinishPasskeyLoginError = FinishPasskeyLoginErrors[keyof FinishPasskeyLoginErrors];
+
+export type FinishPasskeyLoginResponses = {
+    /**
+     * 登录成功
+     */
+    200: TokenResponse;
+};
+
+export type FinishPasskeyLoginResponse = FinishPasskeyLoginResponses[keyof FinishPasskeyLoginResponses];
+
+export type BeginPasskeyRegistrationData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/passkey/register/begin';
+};
+
+export type BeginPasskeyRegistrationErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+    /**
+     * 触发限流
+     */
+    429: ErrorResponse;
+    /**
+     * passkey 未启用
+     */
+    503: ErrorResponse;
+};
+
+export type BeginPasskeyRegistrationError = BeginPasskeyRegistrationErrors[keyof BeginPasskeyRegistrationErrors];
+
+export type BeginPasskeyRegistrationResponses = {
+    /**
+     * 注册挑战
+     */
+    200: PasskeyCeremonyResponse;
+};
+
+export type BeginPasskeyRegistrationResponse = BeginPasskeyRegistrationResponses[keyof BeginPasskeyRegistrationResponses];
+
+export type FinishPasskeyRegistrationData = {
+    body: PasskeyRegistrationRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/passkey/register/finish';
+};
+
+export type FinishPasskeyRegistrationErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+    /**
+     * 触发限流
+     */
+    429: ErrorResponse;
+    /**
+     * passkey 未启用
+     */
+    503: ErrorResponse;
+};
+
+export type FinishPasskeyRegistrationError = FinishPasskeyRegistrationErrors[keyof FinishPasskeyRegistrationErrors];
+
+export type FinishPasskeyRegistrationResponses = {
+    /**
+     * 已绑定的凭据
+     */
+    201: PasskeyResponse;
+};
+
+export type FinishPasskeyRegistrationResponse = FinishPasskeyRegistrationResponses[keyof FinishPasskeyRegistrationResponses];
+
+export type GetMeData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/me';
+};
+
+export type GetMeErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type GetMeError = GetMeErrors[keyof GetMeErrors];
+
+export type GetMeResponses = {
+    /**
+     * 当前用户与其组织
+     */
+    200: MeResponse;
+};
+
+export type GetMeResponse = GetMeResponses[keyof GetMeResponses];
 
 export type ListOrgsData = {
     body?: never;
@@ -307,6 +3379,1803 @@ export type ListMembersResponses = {
 
 export type ListMembersResponse = ListMembersResponses[keyof ListMembersResponses];
 
+export type RemoveMemberData = {
+    body?: never;
+    path: {
+        orgId: number;
+        userId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/members/{userId}';
+};
+
+export type RemoveMemberErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+};
+
+export type RemoveMemberError = RemoveMemberErrors[keyof RemoveMemberErrors];
+
+export type RemoveMemberResponses = {
+    /**
+     * 已移除，返回被撤销的会话数
+     */
+    200: MemberMutationResponse;
+};
+
+export type RemoveMemberResponse = RemoveMemberResponses[keyof RemoveMemberResponses];
+
+export type UpdateMemberRoleData = {
+    body: MemberUpdateRequest;
+    path: {
+        orgId: number;
+        userId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/members/{userId}';
+};
+
+export type UpdateMemberRoleErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+};
+
+export type UpdateMemberRoleError = UpdateMemberRoleErrors[keyof UpdateMemberRoleErrors];
+
+export type UpdateMemberRoleResponses = {
+    /**
+     * 更新后的成员
+     */
+    200: MemberResponse;
+};
+
+export type UpdateMemberRoleResponse = UpdateMemberRoleResponses[keyof UpdateMemberRoleResponses];
+
+export type ResetMemberPasskeysData = {
+    body?: never;
+    path: {
+        orgId: number;
+        userId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/members/{userId}/passkeys/reset';
+};
+
+export type ResetMemberPasskeysErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+    /**
+     * 服务端错误（如邀请邮件投递失败）
+     */
+    500: ErrorResponse;
+    /**
+     * passkey 未启用
+     */
+    503: ErrorResponse;
+};
+
+export type ResetMemberPasskeysError = ResetMemberPasskeysErrors[keyof ResetMemberPasskeysErrors];
+
+export type ResetMemberPasskeysResponses = {
+    /**
+     * 已重置
+     */
+    200: OkResponse;
+};
+
+export type ResetMemberPasskeysResponse = ResetMemberPasskeysResponses[keyof ResetMemberPasskeysResponses];
+
+export type ResetMemberTotpData = {
+    body?: never;
+    path: {
+        orgId: number;
+        userId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/members/{userId}/2fa/reset';
+};
+
+export type ResetMemberTotpErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type ResetMemberTotpError = ResetMemberTotpErrors[keyof ResetMemberTotpErrors];
+
+export type ResetMemberTotpResponses = {
+    /**
+     * 已重置
+     */
+    200: OkResponse;
+};
+
+export type ResetMemberTotpResponse = ResetMemberTotpResponses[keyof ResetMemberTotpResponses];
+
+export type ListPermissionsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/permissions';
+};
+
+export type ListPermissionsErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+};
+
+export type ListPermissionsError = ListPermissionsErrors[keyof ListPermissionsErrors];
+
+export type ListPermissionsResponses = {
+    /**
+     * 权限目录
+     */
+    200: PermissionListResponse;
+};
+
+export type ListPermissionsResponse = ListPermissionsResponses[keyof ListPermissionsResponses];
+
+export type ListRolesData = {
+    body?: never;
+    path: {
+        orgId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/roles';
+};
+
+export type ListRolesErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+};
+
+export type ListRolesError = ListRolesErrors[keyof ListRolesErrors];
+
+export type ListRolesResponses = {
+    /**
+     * 角色列表
+     */
+    200: RoleListResponse;
+};
+
+export type ListRolesResponse = ListRolesResponses[keyof ListRolesResponses];
+
+export type CreateRoleData = {
+    body: RoleCreateRequest;
+    path: {
+        orgId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/roles';
+};
+
+export type CreateRoleErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+};
+
+export type CreateRoleError = CreateRoleErrors[keyof CreateRoleErrors];
+
+export type CreateRoleResponses = {
+    /**
+     * 已创建的角色
+     */
+    201: RoleResponse;
+};
+
+export type CreateRoleResponse = CreateRoleResponses[keyof CreateRoleResponses];
+
+export type DeleteRoleData = {
+    body?: never;
+    path: {
+        orgId: number;
+        roleId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/roles/{roleId}';
+};
+
+export type DeleteRoleErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+};
+
+export type DeleteRoleError = DeleteRoleErrors[keyof DeleteRoleErrors];
+
+export type DeleteRoleResponses = {
+    /**
+     * 已删除
+     */
+    200: OkResponse;
+};
+
+export type DeleteRoleResponse = DeleteRoleResponses[keyof DeleteRoleResponses];
+
+export type GetRoleData = {
+    body?: never;
+    path: {
+        orgId: number;
+        roleId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/roles/{roleId}';
+};
+
+export type GetRoleErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type GetRoleError = GetRoleErrors[keyof GetRoleErrors];
+
+export type GetRoleResponses = {
+    /**
+     * 角色详情
+     */
+    200: RoleResponse;
+};
+
+export type GetRoleResponse = GetRoleResponses[keyof GetRoleResponses];
+
+export type UpdateRoleData = {
+    body: RoleUpdateRequest;
+    path: {
+        orgId: number;
+        roleId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/roles/{roleId}';
+};
+
+export type UpdateRoleErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+};
+
+export type UpdateRoleError = UpdateRoleErrors[keyof UpdateRoleErrors];
+
+export type UpdateRoleResponses = {
+    /**
+     * 更新后的角色
+     */
+    200: RoleResponse;
+};
+
+export type UpdateRoleResponse = UpdateRoleResponses[keyof UpdateRoleResponses];
+
+export type ListControlRolesData = {
+    body?: never;
+    path: {
+        orgId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/control-roles';
+};
+
+export type ListControlRolesErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+};
+
+export type ListControlRolesError = ListControlRolesErrors[keyof ListControlRolesErrors];
+
+export type ListControlRolesResponses = {
+    /**
+     * 控制角色列表
+     */
+    200: ControlRoleListResponse;
+};
+
+export type ListControlRolesResponse = ListControlRolesResponses[keyof ListControlRolesResponses];
+
+export type CreateControlRoleData = {
+    body: ControlRoleCreateRequest;
+    path: {
+        orgId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/control-roles';
+};
+
+export type CreateControlRoleErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+};
+
+export type CreateControlRoleError = CreateControlRoleErrors[keyof CreateControlRoleErrors];
+
+export type CreateControlRoleResponses = {
+    /**
+     * 已创建的控制角色
+     */
+    201: ControlRoleResponse;
+};
+
+export type CreateControlRoleResponse = CreateControlRoleResponses[keyof CreateControlRoleResponses];
+
+export type DeleteControlRoleData = {
+    body?: never;
+    path: {
+        orgId: number;
+        roleId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/control-roles/{roleId}';
+};
+
+export type DeleteControlRoleErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+};
+
+export type DeleteControlRoleError = DeleteControlRoleErrors[keyof DeleteControlRoleErrors];
+
+export type DeleteControlRoleResponses = {
+    /**
+     * 已删除
+     */
+    200: OkResponse;
+};
+
+export type DeleteControlRoleResponse = DeleteControlRoleResponses[keyof DeleteControlRoleResponses];
+
+export type UpdateControlRoleData = {
+    body: ControlRoleUpdateRequest;
+    path: {
+        orgId: number;
+        roleId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/control-roles/{roleId}';
+};
+
+export type UpdateControlRoleErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+};
+
+export type UpdateControlRoleError = UpdateControlRoleErrors[keyof UpdateControlRoleErrors];
+
+export type UpdateControlRoleResponses = {
+    /**
+     * 更新后的控制角色
+     */
+    200: ControlRoleResponse;
+};
+
+export type UpdateControlRoleResponse = UpdateControlRoleResponses[keyof UpdateControlRoleResponses];
+
+export type AssignMemberControlRoleData = {
+    body: ControlRoleAssignmentRequest;
+    path: {
+        orgId: number;
+        userId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/members/{userId}/control-role';
+};
+
+export type AssignMemberControlRoleErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type AssignMemberControlRoleError = AssignMemberControlRoleErrors[keyof AssignMemberControlRoleErrors];
+
+export type AssignMemberControlRoleResponses = {
+    /**
+     * 已分配
+     */
+    200: OkResponse;
+};
+
+export type AssignMemberControlRoleResponse = AssignMemberControlRoleResponses[keyof AssignMemberControlRoleResponses];
+
+export type ListStrategiesData = {
+    body?: never;
+    path: {
+        orgId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/strategies';
+};
+
+export type ListStrategiesErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+};
+
+export type ListStrategiesError = ListStrategiesErrors[keyof ListStrategiesErrors];
+
+export type ListStrategiesResponses = {
+    /**
+     * 策略列表
+     */
+    200: StrategyListResponse;
+};
+
+export type ListStrategiesResponse = ListStrategiesResponses[keyof ListStrategiesResponses];
+
+export type CreateStrategyData = {
+    body: StrategyCreateRequest;
+    path: {
+        orgId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/strategies';
+};
+
+export type CreateStrategyErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+};
+
+export type CreateStrategyError = CreateStrategyErrors[keyof CreateStrategyErrors];
+
+export type CreateStrategyResponses = {
+    /**
+     * 已创建的策略
+     */
+    201: StrategyResponse;
+};
+
+export type CreateStrategyResponse = CreateStrategyResponses[keyof CreateStrategyResponses];
+
+export type DeleteStrategyData = {
+    body?: never;
+    path: {
+        orgId: number;
+        strategyId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/strategies/{strategyId}';
+};
+
+export type DeleteStrategyErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type DeleteStrategyError = DeleteStrategyErrors[keyof DeleteStrategyErrors];
+
+export type DeleteStrategyResponses = {
+    /**
+     * 已删除
+     */
+    200: OkResponse;
+};
+
+export type DeleteStrategyResponse = DeleteStrategyResponses[keyof DeleteStrategyResponses];
+
+export type GetStrategyData = {
+    body?: never;
+    path: {
+        orgId: number;
+        strategyId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/strategies/{strategyId}';
+};
+
+export type GetStrategyErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type GetStrategyError = GetStrategyErrors[keyof GetStrategyErrors];
+
+export type GetStrategyResponses = {
+    /**
+     * 策略
+     */
+    200: StrategyResponse;
+};
+
+export type GetStrategyResponse = GetStrategyResponses[keyof GetStrategyResponses];
+
+export type UpdateStrategyData = {
+    body: StrategyUpdateRequest;
+    path: {
+        orgId: number;
+        strategyId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/strategies/{strategyId}';
+};
+
+export type UpdateStrategyErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+};
+
+export type UpdateStrategyError = UpdateStrategyErrors[keyof UpdateStrategyErrors];
+
+export type UpdateStrategyResponses = {
+    /**
+     * 更新后的策略
+     */
+    200: StrategyResponse;
+};
+
+export type UpdateStrategyResponse = UpdateStrategyResponses[keyof UpdateStrategyResponses];
+
+export type AssignMemberStrategyData = {
+    body: StrategyAssignmentRequest;
+    path: {
+        orgId: number;
+        userId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/members/{userId}/strategy';
+};
+
+export type AssignMemberStrategyErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type AssignMemberStrategyError = AssignMemberStrategyErrors[keyof AssignMemberStrategyErrors];
+
+export type AssignMemberStrategyResponses = {
+    /**
+     * 已分配
+     */
+    200: OkResponse;
+};
+
+export type AssignMemberStrategyResponse = AssignMemberStrategyResponses[keyof AssignMemberStrategyResponses];
+
+export type ListUserGroupsData = {
+    body?: never;
+    path: {
+        orgId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/user-groups';
+};
+
+export type ListUserGroupsErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+};
+
+export type ListUserGroupsError = ListUserGroupsErrors[keyof ListUserGroupsErrors];
+
+export type ListUserGroupsResponses = {
+    /**
+     * 用户组列表
+     */
+    200: UserGroupListResponse;
+};
+
+export type ListUserGroupsResponse = ListUserGroupsResponses[keyof ListUserGroupsResponses];
+
+export type CreateUserGroupData = {
+    body: UserGroupCreateRequest;
+    path: {
+        orgId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/user-groups';
+};
+
+export type CreateUserGroupErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+};
+
+export type CreateUserGroupError = CreateUserGroupErrors[keyof CreateUserGroupErrors];
+
+export type CreateUserGroupResponses = {
+    /**
+     * 已创建的用户组
+     */
+    201: UserGroupResponse;
+};
+
+export type CreateUserGroupResponse = CreateUserGroupResponses[keyof CreateUserGroupResponses];
+
+export type DeleteUserGroupData = {
+    body?: never;
+    path: {
+        orgId: number;
+        groupId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/user-groups/{groupId}';
+};
+
+export type DeleteUserGroupErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+};
+
+export type DeleteUserGroupError = DeleteUserGroupErrors[keyof DeleteUserGroupErrors];
+
+export type DeleteUserGroupResponses = {
+    /**
+     * 已删除，返回级联删除的规则数
+     */
+    200: UserGroupDeleteResponse;
+};
+
+export type DeleteUserGroupResponse = DeleteUserGroupResponses[keyof DeleteUserGroupResponses];
+
+export type RenameUserGroupData = {
+    body: UserGroupRenameRequest;
+    path: {
+        orgId: number;
+        groupId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/user-groups/{groupId}';
+};
+
+export type RenameUserGroupErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+};
+
+export type RenameUserGroupError = RenameUserGroupErrors[keyof RenameUserGroupErrors];
+
+export type RenameUserGroupResponses = {
+    /**
+     * 重命名后的用户组
+     */
+    200: UserGroupResponse;
+};
+
+export type RenameUserGroupResponse = RenameUserGroupResponses[keyof RenameUserGroupResponses];
+
+export type ReplaceUserGroupMembersData = {
+    body: UserGroupMembersRequest;
+    path: {
+        orgId: number;
+        groupId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/user-groups/{groupId}/members';
+};
+
+export type ReplaceUserGroupMembersErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+};
+
+export type ReplaceUserGroupMembersError = ReplaceUserGroupMembersErrors[keyof ReplaceUserGroupMembersErrors];
+
+export type ReplaceUserGroupMembersResponses = {
+    /**
+     * 已替换，返回新增与移除数量
+     */
+    200: UserGroupMembersResponse;
+};
+
+export type ReplaceUserGroupMembersResponse = ReplaceUserGroupMembersResponses[keyof ReplaceUserGroupMembersResponses];
+
+export type ListDeviceGroupsData = {
+    body?: never;
+    path: {
+        orgId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/device-groups';
+};
+
+export type ListDeviceGroupsErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+};
+
+export type ListDeviceGroupsError = ListDeviceGroupsErrors[keyof ListDeviceGroupsErrors];
+
+export type ListDeviceGroupsResponses = {
+    /**
+     * 设备组列表
+     */
+    200: DeviceGroupListResponse;
+};
+
+export type ListDeviceGroupsResponse = ListDeviceGroupsResponses[keyof ListDeviceGroupsResponses];
+
+export type CreateDeviceGroupData = {
+    body: DeviceGroupCreateRequest;
+    path: {
+        orgId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/device-groups';
+};
+
+export type CreateDeviceGroupErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+};
+
+export type CreateDeviceGroupError = CreateDeviceGroupErrors[keyof CreateDeviceGroupErrors];
+
+export type CreateDeviceGroupResponses = {
+    /**
+     * 已创建的设备组
+     */
+    201: DeviceGroupResponse;
+};
+
+export type CreateDeviceGroupResponse = CreateDeviceGroupResponses[keyof CreateDeviceGroupResponses];
+
+export type DeleteDeviceGroupData = {
+    body?: never;
+    path: {
+        orgId: number;
+        deviceGroupId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/device-groups/{deviceGroupId}';
+};
+
+export type DeleteDeviceGroupErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+};
+
+export type DeleteDeviceGroupError = DeleteDeviceGroupErrors[keyof DeleteDeviceGroupErrors];
+
+export type DeleteDeviceGroupResponses = {
+    /**
+     * 已删除，返回级联规则数与解除分组的设备数
+     */
+    200: DeviceGroupDeleteResponse;
+};
+
+export type DeleteDeviceGroupResponse = DeleteDeviceGroupResponses[keyof DeleteDeviceGroupResponses];
+
+export type RenameDeviceGroupData = {
+    body: DeviceGroupRenameRequest;
+    path: {
+        orgId: number;
+        deviceGroupId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/device-groups/{deviceGroupId}';
+};
+
+export type RenameDeviceGroupErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+};
+
+export type RenameDeviceGroupError = RenameDeviceGroupErrors[keyof RenameDeviceGroupErrors];
+
+export type RenameDeviceGroupResponses = {
+    /**
+     * 重命名后的设备组
+     */
+    200: DeviceGroupResponse;
+};
+
+export type RenameDeviceGroupResponse = RenameDeviceGroupResponses[keyof RenameDeviceGroupResponses];
+
+export type AssignDeviceGroupStrategyData = {
+    body: StrategyAssignmentRequest;
+    path: {
+        orgId: number;
+        deviceGroupId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/device-groups/{deviceGroupId}/strategy';
+};
+
+export type AssignDeviceGroupStrategyErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type AssignDeviceGroupStrategyError = AssignDeviceGroupStrategyErrors[keyof AssignDeviceGroupStrategyErrors];
+
+export type AssignDeviceGroupStrategyResponses = {
+    /**
+     * 已分配
+     */
+    200: OkResponse;
+};
+
+export type AssignDeviceGroupStrategyResponse = AssignDeviceGroupStrategyResponses[keyof AssignDeviceGroupStrategyResponses];
+
+export type ReplaceDeviceGroupDevicesData = {
+    body: DeviceGroupDevicesRequest;
+    path: {
+        orgId: number;
+        deviceGroupId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/device-groups/{deviceGroupId}/devices';
+};
+
+export type ReplaceDeviceGroupDevicesErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+};
+
+export type ReplaceDeviceGroupDevicesError = ReplaceDeviceGroupDevicesErrors[keyof ReplaceDeviceGroupDevicesErrors];
+
+export type ReplaceDeviceGroupDevicesResponses = {
+    /**
+     * 已替换，返回新增与移除数量
+     */
+    200: DeviceGroupDevicesResponse;
+};
+
+export type ReplaceDeviceGroupDevicesResponse = ReplaceDeviceGroupDevicesResponses[keyof ReplaceDeviceGroupDevicesResponses];
+
+export type ListAccessRulesData = {
+    body?: never;
+    path: {
+        orgId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/access-rules';
+};
+
+export type ListAccessRulesErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 服务端错误（如邀请邮件投递失败）
+     */
+    500: ErrorResponse;
+};
+
+export type ListAccessRulesError = ListAccessRulesErrors[keyof ListAccessRulesErrors];
+
+export type ListAccessRulesResponses = {
+    /**
+     * 访问规则列表
+     */
+    200: AccessRuleListResponse;
+};
+
+export type ListAccessRulesResponse = ListAccessRulesResponses[keyof ListAccessRulesResponses];
+
+export type CreateAccessRuleData = {
+    body: AccessRuleCreateRequest;
+    path: {
+        orgId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/access-rules';
+};
+
+export type CreateAccessRuleErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+    /**
+     * 服务端错误（如邀请邮件投递失败）
+     */
+    500: ErrorResponse;
+};
+
+export type CreateAccessRuleError = CreateAccessRuleErrors[keyof CreateAccessRuleErrors];
+
+export type CreateAccessRuleResponses = {
+    /**
+     * 已创建的规则
+     */
+    201: AccessRuleResponse;
+};
+
+export type CreateAccessRuleResponse = CreateAccessRuleResponses[keyof CreateAccessRuleResponses];
+
+export type DeleteAccessRuleData = {
+    body?: never;
+    path: {
+        orgId: number;
+        ruleId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/access-rules/{ruleId}';
+};
+
+export type DeleteAccessRuleErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 服务端错误（如邀请邮件投递失败）
+     */
+    500: ErrorResponse;
+};
+
+export type DeleteAccessRuleError = DeleteAccessRuleErrors[keyof DeleteAccessRuleErrors];
+
+export type DeleteAccessRuleResponses = {
+    /**
+     * 已删除
+     */
+    200: OkResponse;
+};
+
+export type DeleteAccessRuleResponse = DeleteAccessRuleResponses[keyof DeleteAccessRuleResponses];
+
+export type ListAuditLogsData = {
+    body?: never;
+    path: {
+        orgId: number;
+    };
+    query?: {
+        action?: string;
+        actorUserId?: number;
+        targetType?: string;
+        targetId?: string;
+        /**
+         * 含下界（UTC）
+         */
+        from?: string;
+        /**
+         * 不含上界（UTC）
+         */
+        to?: string;
+        page?: number;
+        pageSize?: number;
+    };
+    url: '/api/v1/orgs/{orgId}/audit-logs';
+};
+
+export type ListAuditLogsErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+};
+
+export type ListAuditLogsError = ListAuditLogsErrors[keyof ListAuditLogsErrors];
+
+export type ListAuditLogsResponses = {
+    /**
+     * 审计记录页
+     */
+    200: AuditLogListResponse;
+};
+
+export type ListAuditLogsResponse = ListAuditLogsResponses[keyof ListAuditLogsResponses];
+
+export type ExportAuditLogsData = {
+    body?: never;
+    path: {
+        orgId: number;
+    };
+    query?: {
+        action?: string;
+        actorUserId?: number;
+        targetType?: string;
+        targetId?: string;
+        from?: string;
+        to?: string;
+    };
+    url: '/api/v1/orgs/{orgId}/audit-logs/export';
+};
+
+export type ExportAuditLogsErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+};
+
+export type ExportAuditLogsError = ExportAuditLogsErrors[keyof ExportAuditLogsErrors];
+
+export type ExportAuditLogsResponses = {
+    /**
+     * CSV 文件
+     */
+    200: string;
+};
+
+export type ExportAuditLogsResponse = ExportAuditLogsResponses[keyof ExportAuditLogsResponses];
+
+export type ListConnectionLogsData = {
+    body?: never;
+    path: {
+        orgId: number;
+    };
+    query?: {
+        deviceId?: number;
+        rustdeskId?: string;
+        /**
+         * 含下界（UTC），比较 `started_at`
+         */
+        from?: string;
+        /**
+         * 含上界（UTC），比较 `started_at`
+         */
+        to?: string;
+        page?: number;
+        pageSize?: number;
+    };
+    url: '/api/v1/orgs/{orgId}/connection-logs';
+};
+
+export type ListConnectionLogsErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+};
+
+export type ListConnectionLogsError = ListConnectionLogsErrors[keyof ListConnectionLogsErrors];
+
+export type ListConnectionLogsResponses = {
+    /**
+     * 连接日志页
+     */
+    200: ConnectionLogListResponse;
+};
+
+export type ListConnectionLogsResponse = ListConnectionLogsResponses[keyof ListConnectionLogsResponses];
+
+export type ExportConnectionLogsData = {
+    body?: never;
+    path: {
+        orgId: number;
+    };
+    query?: {
+        deviceId?: number;
+        rustdeskId?: string;
+        from?: string;
+        to?: string;
+    };
+    url: '/api/v1/orgs/{orgId}/connection-logs/export';
+};
+
+export type ExportConnectionLogsErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+};
+
+export type ExportConnectionLogsError = ExportConnectionLogsErrors[keyof ExportConnectionLogsErrors];
+
+export type ExportConnectionLogsResponses = {
+    /**
+     * CSV 文件
+     */
+    200: string;
+};
+
+export type ExportConnectionLogsResponse = ExportConnectionLogsResponses[keyof ExportConnectionLogsResponses];
+
+export type ListFileLogsData = {
+    body?: never;
+    path: {
+        orgId: number;
+    };
+    query?: {
+        deviceId?: number;
+        rustdeskId?: string;
+        /**
+         * 含下界（UTC），比较 `created_at`
+         */
+        from?: string;
+        /**
+         * 含上界（UTC），比较 `created_at`
+         */
+        to?: string;
+        page?: number;
+        pageSize?: number;
+    };
+    url: '/api/v1/orgs/{orgId}/file-logs';
+};
+
+export type ListFileLogsErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+};
+
+export type ListFileLogsError = ListFileLogsErrors[keyof ListFileLogsErrors];
+
+export type ListFileLogsResponses = {
+    /**
+     * 文件日志页
+     */
+    200: FileLogListResponse;
+};
+
+export type ListFileLogsResponse = ListFileLogsResponses[keyof ListFileLogsResponses];
+
+export type ExportFileLogsData = {
+    body?: never;
+    path: {
+        orgId: number;
+    };
+    query?: {
+        deviceId?: number;
+        rustdeskId?: string;
+        from?: string;
+        to?: string;
+    };
+    url: '/api/v1/orgs/{orgId}/file-logs/export';
+};
+
+export type ExportFileLogsErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+};
+
+export type ExportFileLogsError = ExportFileLogsErrors[keyof ExportFileLogsErrors];
+
+export type ExportFileLogsResponses = {
+    /**
+     * CSV 文件
+     */
+    200: string;
+};
+
+export type ExportFileLogsResponse = ExportFileLogsResponses[keyof ExportFileLogsResponses];
+
+export type GetAuditRetentionData = {
+    body?: never;
+    path: {
+        orgId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/audit-retention';
+};
+
+export type GetAuditRetentionErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type GetAuditRetentionError = GetAuditRetentionErrors[keyof GetAuditRetentionErrors];
+
+export type GetAuditRetentionResponses = {
+    /**
+     * 保留期
+     */
+    200: AuditRetentionResponse;
+};
+
+export type GetAuditRetentionResponse = GetAuditRetentionResponses[keyof GetAuditRetentionResponses];
+
+export type SetAuditRetentionData = {
+    body: AuditRetentionRequest;
+    path: {
+        orgId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/audit-retention';
+};
+
+export type SetAuditRetentionErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type SetAuditRetentionError = SetAuditRetentionErrors[keyof SetAuditRetentionErrors];
+
+export type SetAuditRetentionResponses = {
+    /**
+     * 更新后的保留期
+     */
+    200: AuditRetentionResponse;
+};
+
+export type SetAuditRetentionResponse = SetAuditRetentionResponses[keyof SetAuditRetentionResponses];
+
+export type GetProvisioningData = {
+    body?: never;
+    path: {
+        orgId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/provisioning';
+};
+
+export type GetProvisioningErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 服务端错误（如邀请邮件投递失败）
+     */
+    500: ErrorResponse;
+};
+
+export type GetProvisioningError = GetProvisioningErrors[keyof GetProvisioningErrors];
+
+export type GetProvisioningResponses = {
+    /**
+     * 当前状态
+     */
+    200: ProvisioningResponse;
+};
+
+export type GetProvisioningResponse = GetProvisioningResponses[keyof GetProvisioningResponses];
+
+export type UpdateProvisioningData = {
+    body: ProvisioningUpdateRequest;
+    path: {
+        orgId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/provisioning';
+};
+
+export type UpdateProvisioningErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 服务端错误（如邀请邮件投递失败）
+     */
+    500: ErrorResponse;
+};
+
+export type UpdateProvisioningError = UpdateProvisioningErrors[keyof UpdateProvisioningErrors];
+
+export type UpdateProvisioningResponses = {
+    /**
+     * 更新后的状态
+     */
+    200: ProvisioningResponse;
+};
+
+export type UpdateProvisioningResponse = UpdateProvisioningResponses[keyof UpdateProvisioningResponses];
+
 export type CreateInvitationData = {
     body: InvitationCreateRequest;
     path: {
@@ -333,6 +5202,10 @@ export type CreateInvitationErrors = {
      * 资源不存在
      */
     404: ErrorResponse;
+    /**
+     * 服务端错误（如邀请邮件投递失败）
+     */
+    500: ErrorResponse;
 };
 
 export type CreateInvitationError = CreateInvitationErrors[keyof CreateInvitationErrors];
@@ -362,6 +5235,10 @@ export type AcceptInvitationErrors = {
      * 状态冲突（重复、过期或已使用）
      */
     409: ErrorResponse;
+    /**
+     * 验证码提供商不可用（仅启用验证码且 failMode=closed 时）
+     */
+    503: ErrorResponse;
 };
 
 export type AcceptInvitationError = AcceptInvitationErrors[keyof AcceptInvitationErrors];
@@ -374,6 +5251,52 @@ export type AcceptInvitationResponses = {
 };
 
 export type AcceptInvitationResponse = AcceptInvitationResponses[keyof AcceptInvitationResponses];
+
+export type ListDevicesData = {
+    body?: never;
+    path: {
+        orgId: number;
+    };
+    query?: {
+        /**
+         * 按名称或 rustdesk_id 大小写不敏感子串匹配
+         */
+        q?: string;
+        /**
+         * 是否已绑定客户端
+         */
+        bound?: boolean;
+        page?: number;
+        pageSize?: number;
+    };
+    url: '/api/v1/orgs/{orgId}/devices';
+};
+
+export type ListDevicesErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+};
+
+export type ListDevicesError = ListDevicesErrors[keyof ListDevicesErrors];
+
+export type ListDevicesResponses = {
+    /**
+     * 设备列表
+     */
+    200: DeviceListResponse;
+};
+
+export type ListDevicesResponse = ListDevicesResponses[keyof ListDevicesResponses];
 
 export type CreateDeviceData = {
     body: DeviceCreateRequest;
@@ -414,6 +5337,638 @@ export type CreateDeviceResponses = {
 
 export type CreateDeviceResponse = CreateDeviceResponses[keyof CreateDeviceResponses];
 
+export type ListAddressBooksData = {
+    body?: never;
+    path: {
+        orgId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/address-books';
+};
+
+export type ListAddressBooksErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type ListAddressBooksError = ListAddressBooksErrors[keyof ListAddressBooksErrors];
+
+export type ListAddressBooksResponses = {
+    /**
+     * 地址簿列表
+     */
+    200: AddressBookListResponse;
+};
+
+export type ListAddressBooksResponse = ListAddressBooksResponses[keyof ListAddressBooksResponses];
+
+export type CreateAddressBookData = {
+    body: AddressBookCreateRequest;
+    path: {
+        orgId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/address-books';
+};
+
+export type CreateAddressBookErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+};
+
+export type CreateAddressBookError = CreateAddressBookErrors[keyof CreateAddressBookErrors];
+
+export type CreateAddressBookResponses = {
+    /**
+     * 已创建
+     */
+    201: AddressBookResponse;
+};
+
+export type CreateAddressBookResponse = CreateAddressBookResponses[keyof CreateAddressBookResponses];
+
+export type DeleteAddressBookData = {
+    body?: never;
+    path: {
+        orgId: number;
+        bookId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/address-books/{bookId}';
+};
+
+export type DeleteAddressBookErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type DeleteAddressBookError = DeleteAddressBookErrors[keyof DeleteAddressBookErrors];
+
+export type DeleteAddressBookResponses = {
+    /**
+     * 已删除
+     */
+    200: AddressBookResponse;
+};
+
+export type DeleteAddressBookResponse = DeleteAddressBookResponses[keyof DeleteAddressBookResponses];
+
+export type GetAddressBookData = {
+    body?: never;
+    path: {
+        orgId: number;
+        bookId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/address-books/{bookId}';
+};
+
+export type GetAddressBookErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type GetAddressBookError = GetAddressBookErrors[keyof GetAddressBookErrors];
+
+export type GetAddressBookResponses = {
+    /**
+     * 地址簿详情
+     */
+    200: AddressBookResponse;
+};
+
+export type GetAddressBookResponse = GetAddressBookResponses[keyof GetAddressBookResponses];
+
+export type UpdateAddressBookData = {
+    body: AddressBookUpdateRequest;
+    path: {
+        orgId: number;
+        bookId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/address-books/{bookId}';
+};
+
+export type UpdateAddressBookErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type UpdateAddressBookError = UpdateAddressBookErrors[keyof UpdateAddressBookErrors];
+
+export type UpdateAddressBookResponses = {
+    /**
+     * 已更新
+     */
+    200: AddressBookResponse;
+};
+
+export type UpdateAddressBookResponse = UpdateAddressBookResponses[keyof UpdateAddressBookResponses];
+
+export type ReplaceAddressBookPeersData = {
+    body: AddressBookPeersReplaceRequest;
+    path: {
+        orgId: number;
+        bookId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/address-books/{bookId}/peers';
+};
+
+export type ReplaceAddressBookPeersErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type ReplaceAddressBookPeersError = ReplaceAddressBookPeersErrors[keyof ReplaceAddressBookPeersErrors];
+
+export type ReplaceAddressBookPeersResponses = {
+    /**
+     * 已替换
+     */
+    200: AddressBookResponse;
+};
+
+export type ReplaceAddressBookPeersResponse = ReplaceAddressBookPeersResponses[keyof ReplaceAddressBookPeersResponses];
+
+export type ListAddressBookGrantsData = {
+    body?: never;
+    path: {
+        orgId: number;
+        bookId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/address-books/{bookId}/grants';
+};
+
+export type ListAddressBookGrantsErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type ListAddressBookGrantsError = ListAddressBookGrantsErrors[keyof ListAddressBookGrantsErrors];
+
+export type ListAddressBookGrantsResponses = {
+    /**
+     * 授权列表
+     */
+    200: AddressBookGrantListResponse;
+};
+
+export type ListAddressBookGrantsResponse = ListAddressBookGrantsResponses[keyof ListAddressBookGrantsResponses];
+
+export type CreateAddressBookGrantData = {
+    body: AddressBookGrantRequest;
+    path: {
+        orgId: number;
+        bookId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/address-books/{bookId}/grants';
+};
+
+export type CreateAddressBookGrantErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type CreateAddressBookGrantError = CreateAddressBookGrantErrors[keyof CreateAddressBookGrantErrors];
+
+export type CreateAddressBookGrantResponses = {
+    /**
+     * 已更新授权
+     */
+    200: AddressBookGrantResponse;
+    /**
+     * 已创建授权
+     */
+    201: AddressBookGrantResponse;
+};
+
+export type CreateAddressBookGrantResponse = CreateAddressBookGrantResponses[keyof CreateAddressBookGrantResponses];
+
+export type DeleteAddressBookGrantData = {
+    body?: never;
+    path: {
+        orgId: number;
+        bookId: number;
+        grantId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/address-books/{bookId}/grants/{grantId}';
+};
+
+export type DeleteAddressBookGrantErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type DeleteAddressBookGrantError = DeleteAddressBookGrantErrors[keyof DeleteAddressBookGrantErrors];
+
+export type DeleteAddressBookGrantResponses = {
+    /**
+     * 已撤销
+     */
+    200: OkResponse;
+};
+
+export type DeleteAddressBookGrantResponse = DeleteAddressBookGrantResponses[keyof DeleteAddressBookGrantResponses];
+
+export type DeleteAddressBookPeerData = {
+    body?: never;
+    path: {
+        orgId: number;
+        bookId: number;
+        peerId: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/address-books/{bookId}/peers/{peerId}';
+};
+
+export type DeleteAddressBookPeerErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type DeleteAddressBookPeerError = DeleteAddressBookPeerErrors[keyof DeleteAddressBookPeerErrors];
+
+export type DeleteAddressBookPeerResponses = {
+    /**
+     * 已进入回收站
+     */
+    200: OkResponse;
+};
+
+export type DeleteAddressBookPeerResponse = DeleteAddressBookPeerResponses[keyof DeleteAddressBookPeerResponses];
+
+export type ListAddressBookRecycleBinData = {
+    body?: never;
+    path: {
+        orgId: number;
+        bookId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/address-books/{bookId}/recycle-bin';
+};
+
+export type ListAddressBookRecycleBinErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type ListAddressBookRecycleBinError = ListAddressBookRecycleBinErrors[keyof ListAddressBookRecycleBinErrors];
+
+export type ListAddressBookRecycleBinResponses = {
+    /**
+     * 回收站条目
+     */
+    200: AddressBookRecycleBinResponse;
+};
+
+export type ListAddressBookRecycleBinResponse = ListAddressBookRecycleBinResponses[keyof ListAddressBookRecycleBinResponses];
+
+export type RestoreAddressBookPeerData = {
+    body?: never;
+    path: {
+        orgId: number;
+        bookId: number;
+        peerId: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/address-books/{bookId}/recycle-bin/{peerId}/restore';
+};
+
+export type RestoreAddressBookPeerErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type RestoreAddressBookPeerError = RestoreAddressBookPeerErrors[keyof RestoreAddressBookPeerErrors];
+
+export type RestoreAddressBookPeerResponses = {
+    /**
+     * 已恢复
+     */
+    200: OkResponse;
+};
+
+export type RestoreAddressBookPeerResponse = RestoreAddressBookPeerResponses[keyof RestoreAddressBookPeerResponses];
+
+export type PurgeAddressBookPeerData = {
+    body?: never;
+    path: {
+        orgId: number;
+        bookId: number;
+        peerId: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/address-books/{bookId}/recycle-bin/{peerId}';
+};
+
+export type PurgeAddressBookPeerErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type PurgeAddressBookPeerError = PurgeAddressBookPeerErrors[keyof PurgeAddressBookPeerErrors];
+
+export type PurgeAddressBookPeerResponses = {
+    /**
+     * 已永久删除
+     */
+    200: OkResponse;
+};
+
+export type PurgeAddressBookPeerResponse = PurgeAddressBookPeerResponses[keyof PurgeAddressBookPeerResponses];
+
+export type ReplaceAddressBookTagsData = {
+    body: AddressBookTagsReplaceRequest;
+    path: {
+        orgId: number;
+        bookId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/address-books/{bookId}/tags';
+};
+
+export type ReplaceAddressBookTagsErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type ReplaceAddressBookTagsError = ReplaceAddressBookTagsErrors[keyof ReplaceAddressBookTagsErrors];
+
+export type ReplaceAddressBookTagsResponses = {
+    /**
+     * 已替换
+     */
+    200: AddressBookResponse;
+};
+
+export type ReplaceAddressBookTagsResponse = ReplaceAddressBookTagsResponses[keyof ReplaceAddressBookTagsResponses];
+
+export type ListLogEventsData = {
+    body?: never;
+    path: {
+        orgId: number;
+    };
+    query?: {
+        deviceId?: number;
+        level?: 'info' | 'warn' | 'error';
+        since?: string;
+        limit?: number;
+    };
+    url: '/api/v1/orgs/{orgId}/log-events';
+};
+
+export type ListLogEventsErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type ListLogEventsError = ListLogEventsErrors[keyof ListLogEventsErrors];
+
+export type ListLogEventsResponses = {
+    /**
+     * 日志事件列表
+     */
+    200: LogEventListResponse;
+};
+
+export type ListLogEventsResponse = ListLogEventsResponses[keyof ListLogEventsResponses];
+
+export type VerifyEmailData = {
+    body: EmailVerificationRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/verify-email';
+};
+
+export type VerifyEmailErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+};
+
+export type VerifyEmailError = VerifyEmailErrors[keyof VerifyEmailErrors];
+
+export type VerifyEmailResponses = {
+    /**
+     * 验证成功
+     */
+    200: OkResponse;
+};
+
+export type VerifyEmailResponse = VerifyEmailResponses[keyof VerifyEmailResponses];
+
+export type ResendVerificationData = {
+    body: ResendVerificationRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/resend-verification';
+};
+
+export type ResendVerificationErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 触发限流
+     */
+    429: ErrorResponse;
+};
+
+export type ResendVerificationError = ResendVerificationErrors[keyof ResendVerificationErrors];
+
+export type ResendVerificationResponses = {
+    /**
+     * 请求已受理
+     */
+    200: OkResponse;
+};
+
+export type ResendVerificationResponse = ResendVerificationResponses[keyof ResendVerificationResponses];
+
 export type DeviceHeartbeatData = {
     body?: never;
     path: {
@@ -437,6 +5992,10 @@ export type DeviceHeartbeatErrors = {
      * 资源不存在
      */
     404: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
 };
 
 export type DeviceHeartbeatError = DeviceHeartbeatErrors[keyof DeviceHeartbeatErrors];
@@ -449,3 +6008,1360 @@ export type DeviceHeartbeatResponses = {
 };
 
 export type DeviceHeartbeatResponse = DeviceHeartbeatResponses[keyof DeviceHeartbeatResponses];
+
+export type ResetDeviceBindingData = {
+    body: DeviceRebindRequest;
+    path: {
+        orgId: number;
+        deviceId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/devices/{deviceId}/rebind';
+};
+
+export type ResetDeviceBindingErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type ResetDeviceBindingError = ResetDeviceBindingErrors[keyof ResetDeviceBindingErrors];
+
+export type ResetDeviceBindingResponses = {
+    /**
+     * 重置后的设备（`bound=false`）
+     */
+    200: DeviceResponse;
+};
+
+export type ResetDeviceBindingResponse = ResetDeviceBindingResponses[keyof ResetDeviceBindingResponses];
+
+export type RequestDeviceDisconnectData = {
+    body: DeviceDisconnectRequest;
+    path: {
+        orgId: number;
+        deviceId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/devices/{deviceId}/disconnect';
+};
+
+export type RequestDeviceDisconnectErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+};
+
+export type RequestDeviceDisconnectError = RequestDeviceDisconnectErrors[keyof RequestDeviceDisconnectErrors];
+
+export type RequestDeviceDisconnectResponses = {
+    /**
+     * 已记录的断连请求
+     */
+    201: DeviceDisconnectResponse;
+};
+
+export type RequestDeviceDisconnectResponse = RequestDeviceDisconnectResponses[keyof RequestDeviceDisconnectResponses];
+
+export type AssignDeviceStrategyData = {
+    body: StrategyAssignmentRequest;
+    path: {
+        orgId: number;
+        deviceId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/devices/{deviceId}/strategy';
+};
+
+export type AssignDeviceStrategyErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type AssignDeviceStrategyError = AssignDeviceStrategyErrors[keyof AssignDeviceStrategyErrors];
+
+export type AssignDeviceStrategyResponses = {
+    /**
+     * 已分配
+     */
+    200: OkResponse;
+};
+
+export type AssignDeviceStrategyResponse = AssignDeviceStrategyResponses[keyof AssignDeviceStrategyResponses];
+
+export type UpdateDeviceData = {
+    body: DeviceUpdateRequest;
+    path: {
+        orgId: number;
+        deviceId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/devices/{deviceId}';
+};
+
+export type UpdateDeviceErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type UpdateDeviceError = UpdateDeviceErrors[keyof UpdateDeviceErrors];
+
+export type UpdateDeviceResponses = {
+    /**
+     * 更新后的设备
+     */
+    200: DeviceResponse;
+};
+
+export type UpdateDeviceResponse = UpdateDeviceResponses[keyof UpdateDeviceResponses];
+
+export type ListSessionsData = {
+    body?: never;
+    path: {
+        orgId: number;
+    };
+    query?: {
+        origin?: SessionOrigin;
+        status?: SessionStatus;
+        deviceId?: number;
+        /**
+         * 起始时间（含），按 `started_at` 过滤
+         */
+        since?: string;
+        /**
+         * 结束时间（含），按 `started_at` 过滤
+         */
+        until?: string;
+        page?: number;
+        pageSize?: number;
+    };
+    url: '/api/v1/orgs/{orgId}/sessions';
+};
+
+export type ListSessionsErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type ListSessionsError = ListSessionsErrors[keyof ListSessionsErrors];
+
+export type ListSessionsResponses = {
+    /**
+     * 会话列表
+     */
+    200: SessionListResponse;
+};
+
+export type ListSessionsResponse = ListSessionsResponses[keyof ListSessionsResponses];
+
+export type GetSessionData = {
+    body?: never;
+    path: {
+        orgId: number;
+        sessionId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/sessions/{sessionId}';
+};
+
+export type GetSessionErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type GetSessionError = GetSessionErrors[keyof GetSessionErrors];
+
+export type GetSessionResponses = {
+    /**
+     * 会话详情
+     */
+    200: SessionDetailResponse;
+};
+
+export type GetSessionResponse = GetSessionResponses[keyof GetSessionResponses];
+
+export type ListPoliciesData = {
+    body?: never;
+    path: {
+        orgId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/policies';
+};
+
+export type ListPoliciesErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type ListPoliciesError = ListPoliciesErrors[keyof ListPoliciesErrors];
+
+export type ListPoliciesResponses = {
+    /**
+     * 策略列表
+     */
+    200: PolicyListResponse;
+};
+
+export type ListPoliciesResponse = ListPoliciesResponses[keyof ListPoliciesResponses];
+
+export type CreatePolicyData = {
+    body: PolicyRequest;
+    path: {
+        orgId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/policies';
+};
+
+export type CreatePolicyErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+};
+
+export type CreatePolicyError = CreatePolicyErrors[keyof CreatePolicyErrors];
+
+export type CreatePolicyResponses = {
+    /**
+     * 已创建
+     */
+    201: PolicyResponse;
+};
+
+export type CreatePolicyResponse = CreatePolicyResponses[keyof CreatePolicyResponses];
+
+export type DeletePolicyData = {
+    body?: never;
+    path: {
+        orgId: number;
+        policyId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/policies/{policyId}';
+};
+
+export type DeletePolicyErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type DeletePolicyError = DeletePolicyErrors[keyof DeletePolicyErrors];
+
+export type DeletePolicyResponses = {
+    /**
+     * 已删除
+     */
+    200: OkResponse;
+};
+
+export type DeletePolicyResponse = DeletePolicyResponses[keyof DeletePolicyResponses];
+
+export type UpdatePolicyData = {
+    body: PolicyRequest;
+    path: {
+        orgId: number;
+        policyId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/policies/{policyId}';
+};
+
+export type UpdatePolicyErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+};
+
+export type UpdatePolicyError = UpdatePolicyErrors[keyof UpdatePolicyErrors];
+
+export type UpdatePolicyResponses = {
+    /**
+     * 已更新
+     */
+    200: PolicyResponse;
+};
+
+export type UpdatePolicyResponse = UpdatePolicyResponses[keyof UpdatePolicyResponses];
+
+export type ListApprovalsData = {
+    body?: never;
+    path: {
+        orgId: number;
+    };
+    query?: {
+        status?: ApprovalStatus;
+        deviceId?: number;
+        page?: number;
+        pageSize?: number;
+    };
+    url: '/api/v1/orgs/{orgId}/approvals';
+};
+
+export type ListApprovalsErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type ListApprovalsError = ListApprovalsErrors[keyof ListApprovalsErrors];
+
+export type ListApprovalsResponses = {
+    /**
+     * 审批请求列表
+     */
+    200: ApprovalListResponse;
+};
+
+export type ListApprovalsResponse = ListApprovalsResponses[keyof ListApprovalsResponses];
+
+export type CreateApprovalData = {
+    body: ApprovalCreateRequest;
+    path: {
+        orgId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/approvals';
+};
+
+export type CreateApprovalErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type CreateApprovalError = CreateApprovalErrors[keyof CreateApprovalErrors];
+
+export type CreateApprovalResponses = {
+    /**
+     * 复用既有待审批请求
+     */
+    200: ApprovalResponse;
+    /**
+     * 已创建待审批请求
+     */
+    201: ApprovalResponse;
+};
+
+export type CreateApprovalResponse = CreateApprovalResponses[keyof CreateApprovalResponses];
+
+export type DecideApprovalData = {
+    body: ApprovalDecisionRequest;
+    path: {
+        orgId: number;
+        approvalId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/approvals/{approvalId}/decision';
+};
+
+export type DecideApprovalErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+};
+
+export type DecideApprovalError = DecideApprovalErrors[keyof DecideApprovalErrors];
+
+export type DecideApprovalResponses = {
+    /**
+     * 决策结果
+     */
+    200: ApprovalResponse;
+};
+
+export type DecideApprovalResponse = DecideApprovalResponses[keyof DecideApprovalResponses];
+
+export type IssueTicketData = {
+    body: TicketCreateRequest;
+    path: {
+        orgId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/tickets';
+};
+
+export type IssueTicketErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 策略阻断：`approval_required`（需事前审批，`data.approval_id` 为待审批
+     * 请求）或 `conflict`（时段外等约束不满足）
+     *
+     */
+    409: ErrorResponse;
+};
+
+export type IssueTicketError = IssueTicketErrors[keyof IssueTicketErrors];
+
+export type IssueTicketResponses = {
+    /**
+     * 已签发
+     */
+    201: IssuedTicketResponse;
+};
+
+export type IssueTicketResponse = IssueTicketResponses[keyof IssueTicketResponses];
+
+export type ListAlertsData = {
+    body?: never;
+    path: {
+        orgId: number;
+    };
+    query?: {
+        severity?: AlertSeverity;
+        /**
+         * 告警类型（自由字符串，见 Alert.kind 的已知取值）
+         */
+        kind?: string;
+        since?: string;
+        page?: number;
+        pageSize?: number;
+    };
+    url: '/api/v1/orgs/{orgId}/alerts';
+};
+
+export type ListAlertsErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type ListAlertsError = ListAlertsErrors[keyof ListAlertsErrors];
+
+export type ListAlertsResponses = {
+    /**
+     * 告警列表
+     */
+    200: AlertListResponse;
+};
+
+export type ListAlertsResponse = ListAlertsResponses[keyof ListAlertsResponses];
+
+export type GetApprovalData = {
+    body?: never;
+    path: {
+        orgId: number;
+        approvalId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/approvals/{approvalId}';
+};
+
+export type GetApprovalErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type GetApprovalError = GetApprovalErrors[keyof GetApprovalErrors];
+
+export type GetApprovalResponses = {
+    /**
+     * 审批请求
+     */
+    200: ApprovalResponse;
+};
+
+export type GetApprovalResponse = GetApprovalResponses[keyof GetApprovalResponses];
+
+export type GetTicketData = {
+    body?: never;
+    path: {
+        orgId: number;
+        ticketId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/tickets/{ticketId}';
+};
+
+export type GetTicketErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type GetTicketError = GetTicketErrors[keyof GetTicketErrors];
+
+export type GetTicketResponses = {
+    /**
+     * 票据
+     */
+    200: TicketResponse;
+};
+
+export type GetTicketResponse = GetTicketResponses[keyof GetTicketResponses];
+
+export type RedeemTicketData = {
+    body: TicketRedeemRequest;
+    path: {
+        orgId: number;
+        ticketId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/tickets/{ticketId}/redeem';
+};
+
+export type RedeemTicketErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 票据已兑换、已过期、已撤销、token 不匹配，或并发/时段约束不满足
+     * （统一 `conflict`，message 说明具体原因）
+     *
+     */
+    409: ErrorResponse;
+};
+
+export type RedeemTicketError = RedeemTicketErrors[keyof RedeemTicketErrors];
+
+export type RedeemTicketResponses = {
+    /**
+     * 已兑换，返回新建的会话
+     */
+    201: SessionResponse;
+};
+
+export type RedeemTicketResponse = RedeemTicketResponses[keyof RedeemTicketResponses];
+
+export type GetClientBuildCapabilitiesData = {
+    body?: never;
+    path: {
+        orgId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/client-build/capabilities';
+};
+
+export type GetClientBuildCapabilitiesErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+};
+
+export type GetClientBuildCapabilitiesError = GetClientBuildCapabilitiesErrors[keyof GetClientBuildCapabilitiesErrors];
+
+export type GetClientBuildCapabilitiesResponses = {
+    /**
+     * 构建能力
+     */
+    200: ClientBuildCapabilitiesResponse;
+};
+
+export type GetClientBuildCapabilitiesResponse = GetClientBuildCapabilitiesResponses[keyof GetClientBuildCapabilitiesResponses];
+
+export type ListClientBuildProfilesData = {
+    body?: never;
+    path: {
+        orgId: number;
+    };
+    query?: {
+        page?: number;
+        pageSize?: number;
+    };
+    url: '/api/v1/orgs/{orgId}/client-build-profiles';
+};
+
+export type ListClientBuildProfilesErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+};
+
+export type ListClientBuildProfilesError = ListClientBuildProfilesErrors[keyof ListClientBuildProfilesErrors];
+
+export type ListClientBuildProfilesResponses = {
+    /**
+     * 品牌配置列表
+     */
+    200: ClientBuildProfileListResponse;
+};
+
+export type ListClientBuildProfilesResponse = ListClientBuildProfilesResponses[keyof ListClientBuildProfilesResponses];
+
+export type CreateClientBuildProfileData = {
+    body: ClientBuildProfileCreateRequest;
+    path: {
+        orgId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/client-build-profiles';
+};
+
+export type CreateClientBuildProfileErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+    /**
+     * 客户端构建能力未配置
+     */
+    503: ErrorResponse;
+};
+
+export type CreateClientBuildProfileError = CreateClientBuildProfileErrors[keyof CreateClientBuildProfileErrors];
+
+export type CreateClientBuildProfileResponses = {
+    /**
+     * 已创建的品牌配置
+     */
+    201: ClientBuildProfileResponse;
+};
+
+export type CreateClientBuildProfileResponse = CreateClientBuildProfileResponses[keyof CreateClientBuildProfileResponses];
+
+export type DeleteClientBuildProfileData = {
+    body?: never;
+    path: {
+        orgId: number;
+        profileId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/client-build-profiles/{profileId}';
+};
+
+export type DeleteClientBuildProfileErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+    /**
+     * 客户端构建能力未配置
+     */
+    503: ErrorResponse;
+};
+
+export type DeleteClientBuildProfileError = DeleteClientBuildProfileErrors[keyof DeleteClientBuildProfileErrors];
+
+export type DeleteClientBuildProfileResponses = {
+    /**
+     * 已删除
+     */
+    200: OkResponse;
+};
+
+export type DeleteClientBuildProfileResponse = DeleteClientBuildProfileResponses[keyof DeleteClientBuildProfileResponses];
+
+export type GetClientBuildProfileData = {
+    body?: never;
+    path: {
+        orgId: number;
+        profileId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/client-build-profiles/{profileId}';
+};
+
+export type GetClientBuildProfileErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type GetClientBuildProfileError = GetClientBuildProfileErrors[keyof GetClientBuildProfileErrors];
+
+export type GetClientBuildProfileResponses = {
+    /**
+     * 品牌配置
+     */
+    200: ClientBuildProfileResponse;
+};
+
+export type GetClientBuildProfileResponse = GetClientBuildProfileResponses[keyof GetClientBuildProfileResponses];
+
+export type UpdateClientBuildProfileData = {
+    body: ClientBuildProfileUpdateRequest;
+    path: {
+        orgId: number;
+        profileId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/client-build-profiles/{profileId}';
+};
+
+export type UpdateClientBuildProfileErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+    /**
+     * 客户端构建能力未配置
+     */
+    503: ErrorResponse;
+};
+
+export type UpdateClientBuildProfileError = UpdateClientBuildProfileErrors[keyof UpdateClientBuildProfileErrors];
+
+export type UpdateClientBuildProfileResponses = {
+    /**
+     * 已更新的品牌配置
+     */
+    200: ClientBuildProfileResponse;
+};
+
+export type UpdateClientBuildProfileResponse = UpdateClientBuildProfileResponses[keyof UpdateClientBuildProfileResponses];
+
+export type DeleteClientBuildProfileLogoData = {
+    body?: never;
+    path: {
+        orgId: number;
+        profileId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/client-build-profiles/{profileId}/logo';
+};
+
+export type DeleteClientBuildProfileLogoErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 客户端构建能力未配置
+     */
+    503: ErrorResponse;
+};
+
+export type DeleteClientBuildProfileLogoError = DeleteClientBuildProfileLogoErrors[keyof DeleteClientBuildProfileLogoErrors];
+
+export type DeleteClientBuildProfileLogoResponses = {
+    /**
+     * 已删除
+     */
+    200: OkResponse;
+};
+
+export type DeleteClientBuildProfileLogoResponse = DeleteClientBuildProfileLogoResponses[keyof DeleteClientBuildProfileLogoResponses];
+
+export type GetClientBuildProfileLogoData = {
+    body?: never;
+    path: {
+        orgId: number;
+        profileId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/client-build-profiles/{profileId}/logo';
+};
+
+export type GetClientBuildProfileLogoErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type GetClientBuildProfileLogoError = GetClientBuildProfileLogoErrors[keyof GetClientBuildProfileLogoErrors];
+
+export type GetClientBuildProfileLogoResponses = {
+    /**
+     * PNG Logo
+     */
+    200: Blob | File;
+};
+
+export type GetClientBuildProfileLogoResponse = GetClientBuildProfileLogoResponses[keyof GetClientBuildProfileLogoResponses];
+
+export type PutClientBuildProfileLogoData = {
+    body: ClientBuildLogoUploadRequest;
+    path: {
+        orgId: number;
+        profileId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/client-build-profiles/{profileId}/logo';
+};
+
+export type PutClientBuildProfileLogoErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 客户端构建能力未配置
+     */
+    503: ErrorResponse;
+};
+
+export type PutClientBuildProfileLogoError = PutClientBuildProfileLogoErrors[keyof PutClientBuildProfileLogoErrors];
+
+export type PutClientBuildProfileLogoResponses = {
+    /**
+     * 已更新的品牌配置
+     */
+    200: ClientBuildProfileResponse;
+};
+
+export type PutClientBuildProfileLogoResponse = PutClientBuildProfileLogoResponses[keyof PutClientBuildProfileLogoResponses];
+
+export type ListClientBuildsData = {
+    body?: never;
+    path: {
+        orgId: number;
+    };
+    query?: {
+        status?: 'pending' | 'dispatching' | 'dispatched' | 'running' | 'ingesting' | 'succeeded' | 'failed' | 'cancelled';
+        profileId?: number;
+        page?: number;
+        pageSize?: number;
+    };
+    url: '/api/v1/orgs/{orgId}/client-builds';
+};
+
+export type ListClientBuildsErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+};
+
+export type ListClientBuildsError = ListClientBuildsErrors[keyof ListClientBuildsErrors];
+
+export type ListClientBuildsResponses = {
+    /**
+     * 构建列表
+     */
+    200: ClientBuildListResponse;
+};
+
+export type ListClientBuildsResponse = ListClientBuildsResponses[keyof ListClientBuildsResponses];
+
+export type CreateClientBuildData = {
+    body: ClientBuildCreateRequest;
+    path: {
+        orgId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/client-builds';
+};
+
+export type CreateClientBuildErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+    /**
+     * 客户端构建未启用或未配置
+     */
+    503: ErrorResponse;
+};
+
+export type CreateClientBuildError = CreateClientBuildErrors[keyof CreateClientBuildErrors];
+
+export type CreateClientBuildResponses = {
+    /**
+     * 已入队
+     */
+    202: ClientBuildResponse;
+};
+
+export type CreateClientBuildResponse = CreateClientBuildResponses[keyof CreateClientBuildResponses];
+
+export type GetClientBuildData = {
+    body?: never;
+    path: {
+        orgId: number;
+        buildId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/client-builds/{buildId}';
+};
+
+export type GetClientBuildErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type GetClientBuildError = GetClientBuildErrors[keyof GetClientBuildErrors];
+
+export type GetClientBuildResponses = {
+    /**
+     * 构建详情
+     */
+    200: ClientBuildResponse;
+};
+
+export type GetClientBuildResponse = GetClientBuildResponses[keyof GetClientBuildResponses];
+
+export type CancelClientBuildData = {
+    body?: never;
+    path: {
+        orgId: number;
+        buildId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/client-builds/{buildId}/cancel';
+};
+
+export type CancelClientBuildErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+    /**
+     * 客户端构建未配置
+     */
+    503: ErrorResponse;
+};
+
+export type CancelClientBuildError = CancelClientBuildErrors[keyof CancelClientBuildErrors];
+
+export type CancelClientBuildResponses = {
+    /**
+     * 已请求取消
+     */
+    202: ClientBuildResponse;
+};
+
+export type CancelClientBuildResponse = CancelClientBuildResponses[keyof CancelClientBuildResponses];
+
+export type DownloadClientBuildArtifactData = {
+    body?: never;
+    path: {
+        orgId: number;
+        buildId: number;
+        artifactId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/client-builds/{buildId}/artifacts/{artifactId}';
+};
+
+export type DownloadClientBuildArtifactErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+};
+
+export type DownloadClientBuildArtifactError = DownloadClientBuildArtifactErrors[keyof DownloadClientBuildArtifactErrors];
+
+export type DownloadClientBuildArtifactResponses = {
+    /**
+     * 产物文件
+     */
+    200: Blob | File;
+};
+
+export type DownloadClientBuildArtifactResponse = DownloadClientBuildArtifactResponses[keyof DownloadClientBuildArtifactResponses];
+
+export type DownloadClientBuildBundleData = {
+    body?: never;
+    path: {
+        buildId: number;
+    };
+    query?: {
+        /**
+         * 必填；缺失时由 handler 返回 401（生成器会先拒绝空的必填 query）
+         */
+        token?: string;
+    };
+    url: '/api/v1/client-builds/{buildId}/bundle';
+};
+
+export type DownloadClientBuildBundleErrors = {
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 服务端错误（如邀请邮件投递失败）
+     */
+    500: ErrorResponse;
+};
+
+export type DownloadClientBuildBundleError = DownloadClientBuildBundleErrors[keyof DownloadClientBuildBundleErrors];
+
+export type DownloadClientBuildBundleResponses = {
+    /**
+     * bundle.tar.gz
+     */
+    200: Blob | File;
+};
+
+export type DownloadClientBuildBundleResponse = DownloadClientBuildBundleResponses[keyof DownloadClientBuildBundleResponses];
