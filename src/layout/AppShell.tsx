@@ -1,8 +1,9 @@
 import { Toast } from '@douyinfe/semi-ui'
-import { useEffect, useMemo, useState, type ReactElement } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { Navigate, Outlet, useLocation, useNavigate, useParams } from 'react-router'
 
 import { logout, setLogoutHandler } from '../lib/session'
+import { applyThemeMode, getStoredTheme, type ThemeMode } from '../lib/theme'
 import { useGetMeQuery } from '../store/api'
 
 interface NavEntry {
@@ -66,6 +67,7 @@ const GROUPS: { title: string; items: NavEntry[] }[] = [
     items: [
       { key: 'devices', label: '设备', permission: 'device.read', icon: ICONS.devices },
       { key: 'members', label: '组织与成员', ready: true, icon: ICONS.members },
+      { key: 'roles', label: '角色与权限', ready: true, icon: ICONS.access },
       { key: 'addressbook', label: '地址簿', permission: 'device.read', icon: ICONS.addressbook },
     ],
   },
@@ -85,13 +87,7 @@ const GROUPS: { title: string; items: NavEntry[] }[] = [
   },
 ]
 
-type ThemeMode = 'light' | 'dark' | 'auto'
-const THEME_KEY = 'rdp-panel-theme'
-
-function applyTheme(mode: ThemeMode) {
-  const dark = mode === 'dark' || (mode === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches)
-  document.documentElement.dataset.theme = dark ? 'dark' : 'light'
-}
+const TAB_LABELS: Record<string, string> = { members: '组织与成员', roles: '角色与权限' }
 
 export default function AppShell() {
   const navigate = useNavigate()
@@ -100,9 +96,10 @@ export default function AppShell() {
   const { data: me, isLoading, error } = useGetMeQuery()
   const [collapsed, setCollapsed] = useState(false)
   const [orgOpen, setOrgOpen] = useState(false)
-  const [theme, setTheme] = useState<ThemeMode>(
-    () => (localStorage.getItem(THEME_KEY) as ThemeMode | null) ?? 'light',
-  )
+  // Open tabs, least-recently-used first (design D3: tabs are route handles).
+  const [tabs, setTabs] = useState<string[]>(['members'])
+  const tabbarRef = useRef<HTMLDivElement>(null)
+  const [theme, setTheme] = useState<ThemeMode>(() => getStoredTheme())
 
   useEffect(() => {
     setLogoutHandler(() => navigate('/login', { replace: true }))
@@ -110,18 +107,28 @@ export default function AppShell() {
   }, [navigate])
 
   useEffect(() => {
-    applyTheme(theme)
-    localStorage.setItem(THEME_KEY, theme)
-    if (theme !== 'auto') return
-    const mq = matchMedia('(prefers-color-scheme: dark)')
-    const onChange = () => applyTheme('auto')
-    mq.addEventListener('change', onChange)
-    return () => mq.removeEventListener('change', onChange)
+    applyThemeMode(theme)
   }, [theme])
 
   const current = me?.orgs.find((org) => String(org.id) === orgId) ?? me?.orgs[0]
   const perms = useMemo(() => new Set(current?.permissions ?? []), [current])
-  const activeKey = location.pathname.endsWith('/members') ? 'members' : 'members'
+  const activeKey = location.pathname.endsWith('/roles') ? 'roles' : 'members'
+
+  useEffect(() => {
+    setTabs((prev) => (prev[prev.length - 1] === activeKey ? prev : [...prev.filter((k) => k !== activeKey), activeKey]))
+  }, [activeKey])
+
+  // Overflow drops the least recently used tab; the active one never goes.
+  useEffect(() => {
+    const el = tabbarRef.current
+    if (!el || el.clientWidth === 0) return
+    while (el.scrollWidth > el.clientWidth + 1 && tabs.length > 1) {
+      const victim = tabs.find((key) => key !== activeKey)
+      if (!victim) return
+      setTabs((prev) => prev.filter((key) => key !== victim))
+      return
+    }
+  }, [tabs, activeKey])
 
   if (isLoading) {
     return (
@@ -164,7 +171,7 @@ export default function AppShell() {
                         Toast.info('该域在后续波次接入')
                         return
                       }
-                      navigate(`/orgs/${current.id}/members`)
+                      navigate(`/orgs/${current.id}/${item.key}`)
                     }}
                   >
                     <span className="ic">{item.icon}</span>
@@ -288,10 +295,36 @@ export default function AppShell() {
           </div>
         </header>
 
-        <div className="tabbar" role="tablist">
-          <button className="tab-item on" type="button" role="tab" aria-selected="true">
-            <span className="tt">组织与成员</span>
-          </button>
+        <div className="tabbar" role="tablist" ref={tabbarRef}>
+          {tabs.map((key) => (
+            <button
+              key={key}
+              className={`tab-item ${key === activeKey ? 'on' : ''}`}
+              type="button"
+              role="tab"
+              aria-selected={key === activeKey}
+              onClick={() => navigate(`/orgs/${current.id}/${key}`)}
+            >
+              <span className="tt">{TAB_LABELS[key] ?? key}</span>
+              {tabs.length > 1 ? (
+                <span
+                  className="tx"
+                  role="button"
+                  title="关闭"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    const remaining = tabs.filter((k) => k !== key)
+                    setTabs(remaining)
+                    if (key === activeKey && remaining.length > 0) {
+                      navigate(`/orgs/${current.id}/${remaining[remaining.length - 1]}`)
+                    }
+                  }}
+                >
+                  ✕
+                </span>
+              ) : null}
+            </button>
+          ))}
         </div>
 
         <div className="content">

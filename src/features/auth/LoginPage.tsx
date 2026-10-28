@@ -36,7 +36,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="login-wrap">
+    <div className="login-page">
+      <div className="login-wrap">
       <div className="login-brand">
         <div className="hstack" style={{ gap: 11 }}>
           <div className="brand-logo" style={{ width: 38, height: 38, borderRadius: 10 }}>
@@ -160,6 +161,7 @@ export default function LoginPage() {
             没有账号？请联系组织管理员邀请你加入
           </p>
         </form>
+      </div>
       </div>
     </div>
   )

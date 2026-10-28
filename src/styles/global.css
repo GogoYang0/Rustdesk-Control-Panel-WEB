@@ -94,3 +94,17 @@
     transform: none;
   }
 }
+
+/* 登录页独立于外壳：原型把 login-wrap 设计成内嵌面板，这里给它一个居中的全屏容器 */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--bg-app);
+}
+.login-page .login-wrap {
+  width: min(980px, 100%);
+  min-height: min(620px, calc(100vh - 48px));
+}

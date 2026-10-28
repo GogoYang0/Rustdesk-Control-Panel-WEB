@@ -3,6 +3,7 @@ import { createBrowserRouter, Navigate } from 'react-router'
 
 import LoginPage from './features/auth/LoginPage'
 import MembersPage from './features/members/MembersPage'
+import RolesPage from './features/roles/RolesPage'
 import AppShell from './layout/AppShell'
 import { useGetMeQuery } from './store/api'
 
@@ -49,6 +50,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="members" replace /> },
       { path: 'members', element: <MembersPage /> },
+      { path: 'roles', element: <RolesPage /> },
     ],
   },
   { path: '*', element: <Navigate to="/" replace /> },
