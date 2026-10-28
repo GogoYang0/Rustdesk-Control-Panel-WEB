@@ -40,7 +40,11 @@ export function setLogoutHandler(fn: () => void): void {
 }
 
 export function logout(): void {
-  logoutHandler ? logoutHandler() : clearSession()
+  if (logoutHandler) {
+    logoutHandler()
+  } else {
+    clearSession()
+  }
 }
 
 async function doRefresh(): Promise<string | null> {

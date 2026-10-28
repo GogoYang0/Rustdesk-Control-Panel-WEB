@@ -126,7 +126,7 @@ export interface AuthProviders {
   ldap: { enabled: boolean }
 }
 
-export interface LoginResult extends TokenPair {}
+export type LoginResult = TokenPair
 
 export function login(email: string, password: string): Promise<LoginResult> {
   return apiFetch<LoginResult>('/api/v1/auth/login', {
