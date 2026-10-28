@@ -139,12 +139,16 @@ export default function SessionsPage() {
   // URL, or a future in-page switcher): drop the selection and the filters,
   // which describe the previous organization.
   const previousOrg = useRef(id)
+  // Decided during render, before either effect runs: the page correction below
+  // must not write the previous organization's filters back in the same commit
+  // that clears them.
+  const orgChanged = previousOrg.current !== id
   useEffect(() => {
-    if (previousOrg.current === id) return
+    if (!orgChanged) return
     previousOrg.current = id
     setSelected(null)
     if (searchParams.toString()) setSearchParams(new URLSearchParams(), { replace: true })
-  }, [id, searchParams, setSearchParams])
+  }, [id, orgChanged, searchParams, setSearchParams])
 
   const devices = useMemo(() => {
     const map = new Map<number, Device>()
@@ -174,8 +178,9 @@ export default function SessionsPage() {
   // A stale URL (page past the last one) is corrected once the server answers,
   // instead of showing an empty page under a valid pager.
   useEffect(() => {
+    if (orgChanged) return
     if (data && page > pages) change({ page: pages })
-  }, [data, page, pages, change])
+  }, [orgChanged, data, page, pages, change])
 
   return (
     <section className="page on">
