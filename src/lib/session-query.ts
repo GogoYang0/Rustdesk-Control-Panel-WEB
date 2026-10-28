@@ -100,6 +100,8 @@ export function toRequestQuery(
   return query
 }
 
+import { totalPages as pageCount } from './paging'
+
 export function totalPages(total: number, pageSize = PAGE_SIZE): number {
-  return Math.max(1, Math.ceil(total / pageSize))
+  return pageCount(total, pageSize)
 }
