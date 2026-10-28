@@ -7,7 +7,7 @@ const LOCK_KEY = 'rdp-panel-refresh-lock'
 const LOCK_TTL_MS = 5_000
 
 let accessToken: string | null = null
-let refreshing: Promise<string | null> | null = null
+let refreshing: Promise<RefreshResult> | null = null
 let logoutHandler: (() => void) | null = null
 // Bumped on logout: an in-flight refresh that started before the bump must not
 // write its result back, or the signed-out session silently returns.
@@ -63,7 +63,9 @@ export function watchSessionAcrossTabs(): void {
   window.addEventListener('storage', onStorage)
 }
 
-async function withRefreshLock<T>(fn: () => Promise<T>): Promise<T | null> {
+async function withRefreshLock<T>(
+  fn: () => Promise<T>,
+): Promise<{ acquired: boolean; result?: T }> {
   const mine = `${Date.now()}-${Math.random().toString(36).slice(2)}`
   for (let attempt = 0; attempt < 40; attempt += 1) {
     const held = localStorage.getItem(LOCK_KEY)
@@ -74,7 +76,7 @@ async function withRefreshLock<T>(fn: () => Promise<T>): Promise<T | null> {
       await sleep(40)
       if (localStorage.getItem(LOCK_KEY) === mine) {
         try {
-          return await fn()
+          return { acquired: true, result: await fn() }
         } finally {
           if (localStorage.getItem(LOCK_KEY) === mine) localStorage.removeItem(LOCK_KEY)
         }
@@ -82,13 +84,13 @@ async function withRefreshLock<T>(fn: () => Promise<T>): Promise<T | null> {
     }
     await sleep(120)
   }
-  return null
+  return { acquired: false }
 }
 
-async function doRefresh(): Promise<string | null> {
+async function doRefresh(): Promise<RefreshResult> {
   const startedAt = epoch
   const refresh = getRefreshToken()
-  if (!refresh) return null
+  if (!refresh) return { access: null, invalid: true }
   try {
     const res = await fetch('/api/v1/auth/refresh', {
       method: 'POST',
@@ -96,32 +98,33 @@ async function doRefresh(): Promise<string | null> {
       body: JSON.stringify({ refresh_token: refresh }),
     })
     if (!res.ok) {
-      if (startedAt === epoch) clearSession()
-      return null
+      // Only 400/401 mean the server rejected the token. A 5xx, a 429 or a
+      // gateway error says nothing about it: the session must survive those, or
+      // one blip signs every tab out.
+      const invalid = res.status === 400 || res.status === 401
+      if (invalid && startedAt === epoch) clearSession()
+      return { access: null, invalid }
     }
     const body = (await res.json()) as { data?: TokenPair }
-    if (!body.data) {
-      if (startedAt === epoch) clearSession()
-      return null
-    }
+    if (!body.data) return { access: null, invalid: false }
     setTokens(body.data, startedAt)
-    return startedAt === epoch ? body.data.access_token : null
+    return { access: startedAt === epoch ? body.data.access_token : null, invalid: false }
   } catch {
     // A network blip must not wipe a working session: keep the refresh token so
     // the next request can try again.
-    return null
+    return { access: null, invalid: false }
   }
 }
 
 /** Exchanges the refresh token for a new pair; concurrent callers share one flight. */
-export function refreshAccessToken(): Promise<string | null> {
+export function refreshAccessToken(): Promise<RefreshResult> {
   if (!refreshing) {
     refreshing = (async () => {
-      const result = await withRefreshLock(doRefresh)
-      if (result !== null) return result
-      // The lock timed out or this tab never entered: another tab may have
-      // rotated the token meanwhile, so try once more with what is stored.
-      return doRefresh()
+      const locked = await withRefreshLock(doRefresh)
+      if (locked.acquired) return locked.result ?? { access: null, invalid: false }
+      // Lock timeout: do NOT replay whatever is in storage — another tab may have
+      // rotated it, and a replay revokes the family. Treat it as transient.
+      return { access: null, invalid: false }
     })().finally(() => {
       refreshing = null
     })
@@ -134,6 +137,12 @@ export function refreshAccessToken(): Promise<string | null> {
  * Doing it once before the first paint keeps the console from logging a 401 per
  * load. Bounded so a hung panel cannot leave a blank page forever.
  */
+/** Outcome of one refresh attempt: only `invalid` means the session is over. */
+export interface RefreshResult {
+  access: string | null
+  invalid: boolean
+}
+
 export async function bootstrapSession(timeoutMs = 6_000): Promise<void> {
   if (getAccessToken() || !getRefreshToken()) return
   await Promise.race([refreshAccessToken(), sleep(timeoutMs)])

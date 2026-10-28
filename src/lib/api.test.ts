@@ -37,7 +37,7 @@ describe('apiFetch', () => {
       .spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(jsonResponse({ code: 'unauthorized' }, 401))
       .mockResolvedValueOnce(jsonResponse({ code: 'ok', data: { id: 2 } }))
-    refreshAccessToken.mockResolvedValue('access-2')
+    refreshAccessToken.mockResolvedValue({ access: 'access-2', invalid: false })
 
     await expect(apiFetch<{ id: number }>('/api/v1/me')).resolves.toEqual({ id: 2 })
     expect(refreshAccessToken).toHaveBeenCalledTimes(1)
@@ -49,7 +49,7 @@ describe('apiFetch', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       jsonResponse({ code: 'unauthorized', message: 'expired' }, 401),
     )
-    refreshAccessToken.mockResolvedValue(null)
+    refreshAccessToken.mockResolvedValue({ access: null, invalid: true })
 
     await expect(apiFetch('/api/v1/me')).rejects.toBeInstanceOf(ApiError)
     expect(logout).toHaveBeenCalledTimes(1)
@@ -62,7 +62,7 @@ describe('apiFetch', () => {
         401,
       ),
     )
-    refreshAccessToken.mockResolvedValue(null)
+    refreshAccessToken.mockResolvedValue({ access: null, invalid: true })
 
     await expect(apiFetch('/api/v1/auth/login', { retryOn401: false })).rejects.toMatchObject({
       code: 'two_factor_required',

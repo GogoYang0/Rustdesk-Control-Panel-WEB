@@ -1,5 +1,5 @@
 import { Banner, Empty, Toast } from '@douyinfe/semi-ui'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'react-router'
 
 import Modal from '../../components/Modal'
@@ -53,6 +53,14 @@ export default function MembersPage() {
   const [dialog, setDialog] = useState<Dialog>(null)
   const [updateMember] = useUpdateMemberMutation()
   const [busy, setBusy] = useState(false)
+
+  // The page is not remounted when :orgId changes, so a dialog opened for a
+  // member of the previous organization would PATCH the same user id under the
+  // new one. Drop it whenever the scope moves.
+  useEffect(() => {
+    setDialog(null)
+    setBusy(false)
+  }, [id])
 
   const members = data ?? []
   const active = members.filter((m) => !m.disabled).length
@@ -390,11 +398,12 @@ function RoleDialog({
   member: Member
   onClose: () => void
 }) {
-  const { data: roles, isLoading } = useGetRolesQuery(orgId)
+  const { data: roles, isLoading, error: loadError } = useGetRolesQuery(orgId)
   const [roleId, setRoleId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [update, { isLoading: saving }] = useUpdateMemberMutation()
   const assignable = (roles ?? []).filter((role: Role) => role.kind !== 'owner')
+  const canSave = assignable.length > 0 && !loadError
 
   async function submit() {
     if (!roleId) {
@@ -422,7 +431,7 @@ function RoleDialog({
           <button
             className="btn primary"
             type="button"
-            disabled={saving || isLoading}
+            disabled={saving || isLoading || !canSave}
             onClick={submit}
           >
             {saving ? '保存中…' : '保存'}

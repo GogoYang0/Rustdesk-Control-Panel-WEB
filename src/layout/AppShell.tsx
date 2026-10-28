@@ -5,6 +5,8 @@ import { Navigate, Outlet, useLocation, useNavigate, useParams } from 'react-rou
 import StateBlock from '../components/StateBlock'
 import { logout, setLogoutHandler } from '../lib/session'
 import { closeTabFrom, evictionCandidate, pushTab } from '../lib/tabs'
+import { store } from '../store'
+import { panelApi } from '../store/api'
 import { applyThemeMode, getStoredTheme, type ThemeMode } from '../lib/theme'
 import { useGetMeQuery } from '../store/api'
 
@@ -165,8 +167,13 @@ export default function AppShell() {
   const [theme, setTheme] = useState<ThemeMode>(() => getStoredTheme())
 
   useEffect(() => {
-    setLogoutHandler(() => navigate('/login', { replace: true }))
-    return () => setLogoutHandler(() => undefined)
+    setLogoutHandler(() => {
+      // The cache is keyed by organization, not by user: without this the next
+      // account to sign in would read the previous one's members and roles.
+      store.dispatch(panelApi.util.resetApiState())
+      navigate('/login', { replace: true })
+    })
+    return () => setLogoutHandler(null)
   }, [navigate])
 
   useEffect(() => {
@@ -351,7 +358,12 @@ export default function AppShell() {
               className="org-switch"
               type="button"
               title="切换组织"
+              aria-haspopup="listbox"
+              aria-expanded={orgOpen}
               onClick={() => setOrgOpen((v) => !v)}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') setOrgOpen(false)
+              }}
             >
               <span className="org-ava">{current.name.slice(0, 1).toUpperCase()}</span>
               <span className="nm">{current.name}</span>
@@ -464,19 +476,25 @@ export default function AppShell() {
 
         <div className="tabbar" role="tablist" ref={tabbarRef}>
           {tabs.map((key) => (
-            <button
+            <div
               key={key}
               className={`tab-item ${key === activeKey ? 'on' : ''}`}
-              type="button"
               role="tab"
+              tabIndex={0}
               aria-selected={key === activeKey}
               onClick={() => navigate(`/orgs/${current.id}/${key}`)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  navigate(`/orgs/${current.id}/${key}`)
+                }
+              }}
             >
               <span className="tt">{TAB_LABELS[key] ?? key}</span>
               {tabs.length > 1 ? (
-                <span
+                <button
                   className="tx"
-                  role="button"
+                  type="button"
                   title="关闭"
                   onClick={(event) => {
                     event.stopPropagation()
@@ -488,9 +506,9 @@ export default function AppShell() {
                   }}
                 >
                   ✕
-                </span>
+                </button>
               ) : null}
-            </button>
+            </div>
           ))}
         </div>
 

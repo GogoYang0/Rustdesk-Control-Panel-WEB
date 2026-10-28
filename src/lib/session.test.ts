@@ -33,17 +33,28 @@ describe('session refresh', () => {
       }),
     )
     const [a, b] = await Promise.all([refreshAccessToken(), refreshAccessToken()])
-    expect(a).toBe('new')
-    expect(b).toBe('new')
+    expect(a.access).toBe('new')
+    expect(b.access).toBe('new')
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(getRefreshToken()).toBe('r2')
   })
 
-  it('clears the session when the refresh token is rejected', async () => {
+  it('clears the session only when the server rejects the refresh token', async () => {
     setTokens({ access_token: 'old', refresh_token: 'r1' })
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 401 }))
-    expect(await refreshAccessToken()).toBeNull()
+    expect(await refreshAccessToken()).toEqual({ access: null, invalid: true })
     expect(getRefreshToken()).toBeNull()
     expect(getAccessToken()).toBeNull()
+  })
+
+  it('keeps the refresh token when the refresh fails transiently', async () => {
+    setTokens({ access_token: 'old', refresh_token: 'r1' })
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 503 }))
+    expect(await refreshAccessToken()).toEqual({ access: null, invalid: false })
+    expect(getRefreshToken()).toBe('r1')
+
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('network down'))
+    expect(await refreshAccessToken()).toEqual({ access: null, invalid: false })
+    expect(getRefreshToken()).toBe('r1')
   })
 })

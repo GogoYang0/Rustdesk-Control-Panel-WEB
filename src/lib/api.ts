@@ -69,14 +69,15 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
     return await once<T>(path, init)
   } catch (err) {
     if (!(err instanceof ApiError) || err.status !== 401 || !retryOn401) throw err
-    const next = await refreshAccessToken()
-    if (!next) {
-      // The session is over: clear it and let the shell route to /login instead
-      // of rendering cached data next to an "unauthorized" banner.
+    const refreshed = await refreshAccessToken()
+    if (refreshed.access) return once<T>(path, init)
+    if (refreshed.invalid) {
+      // The server rejected the refresh token: the session is really over, so
+      // clear the cache and route to /login. Network and 5xx failures keep the
+      // session and surface as an ordinary error instead.
       logout()
-      throw err
     }
-    return once<T>(path, init)
+    throw err
   }
 }
 

@@ -66,7 +66,7 @@ export default function RolesPage() {
               角色<span className="hint">内置角色权限固定，自定义角色只能取可委派权限</span>
             </div>
           </div>
-          <div className="card-body tight">
+          <div className="card-body tight" style={{ overflowX: 'auto' }}>
             {isLoading ? (
               <div className="help" style={{ padding: '14px 0' }}>
                 正在加载角色…
