@@ -2,6 +2,7 @@ import { createApi, fakeBaseQuery } from '@reduxjs/toolkit/query/react'
 
 import {
   ApiError,
+  fetchDevicePage,
   fetchDevices,
   fetchMe,
   fetchMembers,
@@ -10,10 +11,17 @@ import {
   fetchSessionAlerts,
   fetchSessions,
   inviteMember,
+  rebindDevice,
+  registerDevice,
   removeMember,
+  requestDeviceDisconnect,
+  updateDevice,
   updateMember,
   type AlertPage,
+  type Device,
+  type DeviceDisconnect,
   type DevicePage,
+  type DeviceUpdateRequest,
   type Invitation,
   type Me,
   type Member,
@@ -94,6 +102,37 @@ export const panelApi = createApi({
       queryFn: (orgId) => wrap(() => fetchDevices(orgId)),
       providesTags: (_result, _error, orgId) => [{ type: 'Devices', id: orgId }],
     }),
+    getDevicePage: build.query<DevicePage, { orgId: number; queryString: string }>({
+      queryFn: ({ orgId, queryString }) =>
+        wrap(() => fetchDevicePage(orgId, new URLSearchParams(queryString))),
+      providesTags: (_result, _error, { orgId }) => [{ type: 'Devices', id: orgId }],
+    }),
+    registerDevice: build.mutation<Device, { orgId: number; name: string; rustdesk_id: string }>({
+      queryFn: ({ orgId, name, rustdesk_id }) =>
+        wrap(() => registerDevice(orgId, { name, rustdesk_id })),
+      invalidatesTags: (_result, _error, { orgId }) => [{ type: 'Devices', id: orgId }],
+    }),
+    updateDevice: build.mutation<
+      Device,
+      { orgId: number; deviceId: number; patch: DeviceUpdateRequest }
+    >({
+      queryFn: ({ orgId, deviceId, patch }) => wrap(() => updateDevice(orgId, deviceId, patch)),
+      invalidatesTags: (_result, _error, { orgId }) => [{ type: 'Devices', id: orgId }],
+    }),
+    rebindDevice: build.mutation<Device, { orgId: number; deviceId: number; reason: string }>({
+      queryFn: ({ orgId, deviceId, reason }) => wrap(() => rebindDevice(orgId, deviceId, reason)),
+      invalidatesTags: (_result, _error, { orgId }) => [{ type: 'Devices', id: orgId }],
+    }),
+    requestDeviceDisconnect: build.mutation<
+      DeviceDisconnect,
+      { orgId: number; deviceId: number; reason: string }
+    >({
+      queryFn: ({ orgId, deviceId, reason }) =>
+        wrap(() => requestDeviceDisconnect(orgId, deviceId, reason)),
+      // The list carries no pending marker, so nothing here changes; a refetch
+      // would only add noise.
+      invalidatesTags: [],
+    }),
   }),
 })
 
@@ -108,4 +147,9 @@ export const {
   useGetSessionQuery,
   useGetSessionAlertsQuery,
   useGetDevicesQuery,
+  useGetDevicePageQuery,
+  useRegisterDeviceMutation,
+  useUpdateDeviceMutation,
+  useRebindDeviceMutation,
+  useRequestDeviceDisconnectMutation,
 } = panelApi

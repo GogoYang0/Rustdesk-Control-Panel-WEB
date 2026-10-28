@@ -1,6 +1,10 @@
 import type {
   AlertPage,
+  Device,
+  DeviceCreateRequest,
+  DeviceDisconnect,
   DevicePage,
+  DeviceUpdateRequest,
   Member,
   Me,
   Role,
@@ -188,8 +192,6 @@ export function removeMember(orgId: number, userId: number): Promise<MemberMutat
 export type {
   Alert,
   AlertPage,
-  Device,
-  DevicePage,
   Session,
   SessionDetail,
   SessionEvent,
@@ -212,4 +214,51 @@ export function fetchSessionAlerts(orgId: number, sessionId: number): Promise<Al
 /** One page of devices, used as a name dictionary for the session list. */
 export function fetchDevices(orgId: number, pageSize = 200): Promise<DevicePage> {
   return apiFetch<DevicePage>(`/api/v1/orgs/${orgId}/devices?page=1&pageSize=${pageSize}`)
+}
+
+// ── device management ───────────────────────────────────────────────────────
+
+export type { Device, DeviceDisconnect, DevicePage, DeviceUpdateRequest } from '../api/generated'
+
+export function fetchDevicePage(orgId: number, query: URLSearchParams): Promise<DevicePage> {
+  return apiFetch<DevicePage>(`/api/v1/orgs/${orgId}/devices?${query.toString()}`)
+}
+
+export function registerDevice(orgId: number, input: DeviceCreateRequest): Promise<Device> {
+  return apiFetch<Device>(`/api/v1/orgs/${orgId}/devices`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function updateDevice(
+  orgId: number,
+  deviceId: number,
+  patch: DeviceUpdateRequest,
+): Promise<Device> {
+  return apiFetch<Device>(`/api/v1/orgs/${orgId}/devices/${deviceId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  })
+}
+
+/** Clears the binding and bumps the generation; `reason` is kept in the audit. */
+export function rebindDevice(orgId: number, deviceId: number, reason: string): Promise<Device> {
+  return apiFetch<Device>(`/api/v1/orgs/${orgId}/devices/${deviceId}/rebind`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  })
+}
+
+/** Records a request the client consumes on its next heartbeat — not an
+ * immediate disconnect. */
+export function requestDeviceDisconnect(
+  orgId: number,
+  deviceId: number,
+  reason: string,
+): Promise<DeviceDisconnect> {
+  return apiFetch<DeviceDisconnect>(`/api/v1/orgs/${orgId}/devices/${deviceId}/disconnect`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  })
 }

@@ -124,7 +124,13 @@ const GROUPS: { title: string; items: NavEntry[] }[] = [
   {
     title: '资产与身份',
     items: [
-      { key: 'devices', label: '设备', permission: 'device.read', icon: ICONS.devices },
+      {
+        key: 'devices',
+        label: '设备',
+        ready: true,
+        permission: 'device.read',
+        icon: ICONS.devices,
+      },
       { key: 'members', label: '组织与成员', ready: true, icon: ICONS.members },
       { key: 'roles', label: '角色与权限', ready: true, icon: ICONS.access },
       { key: 'addressbook', label: '地址簿', permission: 'device.read', icon: ICONS.addressbook },
@@ -158,6 +164,7 @@ const GROUPS: { title: string; items: NavEntry[] }[] = [
 ]
 
 const TAB_LABELS: Record<string, string> = {
+  devices: '设备',
   members: '组织与成员',
   roles: '角色与权限',
   sessions: '会话记录',
