@@ -35,17 +35,18 @@ function isStatus(value: string): value is ApprovalStatus {
   return (APPROVAL_STATUSES as string[]).includes(value)
 }
 
-function positiveInt(value: string): number | null {
+function positiveInt(value: string, max: number = Number.MAX_SAFE_INTEGER): number | null {
   if (!/^[1-9]\d*$/.test(value)) return null
   const n = Number(value)
-  return Number.isSafeInteger(n) && n <= MAX_APPROVAL_PAGE ? n : null
+  return Number.isSafeInteger(n) && n <= max ? n : null
 }
 
 /** Unknown or malformed values fall back to the default instead of erroring. */
 export function parseApprovalFilters(params: URLSearchParams): ApprovalFilters {
   const status = params.get('status') ?? ''
   const deviceId = params.get('deviceId') ?? ''
-  const page = positiveInt(params.get('page') ?? '')
+  // Only the page has the API's cap; ids are ordinary auto-increment keys.
+  const page = positiveInt(params.get('page') ?? '', MAX_APPROVAL_PAGE)
   const approvalId = positiveInt(params.get('approvalId') ?? '')
   return {
     status: isStatus(status) ? status : DEFAULT_APPROVAL_FILTERS.status,

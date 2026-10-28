@@ -54,8 +54,14 @@ describe('approval filters in the URL', () => {
     ['page=1e21', 'page', 1],
     ['approvalId=-2', 'approvalId', null],
     ['approvalId=abc', 'approvalId', null],
+    ['page=1000001', 'page', 1],
   ] as const)('normalises an invalid %s', (query, key, expected) => {
     expect(parseApprovalFilters(new URLSearchParams(query))[key]).toEqual(expected)
+  })
+
+  it('accepts ids beyond the page cap', () => {
+    expect(parseApprovalFilters(new URLSearchParams('deviceId=1000001')).deviceId).toBe('1000001')
+    expect(parseApprovalFilters(new URLSearchParams('approvalId=2000000')).approvalId).toBe(2000000)
   })
 
   it('omits defaults from the URL and keeps the deep link', () => {

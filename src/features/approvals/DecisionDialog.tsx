@@ -40,15 +40,14 @@ export default function DecisionDialog({
   onClose: () => void
   onDone: () => void
 }) {
+  // Every open reads the row again: another approver may have decided it since
+  // the sheet loaded, and the decision must rest on the current state.
   const {
     currentData: approval,
     isLoading,
     error,
     refetch,
-  } = useGetApprovalQuery({
-    orgId,
-    approvalId,
-  })
+  } = useGetApprovalQuery({ orgId, approvalId }, { refetchOnMountOrArgChange: true })
   const [decision, setDecision] = useState<ApprovalDecision>(intent)
   const dispatch = useDispatch()
   const [reason, setReason] = useState('')

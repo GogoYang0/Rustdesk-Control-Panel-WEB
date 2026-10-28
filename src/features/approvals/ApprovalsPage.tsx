@@ -92,12 +92,14 @@ export default function ApprovalsPage() {
   const seqRef = useRef(0)
   const decisionTokenRef = useRef(0)
   const mountedRef = useRef(true)
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    // StrictMode mounts, cleans up and mounts again; setting this only in the
+    // cleanup would leave it false for the rest of the session.
+    mountedRef.current = true
+    return () => {
       mountedRef.current = false
-    },
-    [],
-  )
+    }
+  }, [])
 
   const filters = parseApprovalFilters(searchParams)
   const effective: ApprovalFilters = orgChanged
@@ -162,15 +164,21 @@ export default function ApprovalsPage() {
     generationRef.current += 1
   }, [id])
 
+  // Only an organization change invalidates an open decision: the URL effect
+  // below also fires when the sheet is closed to open the dialog, and clearing
+  // the decision there would shut the dialog the same tick it opened.
   useEffect(() => {
     decisionTokenRef.current = 0
     setDecision(null)
+  }, [id])
+
+  useEffect(() => {
     // The URL still describes the previous organization on the switching
     // render; clear it so the next pass cannot reopen its detail or filters.
     if (orgChanged && searchParams.toString()) {
       setSearchParams(new URLSearchParams(), { replace: true })
     }
-  }, [id, orgChanged, searchParams, setSearchParams])
+  }, [orgChanged, searchParams, setSearchParams])
 
   function change(patch: Partial<ApprovalFilters>) {
     // Keep the current page unless the caller resets it (filters and tabs do);
