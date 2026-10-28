@@ -1,5 +1,5 @@
 import { Banner, Empty, Toast } from '@douyinfe/semi-ui'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router'
 
 import Modal from '../../components/Modal'
@@ -53,6 +53,9 @@ export default function MembersPage() {
   const [dialog, setDialog] = useState<Dialog>(null)
   const [updateMember] = useUpdateMemberMutation()
   const [busy, setBusy] = useState(false)
+  // A result that lands after the scope moved must not close the new dialog.
+  const scopeRef = useRef(id)
+  scopeRef.current = id
 
   // The page is not remounted when :orgId changes, so a dialog opened for a
   // member of the previous organization would PATCH the same user id under the
@@ -288,13 +291,15 @@ export default function MembersPage() {
   )
 
   async function toggleDisabled(member: Member, disabled: boolean) {
+    const scope = id
     setBusy(true)
     try {
       const result = await updateMember({
-        orgId: id,
+        orgId: scope,
         userId: member.user_id,
         patch: { disabled },
       }).unwrap()
+      if (scopeRef.current !== scope) return
       setDialog(null)
       Toast.success(
         disabled
@@ -302,9 +307,9 @@ export default function MembersPage() {
           : `已恢复 ${member.email}`,
       )
     } catch (err) {
-      Toast.error((err as ApiError).message || '操作失败')
+      if (scopeRef.current === scope) Toast.error((err as ApiError).message || '操作失败')
     } finally {
-      setBusy(false)
+      if (scopeRef.current === scope) setBusy(false)
     }
   }
 }

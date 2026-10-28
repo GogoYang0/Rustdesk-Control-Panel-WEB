@@ -4,7 +4,7 @@
 // revokes the whole family, which would sign every tab out at once.
 const REFRESH_KEY = 'rdp-panel-refresh'
 const LOCK_KEY = 'rdp-panel-refresh-lock'
-const LOCK_TTL_MS = 5_000
+const STALE_LOCK_MS = 30_000
 
 let accessToken: string | null = null
 let refreshing: Promise<RefreshResult> | null = null
@@ -70,7 +70,14 @@ async function withRefreshLock<T>(
   for (let attempt = 0; attempt < 40; attempt += 1) {
     const held = localStorage.getItem(LOCK_KEY)
     const heldAt = held ? Number(held.split('-')[0]) : 0
-    if (!held || Date.now() - heldAt > LOCK_TTL_MS) {
+    if (held && Date.now() - heldAt > STALE_LOCK_MS) {
+      // The holder vanished mid-flight. Clearing the lock is safe; refreshing is
+      // not, because it may already have consumed the token — the caller treats
+      // this round as transient and the next request tries with a fresh read.
+      localStorage.removeItem(LOCK_KEY)
+      return { acquired: false }
+    }
+    if (!held) {
       localStorage.setItem(LOCK_KEY, mine)
       // Re-read: two tabs can write in the same tick; only the survivor keeps it.
       await sleep(40)
@@ -106,7 +113,12 @@ async function doRefresh(): Promise<RefreshResult> {
       return { access: null, invalid }
     }
     const body = (await res.json()) as { data?: TokenPair }
-    if (!body.data) return { access: null, invalid: false }
+    if (!body.data) {
+      // A 2xx means the server consumed and rotated the token. Keeping the old
+      // one would replay a spent token on the next attempt.
+      if (startedAt === epoch) clearSession()
+      return { access: null, invalid: true }
+    }
     setTokens(body.data, startedAt)
     return { access: startedAt === epoch ? body.data.access_token : null, invalid: false }
   } catch {
@@ -120,10 +132,18 @@ async function doRefresh(): Promise<RefreshResult> {
 export function refreshAccessToken(): Promise<RefreshResult> {
   if (!refreshing) {
     refreshing = (async () => {
+      const startedWith = getRefreshToken()
       const locked = await withRefreshLock(doRefresh)
       if (locked.acquired) return locked.result ?? { access: null, invalid: false }
-      // Lock timeout: do NOT replay whatever is in storage — another tab may have
-      // rotated it, and a replay revokes the family. Treat it as transient.
+      // Another tab holds the lock. Never send the token we started with: it may
+      // be consumed. Wait for the holder's write (the storage value is the
+      // publication) and then rotate once with the *new* token.
+      for (let attempt = 0; attempt < 60; attempt += 1) {
+        await sleep(120)
+        const current = getRefreshToken()
+        if (!current) return { access: null, invalid: true }
+        if (current !== startedWith) return doRefresh()
+      }
       return { access: null, invalid: false }
     })().finally(() => {
       refreshing = null

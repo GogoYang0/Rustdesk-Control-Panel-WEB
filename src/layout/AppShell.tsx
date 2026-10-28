@@ -484,6 +484,7 @@ export default function AppShell() {
               aria-selected={key === activeKey}
               onClick={() => navigate(`/orgs/${current.id}/${key}`)}
               onKeyDown={(event) => {
+                if (event.target !== event.currentTarget) return
                 if (event.key === 'Enter' || event.key === ' ') {
                   event.preventDefault()
                   navigate(`/orgs/${current.id}/${key}`)

@@ -53,7 +53,12 @@ export default function Modal({ title, children, footer, onClose, width }: Modal
       }
       if (event.key !== 'Tab') return
       const list = focusables()
-      if (list.length === 0) return
+      if (list.length === 0) {
+        // Everything is disabled (e.g. a busy confirm): keep focus inside.
+        event.preventDefault()
+        node?.focus({ preventScroll: true })
+        return
+      }
       const head = list[0]
       const tail = list[list.length - 1]
       if (event.shiftKey && document.activeElement === head) {
