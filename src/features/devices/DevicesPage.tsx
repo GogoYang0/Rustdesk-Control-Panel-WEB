@@ -74,6 +74,10 @@ export default function DevicesPage() {
 
   const [selected, setSelected] = useState<Device | null>(null)
   const [dialog, setDialog] = useState<Dialog>(null)
+  // The effects below clear these after the switching render; until then the
+  // previous organization's overlay must not paint with the new orgId.
+  const activeSelected = orgChanged ? null : selected
+  const activeDialog = orgChanged ? null : dialog
   // A result that lands after the scope moved must not close the new dialog or
   // keep a stale sheet open.
   const scopeRef = useRef(id)
@@ -324,10 +328,10 @@ export default function DevicesPage() {
         会话；绑定重置让旧客户端立即失去驱动能力；断连请求由客户端下次心跳消费，不是即时断线。
       </p>
 
-      {selected ? (
+      {activeSelected ? (
         <DeviceSheet
-          key={`${id}-${selected.id}`}
-          device={selected}
+          key={`${id}-${activeSelected.id}`}
+          device={activeSelected}
           canWrite={canWrite}
           canDisconnect={canDisconnect}
           membersReady={membersReady}
@@ -335,53 +339,53 @@ export default function DevicesPage() {
           onAction={(kind) => {
             // Stacking a dialog over the sheet would put two focus traps and two
             // Escape handlers on the document; close the sheet first.
-            setDialog({ kind, device: selected })
+            setDialog({ kind, device: activeSelected })
             setSelected(null)
           }}
         />
       ) : null}
 
-      {dialog?.kind === 'register' ? (
+      {activeDialog?.kind === 'register' ? (
         <RegisterDialog orgId={id} onClose={() => setDialog(null)} onDone={afterWrite} />
       ) : null}
-      {dialog?.kind === 'toggle' ? (
+      {activeDialog?.kind === 'toggle' ? (
         <ToggleDeviceDialog
           orgId={id}
-          device={dialog.device}
+          device={activeDialog.device}
           onClose={() => setDialog(null)}
           onDone={afterWrite}
         />
       ) : null}
-      {dialog?.kind === 'owner' && membersReady ? (
+      {activeDialog?.kind === 'owner' && membersReady ? (
         <OwnerDialog
           orgId={id}
-          device={dialog.device}
+          device={activeDialog.device}
           members={(members ?? []).filter((member) => !member.disabled)}
           onClose={() => setDialog(null)}
           onDone={afterWrite}
         />
       ) : null}
-      {dialog?.kind === 'note' ? (
+      {activeDialog?.kind === 'note' ? (
         <NoteDialog
           orgId={id}
-          device={dialog.device}
+          device={activeDialog.device}
           onClose={() => setDialog(null)}
           onDone={afterWrite}
         />
       ) : null}
-      {dialog?.kind === 'rebind' ? (
+      {activeDialog?.kind === 'rebind' ? (
         <ReasonDialog
           orgId={id}
-          device={dialog.device}
+          device={activeDialog.device}
           action="rebind"
           onClose={() => setDialog(null)}
           onDone={afterWrite}
         />
       ) : null}
-      {dialog?.kind === 'disconnect' ? (
+      {activeDialog?.kind === 'disconnect' ? (
         <ReasonDialog
           orgId={id}
-          device={dialog.device}
+          device={activeDialog.device}
           action="disconnect"
           onClose={() => setDialog(null)}
           onDone={afterWrite}
