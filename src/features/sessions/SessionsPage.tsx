@@ -115,7 +115,11 @@ export default function SessionsPage() {
   const previousOrg = useRef(id)
   const orgChanged = previousOrg.current !== id
   const filters = parseFilters(searchParams)
-  const { origin, status, deviceId, range, page } = filters
+  // The switching render still carries the previous organization's filters in
+  // the URL. Both the cutoff and the request use the defaults there, so the
+  // cleared URL lands on the same query key instead of fetching twice.
+  const effectiveFilters = orgChanged ? DEFAULT_FILTERS : filters
+  const { origin, status, deviceId, range, page } = effectiveFilters
 
   // `since` is cut once per filter set: recomputing "now" on a page change
   // would slide the window and make rows at the cutoff appear twice or vanish.
@@ -128,20 +132,13 @@ export default function SessionsPage() {
     [origin, status, deviceId, range, page, rangeNow],
   )
 
-  // On the switching render, ask for the defaults instead: reusing the old
-  // filters would request a combination about to be discarded and could even
-  // hit that organization's cache and flash a wrongly filtered page.
-  const requestQueryString = orgChanged
-    ? toRequestQuery(DEFAULT_FILTERS, rangeNow).toString()
-    : queryString
-
   const {
     currentData: data,
     isLoading,
     isFetching,
     error,
     refetch,
-  } = useGetSessionsQuery({ orgId: id, queryString: requestQueryString }, { skip: !id })
+  } = useGetSessionsQuery({ orgId: id, queryString }, { skip: !id })
   const loadingCurrent = isLoading || (isFetching && data === undefined)
   // currentData: a dictionary from the previous organization must never label
   // the current one's rows while its own query is still in flight.
