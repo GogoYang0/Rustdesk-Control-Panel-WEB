@@ -10,6 +10,9 @@ import {
   fetchSession,
   fetchSessionAlerts,
   fetchSessions,
+  createPolicy,
+  deletePolicy,
+  fetchPolicies,
   inviteMember,
   rebindDevice,
   registerDevice,
@@ -17,11 +20,14 @@ import {
   requestDeviceDisconnect,
   updateDevice,
   updateMember,
+  updatePolicy,
   type AlertPage,
   type Device,
   type DeviceDisconnect,
   type DevicePage,
   type DeviceUpdateRequest,
+  type Policy,
+  type PolicyRequest,
   type Invitation,
   type Me,
   type Member,
@@ -49,7 +55,7 @@ async function wrap<T>(fn: () => Promise<T>): Promise<{ data: T } | { error: Api
 export const panelApi = createApi({
   reducerPath: 'panelApi',
   baseQuery: fakeBaseQuery<ApiError>(),
-  tagTypes: ['Me', 'Members', 'Sessions', 'Session', 'SessionAlerts', 'Devices'],
+  tagTypes: ['Me', 'Members', 'Sessions', 'Session', 'SessionAlerts', 'Devices', 'Policies'],
   endpoints: (build) => ({
     getMe: build.query<Me, void>({
       queryFn: () => wrap(fetchMe),
@@ -133,6 +139,27 @@ export const panelApi = createApi({
       // would only add noise.
       invalidatesTags: [],
     }),
+    getPolicies: build.query<Policy[], number>({
+      queryFn: (orgId) => wrap(() => fetchPolicies(orgId)),
+      providesTags: (_result, _error, orgId) => [{ type: 'Policies', id: orgId }],
+    }),
+    createPolicy: build.mutation<Policy, { orgId: number; input: PolicyRequest }>({
+      queryFn: ({ orgId, input }) => wrap(() => createPolicy(orgId, input)),
+      invalidatesTags: (_result, _error, { orgId }) => [{ type: 'Policies', id: orgId }],
+    }),
+    updatePolicy: build.mutation<Policy, { orgId: number; policyId: number; input: PolicyRequest }>(
+      {
+        queryFn: ({ orgId, policyId, input }) => wrap(() => updatePolicy(orgId, policyId, input)),
+        invalidatesTags: (_result, _error, { orgId }) => [{ type: 'Policies', id: orgId }],
+      },
+    ),
+    deletePolicy: build.mutation<void, { orgId: number; policyId: number }>({
+      queryFn: async ({ orgId, policyId }) => {
+        const result = await wrap(() => deletePolicy(orgId, policyId))
+        return 'data' in result ? { data: undefined } : result
+      },
+      invalidatesTags: (_result, _error, { orgId }) => [{ type: 'Policies', id: orgId }],
+    }),
   }),
 })
 
@@ -152,4 +179,8 @@ export const {
   useUpdateDeviceMutation,
   useRebindDeviceMutation,
   useRequestDeviceDisconnectMutation,
+  useGetPoliciesQuery,
+  useCreatePolicyMutation,
+  useUpdatePolicyMutation,
+  useDeletePolicyMutation,
 } = panelApi
