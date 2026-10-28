@@ -45,7 +45,9 @@ export default function MembersPage() {
   const { orgId } = useParams()
   const id = Number(orgId)
   const { data: me } = useGetMeQuery()
-  const { data, isLoading, error } = useGetMembersQuery(id, { skip: !id })
+  // currentData is undefined until *this* organization's query resolves, so a
+  // switch never shows the previous organization's members.
+  const { currentData: data, isLoading, error } = useGetMembersQuery(id, { skip: !id })
   const current = me?.orgs.find((org) => org.id === id)
   const perms = new Set(current?.permissions ?? [])
   const canManage = perms.has('member.manage')

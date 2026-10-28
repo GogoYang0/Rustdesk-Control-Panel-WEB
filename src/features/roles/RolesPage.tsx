@@ -27,7 +27,9 @@ function kindColor(kind: string): string {
 export default function RolesPage() {
   const { orgId } = useParams()
   const id = Number(orgId)
-  const { data, isLoading, error } = useGetRolesQuery(id, { skip: !id })
+  // currentData is undefined until *this* organization's query resolves, so a
+  // same-route organization switch never renders the previous org's roles.
+  const { currentData: data, isLoading, error } = useGetRolesQuery(id, { skip: !id })
   const roles = data ?? []
   const custom = roles.filter((role) => role.kind === 'custom').length
 

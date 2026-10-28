@@ -66,8 +66,27 @@ export function watchSessionAcrossTabs(): void {
 async function withRefreshLock<T>(
   fn: () => Promise<T>,
 ): Promise<{ acquired: boolean; result?: T }> {
+  // Web Locks gives real mutual exclusion and releases the lock if the tab dies,
+  // which the localStorage key cannot do. `ifAvailable` keeps the "someone else
+  // is refreshing" answer immediate; the caller then follows their published
+  // token instead of racing them.
+  if (typeof navigator !== 'undefined' && 'locks' in navigator) {
+    let acquired = false
+    let result: T | undefined
+    await navigator.locks.request('rdp-panel-refresh', { ifAvailable: true }, async (lock) => {
+      if (!lock) return
+      acquired = true
+      result = await fn()
+    })
+    return acquired ? { acquired, result } : { acquired: false }
+  }
+  return lockViaStorage(fn)
+}
+
+async function lockViaStorage<T>(fn: () => Promise<T>): Promise<{ acquired: boolean; result?: T }> {
   const mine = `${Date.now()}-${Math.random().toString(36).slice(2)}`
-  for (let attempt = 0; attempt < 40; attempt += 1) {
+  // Short acquire budget: the caller has its own wait loop for a held lock.
+  for (let attempt = 0; attempt < 5; attempt += 1) {
     const held = localStorage.getItem(LOCK_KEY)
     const heldAt = held ? Number(held.split('-')[0]) : 0
     if (held && Date.now() - heldAt > STALE_LOCK_MS) {
@@ -112,14 +131,22 @@ async function doRefresh(): Promise<RefreshResult> {
       if (invalid && startedAt === epoch) clearSession()
       return { access: null, invalid }
     }
-    const body = (await res.json()) as { data?: TokenPair }
-    if (!body.data) {
+    // A 2xx means the token was consumed. An unparsable body is therefore just
+    // as fatal as a missing pair: keeping the old token would replay it.
+    let body: { data?: Partial<TokenPair> | null }
+    try {
+      body = (await res.json()) as { data?: Partial<TokenPair> | null }
+    } catch {
+      if (startedAt === epoch) clearSession()
+      return { access: null, invalid: true }
+    }
+    if (!body.data?.access_token || !body.data?.refresh_token) {
       // A 2xx means the server consumed and rotated the token. Keeping the old
       // one would replay a spent token on the next attempt.
       if (startedAt === epoch) clearSession()
       return { access: null, invalid: true }
     }
-    setTokens(body.data, startedAt)
+    setTokens(body.data as TokenPair, startedAt)
     return { access: startedAt === epoch ? body.data.access_token : null, invalid: false }
   } catch {
     // A network blip must not wipe a working session: keep the refresh token so
@@ -138,7 +165,9 @@ export function refreshAccessToken(): Promise<RefreshResult> {
       // Another tab holds the lock. Never send the token we started with: it may
       // be consumed. Wait for the holder's write (the storage value is the
       // publication) and then rotate once with the *new* token.
-      for (let attempt = 0; attempt < 60; attempt += 1) {
+      // ~3s budget: long enough for another tab's refresh, short enough that a
+      // stuck holder surfaces as a transient error instead of a hung request.
+      for (let attempt = 0; attempt < 25; attempt += 1) {
         await sleep(120)
         const current = getRefreshToken()
         if (!current) return { access: null, invalid: true }
