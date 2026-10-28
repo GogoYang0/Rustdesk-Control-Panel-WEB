@@ -47,7 +47,10 @@ export const panelApi = createApi({
       queryFn: (orgId) => wrap(() => fetchRoles(orgId)),
       providesTags: (_result, _error, orgId) => [{ type: 'Members', id: `roles-${orgId}` }],
     }),
-    inviteMember: build.mutation<Invitation, { orgId: number; email: string; role: 'admin' | 'member' }>({
+    inviteMember: build.mutation<
+      Invitation,
+      { orgId: number; email: string; role: 'admin' | 'member' }
+    >({
       queryFn: ({ orgId, email, role }) => wrap(() => inviteMember(orgId, email, role)),
       invalidatesTags: (_result, _error, { orgId }) => [{ type: 'Members', id: orgId }],
     }),

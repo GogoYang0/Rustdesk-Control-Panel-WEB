@@ -52,7 +52,12 @@ async function once<T>(path: string, options: RequestOptions): Promise<T> {
     }
   }
   if (!res.ok) {
-    throw new ApiError(res.status, body.code ?? 'internal', body.message ?? res.statusText, body.data)
+    throw new ApiError(
+      res.status,
+      body.code ?? 'internal',
+      body.message ?? res.statusText,
+      body.data,
+    )
   }
   return body.data as T
 }
@@ -140,7 +145,11 @@ export function fetchRoles(orgId: number): Promise<Role[]> {
   return apiFetch<Role[]>(`/api/v1/orgs/${orgId}/roles`)
 }
 
-export function inviteMember(orgId: number, email: string, role: 'admin' | 'member'): Promise<Invitation> {
+export function inviteMember(
+  orgId: number,
+  email: string,
+  role: 'admin' | 'member',
+): Promise<Invitation> {
   return apiFetch<Invitation>(`/api/v1/orgs/${orgId}/invitations`, {
     method: 'POST',
     body: JSON.stringify({ email, role }),

@@ -12,7 +12,10 @@ vi.mock('./session', () => ({
 const { ApiError, apiFetch } = await import('./api')
 
 function jsonResponse(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  })
 }
 
 describe('apiFetch', () => {
@@ -43,7 +46,9 @@ describe('apiFetch', () => {
   })
 
   it('signs the session out when the refresh fails', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ code: 'unauthorized', message: 'expired' }, 401))
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({ code: 'unauthorized', message: 'expired' }, 401),
+    )
     refreshAccessToken.mockResolvedValue(null)
 
     await expect(apiFetch('/api/v1/me')).rejects.toBeInstanceOf(ApiError)
@@ -52,12 +57,16 @@ describe('apiFetch', () => {
 
   it('carries the error envelope detail so callers can read the 2FA challenge', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      jsonResponse({ code: 'two_factor_required', message: '需要两步验证', data: { challenge_token: 'c1' } }, 401),
+      jsonResponse(
+        { code: 'two_factor_required', message: '需要两步验证', data: { challenge_token: 'c1' } },
+        401,
+      ),
     )
     refreshAccessToken.mockResolvedValue(null)
 
-    await expect(
-      apiFetch('/api/v1/auth/login', { retryOn401: false }),
-    ).rejects.toMatchObject({ code: 'two_factor_required', detail: { challenge_token: 'c1' } })
+    await expect(apiFetch('/api/v1/auth/login', { retryOn401: false })).rejects.toMatchObject({
+      code: 'two_factor_required',
+      detail: { challenge_token: 'c1' },
+    })
   })
 })

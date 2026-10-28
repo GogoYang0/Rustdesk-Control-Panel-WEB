@@ -86,8 +86,19 @@ export default function MembersPage() {
         <div className="card">
           <div className="card-body">
             <div className="help">成员</div>
-            <div style={{ fontSize: 24, lineHeight: '32px', fontWeight: 600, marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
-              {members.length} <span className="help" style={{ fontWeight: 400 }}>人</span>
+            <div
+              style={{
+                fontSize: 24,
+                lineHeight: '32px',
+                fontWeight: 600,
+                marginTop: 2,
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              {members.length}{' '}
+              <span className="help" style={{ fontWeight: 400 }}>
+                人
+              </span>
             </div>
             <div className="help" style={{ marginTop: 6 }}>
               正常 {active} · 停用 {disabled}
@@ -108,9 +119,7 @@ export default function MembersPage() {
         <div className="card">
           <div className="card-body">
             <div className="help">外部身份</div>
-            <div style={{ fontSize: 24, lineHeight: '32px', fontWeight: 600, marginTop: 2 }}>
-              —
-            </div>
+            <div style={{ fontSize: 24, lineHeight: '32px', fontWeight: 600, marginTop: 2 }}>—</div>
             <div className="help" style={{ marginTop: 6 }}>
               OIDC / LDAP 绑定在「账户与安全」中管理
             </div>
@@ -157,12 +166,18 @@ export default function MembersPage() {
                         <td>
                           <div style={{ fontSize: 13 }}>
                             {member.email}
-                            {self ? <span className="tag grey" style={{ marginLeft: 6 }}>我</span> : null}
+                            {self ? (
+                              <span className="tag grey" style={{ marginLeft: 6 }}>
+                                我
+                              </span>
+                            ) : null}
                           </div>
                           <div className="mono help">user #{member.user_id}</div>
                         </td>
                         <td>
-                          <span className={`tag ${roleColor(memberKind(member))}`}>{member.role_name}</span>
+                          <span className={`tag ${roleColor(memberKind(member))}`}>
+                            {member.role_name}
+                          </span>
                         </td>
                         <td>
                           {member.disabled ? (
@@ -190,9 +205,15 @@ export default function MembersPage() {
                             />
                             <ActionButton
                               label={member.disabled ? '恢复' : '停用'}
-                              disabled={!canManage || self || (memberKind(member) === 'owner' && !isOwner)}
+                              disabled={
+                                !canManage || self || (memberKind(member) === 'owner' && !isOwner)
+                              }
                               title={
-                                !canManage ? '需要 member.manage' : self ? '不能停用自己' : '停用会撤销其 compat 会话'
+                                !canManage
+                                  ? '需要 member.manage'
+                                  : self
+                                    ? '不能停用自己'
+                                    : '停用会撤销其 compat 会话'
                               }
                               onClick={() =>
                                 member.disabled
@@ -203,8 +224,16 @@ export default function MembersPage() {
                             <ActionButton
                               label="移除"
                               danger
-                              disabled={!canManage || self || (memberKind(member) === 'owner' && !isOwner)}
-                              title={!canManage ? '需要 member.manage' : self ? '不能移除自己' : '移除成员'}
+                              disabled={
+                                !canManage || self || (memberKind(member) === 'owner' && !isOwner)
+                              }
+                              title={
+                                !canManage
+                                  ? '需要 member.manage'
+                                  : self
+                                    ? '不能移除自己'
+                                    : '移除成员'
+                              }
                               onClick={() => setDialog({ kind: 'remove', member })}
                             />
                           </div>
@@ -223,7 +252,9 @@ export default function MembersPage() {
         停用/移除会撤销该成员的 compat 会话；面板会话按每请求会籍复核。最后一个 owner 不可被移除。
       </p>
 
-      {dialog?.kind === 'invite' ? <InviteDialog orgId={id} onClose={() => setDialog(null)} /> : null}
+      {dialog?.kind === 'invite' ? (
+        <InviteDialog orgId={id} onClose={() => setDialog(null)} />
+      ) : null}
       {dialog?.kind === 'role' ? (
         <RoleDialog orgId={id} member={dialog.member} onClose={() => setDialog(null)} />
       ) : null}
@@ -232,7 +263,8 @@ export default function MembersPage() {
           title="停用成员"
           body={
             <>
-              停用 <b>{dialog.member.email}</b> 会立即撤销其在本组织的 compat 会话，并使其无法再访问该组织。
+              停用 <b>{dialog.member.email}</b> 会立即撤销其在本组织的 compat
+              会话，并使其无法再访问该组织。
             </>
           }
           confirmLabel="停用"
@@ -250,7 +282,11 @@ export default function MembersPage() {
   async function toggleDisabled(member: Member, disabled: boolean) {
     setBusy(true)
     try {
-      const result = await updateMember({ orgId: id, userId: member.user_id, patch: { disabled } }).unwrap()
+      const result = await updateMember({
+        orgId: id,
+        userId: member.user_id,
+        patch: { disabled },
+      }).unwrap()
       setDialog(null)
       Toast.success(
         disabled
@@ -263,7 +299,6 @@ export default function MembersPage() {
       setBusy(false)
     }
   }
-
 }
 
 function InviteDialog({ orgId, onClose }: { orgId: number; onClose: () => void }) {
@@ -312,18 +347,30 @@ function InviteDialog({ orgId, onClose }: { orgId: number; onClose: () => void }
           <span className="req">*</span>邮箱
         </label>
         <div className="input">
-          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com" />
+          <input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="name@company.com"
+          />
         </div>
-        <div className="help">邀请令牌有效期 7 天，服务端只存哈希；受邀人接受后成为该组织成员。</div>
+        <div className="help">
+          邀请令牌有效期 7 天，服务端只存哈希；受邀人接受后成为该组织成员。
+        </div>
       </div>
       <div className="field">
         <label className="form-label">角色</label>
         <div className="hstack" style={{ gap: 16, height: 32 }}>
-          <label className={`radio ${role === 'member' ? 'on' : ''}`} onClick={() => setRole('member')}>
+          <label
+            className={`radio ${role === 'member' ? 'on' : ''}`}
+            onClick={() => setRole('member')}
+          >
             <i />
             Member
           </label>
-          <label className={`radio ${role === 'admin' ? 'on' : ''}`} onClick={() => setRole('admin')}>
+          <label
+            className={`radio ${role === 'admin' ? 'on' : ''}`}
+            onClick={() => setRole('admin')}
+          >
             <i />
             Admin
           </label>
@@ -334,7 +381,15 @@ function InviteDialog({ orgId, onClose }: { orgId: number; onClose: () => void }
   )
 }
 
-function RoleDialog({ orgId, member, onClose }: { orgId: number; member: Member; onClose: () => void }) {
+function RoleDialog({
+  orgId,
+  member,
+  onClose,
+}: {
+  orgId: number
+  member: Member
+  onClose: () => void
+}) {
   const { data: roles, isLoading } = useGetRolesQuery(orgId)
   const [roleId, setRoleId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -364,7 +419,12 @@ function RoleDialog({ orgId, member, onClose }: { orgId: number; member: Member;
           <button className="btn tertiary" type="button" onClick={onClose}>
             取消
           </button>
-          <button className="btn primary" type="button" disabled={saving || isLoading} onClick={submit}>
+          <button
+            className="btn primary"
+            type="button"
+            disabled={saving || isLoading}
+            onClick={submit}
+          >
             {saving ? '保存中…' : '保存'}
           </button>
         </>
@@ -376,7 +436,8 @@ function RoleDialog({ orgId, member, onClose }: { orgId: number; member: Member;
         </div>
       ) : null}
       <div className="help mb-14">
-        成员：<b>{member.email}</b> · 当前 <span className={`tag ${roleColor(memberKind(member))}`}>{member.role_name}</span>
+        成员：<b>{member.email}</b> · 当前{' '}
+        <span className={`tag ${roleColor(memberKind(member))}`}>{member.role_name}</span>
       </div>
       <div className="field">
         <label className="form-label">新角色</label>
@@ -401,7 +462,15 @@ function RoleDialog({ orgId, member, onClose }: { orgId: number; member: Member;
   )
 }
 
-function RemoveDialog({ orgId, member, onClose }: { orgId: number; member: Member; onClose: () => void }) {
+function RemoveDialog({
+  orgId,
+  member,
+  onClose,
+}: {
+  orgId: number
+  member: Member
+  onClose: () => void
+}) {
   const [error, setError] = useState<string | null>(null)
   const [remove, { isLoading }] = useRemoveMemberMutation()
 
@@ -439,7 +508,8 @@ function RemoveDialog({ orgId, member, onClose }: { orgId: number; member: Membe
       ) : null}
       <div className="banner danger" style={{ padding: '10px 12px' }}>
         <div>
-          即将移除 <b>{member.email}</b>。同一事务内会撤销其在本组织的全部活跃 compat 会话，操作不可撤销。
+          即将移除 <b>{member.email}</b>。同一事务内会撤销其在本组织的全部活跃 compat
+          会话，操作不可撤销。
         </div>
       </div>
       <div className="help" style={{ marginTop: 10 }}>

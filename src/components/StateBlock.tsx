@@ -10,7 +10,13 @@ interface StateBlockProps {
  * Page-level empty/error state built from the prototype's `.empty` classes, so a
  * dead end still looks like the rest of the console.
  */
-export default function StateBlock({ code, title, description, actionLabel, onAction }: StateBlockProps) {
+export default function StateBlock({
+  code,
+  title,
+  description,
+  actionLabel,
+  onAction,
+}: StateBlockProps) {
   return (
     <div className="empty" style={{ minHeight: 280 }}>
       <div className="art" style={{ fontSize: 18, fontWeight: 600, letterSpacing: 1 }}>

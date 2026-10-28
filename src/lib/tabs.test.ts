@@ -9,7 +9,11 @@ describe('tab strip', () => {
   })
 
   it('re-activating a tab moves it to the tail (most recent last)', () => {
-    expect(pushTab(['members', 'roles', 'devices'], 'members')).toEqual(['roles', 'devices', 'members'])
+    expect(pushTab(['members', 'roles', 'devices'], 'members')).toEqual([
+      'roles',
+      'devices',
+      'members',
+    ])
   })
 
   it('closes a tab without reordering the rest', () => {

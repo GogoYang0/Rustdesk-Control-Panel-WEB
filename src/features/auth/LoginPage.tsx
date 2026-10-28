@@ -141,7 +141,15 @@ export default function LoginPage() {
             </div>
           </div>
           <div className="login-secure">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round">
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              strokeLinejoin="round"
+            >
               <path d="M12 2.5l8 3.2v5.6c0 4.6-3.3 8.2-8 9.7-4.7-1.5-8-5.1-8-9.7V5.7z" />
               <path d="M9 11.6l2.2 2.2 4-4.4" />
             </svg>
@@ -170,7 +178,9 @@ export default function LoginPage() {
 
               {captchaEnabled ? (
                 <div className="banner warning mb-14" style={{ padding: '9px 11px' }}>
-                  <div>该部署启用了交互式验证码，控制台将在后续波次支持；请暂时使用 API 或等待更新。</div>
+                  <div>
+                    该部署启用了交互式验证码，控制台将在后续波次支持；请暂时使用 API 或等待更新。
+                  </div>
                 </div>
               ) : null}
 
@@ -206,7 +216,11 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <button className="btn primary lg block" type="submit" disabled={submitting || captchaEnabled}>
+              <button
+                className="btn primary lg block"
+                type="submit"
+                disabled={submitting || captchaEnabled}
+              >
                 {submitting ? '登录中…' : '登录'}
               </button>
 
@@ -223,7 +237,9 @@ export default function LoginPage() {
                     : '未启用外部身份源'
                 }
               >
-                {providers.length ? `使用 ${providers.join(' / ')} 登录（后续）` : '使用企业 SSO 登录'}
+                {providers.length
+                  ? `使用 ${providers.join(' / ')} 登录（后续）`
+                  : '使用企业 SSO 登录'}
               </button>
               <p className="help" style={{ textAlign: 'center', margin: '18px 0 0' }}>
                 没有账号？请联系组织管理员邀请你加入

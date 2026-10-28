@@ -42,7 +42,12 @@ export default function RolesPage() {
         </div>
         <div className="spacer" />
         <div className="head-actions">
-          <button className="btn outline sm" type="button" disabled title="自定义角色编辑将在后续接入">
+          <button
+            className="btn outline sm"
+            type="button"
+            disabled
+            title="自定义角色编辑将在后续接入"
+          >
             新建自定义角色
           </button>
         </div>
@@ -67,7 +72,10 @@ export default function RolesPage() {
                 正在加载角色…
               </div>
             ) : roles.length === 0 ? (
-              <Empty title="还没有角色" description="组织初始化会生成 owner/admin/member 三个内置角色" />
+              <Empty
+                title="还没有角色"
+                description="组织初始化会生成 owner/admin/member 三个内置角色"
+              />
             ) : (
               <table className="table">
                 <thead>
@@ -87,7 +95,9 @@ export default function RolesPage() {
                         <div className="mono help">role #{role.id}</div>
                       </td>
                       <td>
-                        <span className={`tag ${kindColor(role.kind)}`}>{kindLabel(role.kind)}</span>
+                        <span className={`tag ${kindColor(role.kind)}`}>
+                          {kindLabel(role.kind)}
+                        </span>
                       </td>
                       <td className="mono">{role.permissions.length}</td>
                       <td>
