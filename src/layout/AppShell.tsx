@@ -133,7 +133,13 @@ const GROUPS: { title: string; items: NavEntry[] }[] = [
   {
     title: '会话与策略',
     items: [
-      { key: 'sessions', label: '会话记录', permission: 'device.read', icon: ICONS.sessions },
+      {
+        key: 'sessions',
+        label: '会话记录',
+        ready: true,
+        permission: 'device.read',
+        icon: ICONS.sessions,
+      },
       { key: 'access', label: '访问控制', permission: 'access.manage', icon: ICONS.access },
     ],
   },
@@ -151,7 +157,11 @@ const GROUPS: { title: string; items: NavEntry[] }[] = [
   },
 ]
 
-const TAB_LABELS: Record<string, string> = { members: '组织与成员', roles: '角色与权限' }
+const TAB_LABELS: Record<string, string> = {
+  members: '组织与成员',
+  roles: '角色与权限',
+  sessions: '会话记录',
+}
 const PAGE_KEYS = Object.keys(TAB_LABELS)
 
 export default function AppShell() {

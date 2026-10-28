@@ -114,3 +114,110 @@
   width: min(980px, 100%);
   min-height: min(620px, calc(100vh - 48px));
 }
+
+/* 会话详情侧滑：原型 #sheet 的组件化版本（遮罩 + 432px 面板）。
+   面板内的 .sheet-head/.sheet-title/.sheet-body 沿用 prototype.css。 */
+.sheet-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(8, 39, 65, 0.28);
+  backdrop-filter: blur(2px);
+}
+.sheet {
+  width: 432px;
+  max-width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border-left: 1px solid var(--border);
+  box-shadow: var(--shadow-pop);
+  animation: sheetIn 0.22s var(--ease);
+}
+.sheet .sheet-head {
+  justify-content: space-between;
+}
+@keyframes sheetIn {
+  from {
+    transform: translateX(24px);
+    opacity: 0.5;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@media (max-width: 767px) {
+  .sheet {
+    width: 100%;
+    border-left: 0;
+  }
+}
+
+/* 筛选控件：原型 .chip 是展示态，按钮需要去掉浏览器默认描边 */
+.chip-btn {
+  height: 26px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 13px;
+  background: var(--fill-0);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 11.5px;
+  line-height: 26px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 0.14s,
+    color 0.14s;
+}
+.chip-btn:hover {
+  background: var(--fill-1);
+  color: var(--text-1);
+}
+.chip-btn.on {
+  background: var(--primary);
+  color: #fff;
+  font-weight: 500;
+}
+.select-native {
+  height: var(--ctl-m);
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+  background: var(--bg-card);
+  color: var(--text-0);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.select-native:focus-visible {
+  outline: 0;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+/* 分页按钮沿用原型 .pg 的外观，去掉浏览器默认的按钮描边 */
+.pager button.pg {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+.pager button.pg:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* 长邮箱/主机名不得把表格撑出卡片 */
+.cell-wrap {
+  overflow-wrap: anywhere;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheet {
+    animation: none;
+  }
+}
