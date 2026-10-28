@@ -2,7 +2,8 @@ import { defineConfig } from 'cypress'
 
 export default defineConfig({
   e2e: {
-    baseUrl: 'http://localhost:3000',
+    // Matches the Rsbuild dev server; the console proxies /api to the panel.
+    baseUrl: 'http://localhost:5173',
     specPattern: 'cypress/e2e/**/*.cy.ts',
     supportFile: false,
   },

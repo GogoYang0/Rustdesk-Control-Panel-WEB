@@ -4,6 +4,7 @@ import { createBrowserRouter, Navigate } from 'react-router'
 import LoginPage from './features/auth/LoginPage'
 import MembersPage from './features/members/MembersPage'
 import RolesPage from './features/roles/RolesPage'
+import StateBlock from './components/StateBlock'
 import AppShell from './layout/AppShell'
 import { useGetMeQuery } from './store/api'
 
@@ -51,6 +52,16 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to="members" replace /> },
       { path: 'members', element: <MembersPage /> },
       { path: 'roles', element: <RolesPage /> },
+      {
+        path: '*',
+        element: (
+          <StateBlock
+            code="404"
+            title="页面不存在"
+            description="该地址没有对应的控制台页面，请从左侧导航进入。"
+          />
+        ),
+      },
     ],
   },
   { path: '*', element: <Navigate to="/" replace /> },

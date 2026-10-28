@@ -2,6 +2,7 @@ import { Toast } from '@douyinfe/semi-ui'
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { Navigate, Outlet, useLocation, useNavigate, useParams } from 'react-router'
 
+import StateBlock from '../components/StateBlock'
 import { logout, setLogoutHandler } from '../lib/session'
 import { applyThemeMode, getStoredTheme, type ThemeMode } from '../lib/theme'
 import { useGetMeQuery } from '../store/api'
@@ -110,7 +111,12 @@ export default function AppShell() {
     applyThemeMode(theme)
   }, [theme])
 
-  const current = me?.orgs.find((org) => String(org.id) === orgId) ?? me?.orgs[0]
+  // A wrong organization id in the URL must not silently render the first org:
+  // that made 404s look like a successful load of somebody else's scope.
+  const requestedOrgId = orgId ? Number(orgId) : undefined
+  const current = requestedOrgId
+    ? me?.orgs.find((org) => org.id === requestedOrgId)
+    : me?.orgs[0]
   const perms = useMemo(() => new Set(current?.permissions ?? []), [current])
   const activeKey = location.pathname.endsWith('/roles') ? 'roles' : 'members'
 
@@ -140,7 +146,26 @@ export default function AppShell() {
     )
   }
   if (error || !me) return <Navigate to="/login" replace />
-  if (!current) return <Navigate to="/" replace />
+  if (!current) {
+    const fallback = me.orgs[0]
+    return (
+      <div className="shell">
+        <div className="main" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <StateBlock
+            code="404"
+            title="组织不存在或你不是成员"
+            description={
+              requestedOrgId
+                ? `当前账号不在组织 #${requestedOrgId} 中，或该组织已被删除。`
+                : '当前账号还没有加入任何组织。'
+            }
+            actionLabel={fallback ? `前往 ${fallback.name}` : undefined}
+            onAction={fallback ? () => navigate(`/orgs/${fallback.id}/members`) : undefined}
+          />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="shell">
