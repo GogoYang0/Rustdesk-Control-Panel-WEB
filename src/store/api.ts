@@ -12,6 +12,7 @@ import {
   fetchSessions,
   createPolicy,
   deletePolicy,
+  fetchAlertPage,
   fetchApproval,
   fetchApprovalPage,
   fetchPolicies,
@@ -71,6 +72,7 @@ export const panelApi = createApi({
     'Policies',
     'Approvals',
     'Approval',
+    'Alerts',
   ],
   endpoints: (build) => ({
     getMe: build.query<Me, void>({
@@ -169,6 +171,11 @@ export const panelApi = createApi({
         invalidatesTags: (_result, _error, { orgId }) => [{ type: 'Policies', id: orgId }],
       },
     ),
+    getAlertPage: build.query<AlertPage, { orgId: number; queryString: string }>({
+      queryFn: ({ orgId, queryString }) =>
+        wrap(() => fetchAlertPage(orgId, new URLSearchParams(queryString))),
+      providesTags: (_result, _error, { orgId }) => [{ type: 'Alerts', id: orgId }],
+    }),
     getApprovalPage: build.query<ApprovalPage, { orgId: number; queryString: string }>({
       queryFn: ({ orgId, queryString }) =>
         wrap(() => fetchApprovalPage(orgId, new URLSearchParams(queryString))),
@@ -228,6 +235,7 @@ export const {
   useCreatePolicyMutation,
   useUpdatePolicyMutation,
   useDeletePolicyMutation,
+  useGetAlertPageQuery,
   useGetApprovalPageQuery,
   useGetApprovalQuery,
   useDecideApprovalMutation,

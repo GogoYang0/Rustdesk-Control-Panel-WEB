@@ -19,7 +19,7 @@ describe('session filters in the URL', () => {
 
   it('keeps a fully specified filter set', () => {
     const filters = parseFilters(
-      new URLSearchParams('origin=native&status=denied&deviceId=42&range=30d&page=3'),
+      new URLSearchParams('origin=native&status=denied&deviceId=42&range=30d&page=3&sessionId=9'),
     )
     expect(filters).toEqual({
       origin: 'native',
@@ -27,7 +27,14 @@ describe('session filters in the URL', () => {
       deviceId: '42',
       range: '30d',
       page: 3,
+      sessionId: 9,
     })
+  })
+
+  it('keeps a session deep link without a page cap and drops invalid ones', () => {
+    expect(parseFilters(new URLSearchParams('sessionId=2000000')).sessionId).toBe(2000000)
+    expect(parseFilters(new URLSearchParams('sessionId=0')).sessionId).toBeNull()
+    expect(parseFilters(new URLSearchParams('sessionId=abc')).sessionId).toBeNull()
   })
 
   it.each([
@@ -40,6 +47,7 @@ describe('session filters in the URL', () => {
     ['page=-2', 'page', 1],
     ['page=1.5', 'page', 1],
     ['page=1e21', 'page', 1],
+    ['page=100001', 'page', 1],
     ['page=1000001', 'page', 1],
   ] as const)('drops an invalid %s', (query, key, expected) => {
     expect(parseFilters(new URLSearchParams(query))[key]).toEqual(expected)
@@ -49,9 +57,17 @@ describe('session filters in the URL', () => {
     expect(toSearchParams(DEFAULT_FILTERS).toString()).toBe('')
   })
 
-  it('round-trips a non-default filter set', () => {
-    const filters = parseFilters(new URLSearchParams('origin=panel&range=all&page=2'))
+  it('round-trips a non-default filter set, including the deep link', () => {
+    const filters = parseFilters(new URLSearchParams('origin=panel&range=all&page=2&sessionId=12'))
     expect(parseFilters(toSearchParams(filters))).toEqual(filters)
+  })
+
+  it('never sends the deep link to the list endpoint', () => {
+    const query = toRequestQuery(
+      { origin: '', status: '', deviceId: '', range: 'all', page: 1, sessionId: 12 },
+      NOW,
+    )
+    expect(query.get('sessionId')).toBeNull()
   })
 })
 
@@ -65,7 +81,7 @@ describe('session request parameters', () => {
 
   it('maps filters onto the contract query names', () => {
     const query = toRequestQuery(
-      { origin: 'panel', status: 'open', deviceId: '7', range: '7d', page: 2 },
+      { origin: 'panel', status: 'open', deviceId: '7', range: '7d', page: 2, sessionId: null },
       NOW,
     )
     expect(query.get('origin')).toBe('panel')

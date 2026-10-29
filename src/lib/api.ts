@@ -279,6 +279,13 @@ export type {
   ApprovalStatus,
 } from '../api/generated'
 
+export type { AlertSeverity } from '../api/generated'
+
+/** Alerts are records: the API has no detail, disposition or export endpoint. */
+export function fetchAlertPage(orgId: number, query: URLSearchParams): Promise<AlertPage> {
+  return apiFetch<AlertPage>(`/api/v1/orgs/${orgId}/alerts?${query.toString()}`)
+}
+
 export function fetchApprovalPage(orgId: number, query: URLSearchParams): Promise<ApprovalPage> {
   return apiFetch<ApprovalPage>(`/api/v1/orgs/${orgId}/approvals?${query.toString()}`)
 }

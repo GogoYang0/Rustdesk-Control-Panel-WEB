@@ -128,7 +128,11 @@ export default function SessionsPage() {
   const cutoffKey = `${id}|${origin}|${status}|${deviceId}|${range}|${refreshNonce}`
   const rangeNow = useMemo(() => new Date(), [cutoffKey])
   const queryString = useMemo(
-    () => toRequestQuery({ origin, status, deviceId, range, page }, rangeNow).toString(),
+    () =>
+      toRequestQuery(
+        { origin, status, deviceId, range, page, sessionId: filters.sessionId },
+        rangeNow,
+      ).toString(),
     [origin, status, deviceId, range, page, rangeNow],
   )
 
@@ -145,18 +149,26 @@ export default function SessionsPage() {
   const { currentData: devicesPage } = useGetDevicesQuery(id, { skip: !id })
   const { currentData: members } = useGetMembersQuery(id, { skip: !id })
 
-  const [selected, setSelected] = useState<number | null>(null)
+  // The open session lives in the URL (`?sessionId=`), so alerts can deep-link
+  // into a session and one source of truth drives the sheet.
+  const selected = orgChanged ? null : filters.sessionId
   // The page instance survives an in-place organization change (a hand-edited
-  // URL, or a future in-page switcher): drop the selection and the filters,
-  // which describe the previous organization.
-  // The page correction below must not write the previous organization's
-  // filters back in the same commit that clears them.
+  // URL, or a future in-page switcher): drop the filters, which describe the
+  // previous organization. The page correction below must not write the
+  // previous organization's filters back in the same commit that clears them.
   useEffect(() => {
     if (!orgChanged) return
     previousOrg.current = id
-    setSelected(null)
     if (searchParams.toString()) setSearchParams(new URLSearchParams(), { replace: true })
   }, [id, orgChanged, searchParams, setSearchParams])
+
+  // An unparsable deep link is removed instead of staying in a copyable URL.
+  useEffect(() => {
+    if (!searchParams.has('sessionId') || filters.sessionId !== null) return
+    const next = new URLSearchParams(searchParams)
+    next.delete('sessionId')
+    setSearchParams(next, { replace: true })
+  }, [searchParams, filters.sessionId, setSearchParams])
 
   const devices = useMemo(() => {
     const map = new Map<number, Device>()
@@ -176,9 +188,23 @@ export default function SessionsPage() {
 
   const change = useCallback(
     (patch: Partial<SessionFilters>) => {
-      setSearchParams(toSearchParams({ ...filters, ...patch, page: patch.page ?? 1 }), {
-        replace: true,
-      })
+      // Filter changes start at page 1 and close the sheet; page changes keep
+      // both unless the caller closes the sheet explicitly (pagination does).
+      const touchesFilters = ['origin', 'status', 'deviceId', 'range'].some((key) => key in patch)
+      setSearchParams(
+        toSearchParams({
+          ...filters,
+          ...patch,
+          page: patch.page ?? (touchesFilters ? 1 : filters.page),
+          sessionId:
+            patch.sessionId !== undefined
+              ? patch.sessionId
+              : touchesFilters
+                ? null
+                : filters.sessionId,
+        }),
+        { replace: true },
+      )
     },
     [filters, setSearchParams],
   )
@@ -357,7 +383,7 @@ export default function SessionsPage() {
                         <button
                           className="btn borderless sm"
                           type="button"
-                          onClick={() => setSelected(session.id)}
+                          onClick={() => change({ sessionId: session.id })}
                         >
                           详情
                         </button>
@@ -378,7 +404,7 @@ export default function SessionsPage() {
                   type="button"
                   disabled={page <= 1}
                   aria-label="上一页"
-                  onClick={() => change({ page: page - 1 })}
+                  onClick={() => change({ page: page - 1, sessionId: null })}
                 >
                   ‹
                 </button>
@@ -390,7 +416,7 @@ export default function SessionsPage() {
                   type="button"
                   disabled={page >= pages}
                   aria-label="下一页"
-                  onClick={() => change({ page: page + 1 })}
+                  onClick={() => change({ page: page + 1, sessionId: null })}
                 >
                   ›
                 </button>
@@ -412,7 +438,7 @@ export default function SessionsPage() {
           sessionId={selected}
           devices={devices}
           emails={emails}
-          onClose={() => setSelected(null)}
+          onClose={() => change({ sessionId: null })}
         />
       ) : null}
     </section>

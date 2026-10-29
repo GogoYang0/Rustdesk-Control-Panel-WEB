@@ -13,7 +13,7 @@ import { ApiError } from './api'
 
 export const APPROVAL_PAGE_SIZE = 50
 export const APPROVAL_STATUSES: ApprovalStatus[] = ['pending', 'approved', 'denied', 'expired']
-export const MAX_APPROVAL_PAGE = 1_000_000
+export const MAX_APPROVAL_PAGE = 100_000
 
 export interface ApprovalFilters {
   status: ApprovalStatus

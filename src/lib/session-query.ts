@@ -19,6 +19,8 @@ export interface SessionFilters {
   deviceId: string
   range: SessionRange
   page: number
+  /** Deep link to one session; never sent to the list endpoint. */
+  sessionId: number | null
 }
 
 export const DEFAULT_FILTERS: SessionFilters = {
@@ -27,6 +29,7 @@ export const DEFAULT_FILTERS: SessionFilters = {
   deviceId: '',
   range: '7d',
   page: 1,
+  sessionId: null,
 }
 
 function isOrigin(value: string): value is SessionOrigin {
@@ -48,6 +51,7 @@ export function parseFilters(params: URLSearchParams): SessionFilters {
   const deviceId = params.get('deviceId') ?? ''
   const range = params.get('range') ?? ''
   const page = Number(params.get('page') ?? '')
+  const sessionId = params.get('sessionId') ?? ''
 
   return {
     origin: isOrigin(origin) ? origin : '',
@@ -56,7 +60,11 @@ export function parseFilters(params: URLSearchParams): SessionFilters {
     range: isRange(range) ? range : DEFAULT_FILTERS.range,
     // Cap at the last page a URL can usefully express; 1e21 would serialise as
     // "1e+21" and come back as a 400 instead of the default.
-    page: Number.isSafeInteger(page) && page > 0 && page <= 1_000_000 ? page : 1,
+    page: Number.isSafeInteger(page) && page > 0 && page <= 100_000 ? page : 1,
+    sessionId:
+      /^[1-9]\d*$/.test(sessionId) && Number.isSafeInteger(Number(sessionId))
+        ? Number(sessionId)
+        : null,
   }
 }
 
@@ -68,6 +76,7 @@ export function toSearchParams(filters: SessionFilters): URLSearchParams {
   if (filters.deviceId) params.set('deviceId', filters.deviceId)
   if (filters.range !== DEFAULT_FILTERS.range) params.set('range', filters.range)
   if (filters.page > 1) params.set('page', String(filters.page))
+  if (filters.sessionId) params.set('sessionId', String(filters.sessionId))
   return params
 }
 
