@@ -61,15 +61,33 @@ interface RequestOptions extends RequestInit {
   retryOn401?: boolean
 }
 
-async function once<T>(path: string, options: RequestOptions): Promise<T> {
-  const headers = new Headers(options.headers)
-  if (options.body !== undefined && !headers.has('Content-Type')) {
+async function request(path: string, init: RequestInit): Promise<Response> {
+  const headers = new Headers(init.headers)
+  if (init.body !== undefined && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
   }
   const token = getAccessToken()
   if (token) headers.set('Authorization', `Bearer ${token}`)
+  return fetch(path, { ...init, headers })
+}
 
-  const res = await fetch(path, { ...options, headers })
+/**
+ * Sends the request with the refresh-on-401 contract. Login and refresh calls
+ * opt out; network and 5xx failures keep the session and surface as errors.
+ */
+async function authorizedFetch(path: string, options: RequestOptions): Promise<Response> {
+  const { retryOn401 = true, ...init } = options
+  const res = await request(path, init)
+  if (res.status !== 401 || !retryOn401) return res
+
+  const refreshed = await refreshAccessToken()
+  if (refreshed.access) return request(path, init)
+  if (refreshed.invalid) logout()
+  return res
+}
+
+async function once<T>(path: string, options: RequestOptions): Promise<T> {
+  const res = await authorizedFetch(path, options)
   const text = await res.text()
   let body: Envelope<T> = {}
   if (text) {
@@ -91,22 +109,64 @@ async function once<T>(path: string, options: RequestOptions): Promise<T> {
 }
 
 /** Calls the panel API through the same-origin proxy, refreshing once on 401. */
-export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { retryOn401 = true, ...init } = options
+export function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  return once<T>(path, options)
+}
+
+export interface CsvDownload {
+  filename: string
+  text: string
+}
+
+/**
+ * Downloads a CSV export through the same refresh contract. JSON error
+ * envelopes become ApiError; a 200 that is neither CSV nor an attachment is
+ * rejected so a proxy error page can never be saved as evidence.
+ */
+export async function fetchCsv(path: string): Promise<CsvDownload> {
+  let res: Response
   try {
-    return await once<T>(path, init)
-  } catch (err) {
-    if (!(err instanceof ApiError) || err.status !== 401 || !retryOn401) throw err
-    const refreshed = await refreshAccessToken()
-    if (refreshed.access) return once<T>(path, init)
-    if (refreshed.invalid) {
-      // The server rejected the refresh token: the session is really over, so
-      // clear the cache and route to /login. Network and 5xx failures keep the
-      // session and surface as an ordinary error instead.
-      logout()
-    }
-    throw err
+    res = await authorizedFetch(path, { retryOn401: true })
+  } catch {
+    throw new ApiError(0, 'internal', '网络异常')
   }
+
+  const text = await res.text()
+  if (!res.ok) {
+    let body: Envelope<unknown> = {}
+    if (text) {
+      try {
+        body = JSON.parse(text) as Envelope<unknown>
+      } catch {
+        // Proxy or gateway error pages are not envelopes; keep them opaque.
+      }
+    }
+    throw new ApiError(
+      res.status,
+      body.code ?? 'internal',
+      body.message ?? res.statusText,
+      body.data,
+    )
+  }
+
+  const disposition = res.headers.get('Content-Disposition') ?? ''
+  const contentType = (res.headers.get('Content-Type') ?? '').toLowerCase()
+  if (!disposition && !contentType.includes('text/csv')) {
+    throw new ApiError(res.status, 'internal', '响应不是 CSV')
+  }
+  return { filename: csvFilename(disposition), text }
+}
+
+function csvFilename(disposition: string): string {
+  const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition)
+  if (!match) return ''
+  let name = match[1].trim()
+  try {
+    name = decodeURIComponent(name)
+  } catch {
+    // Keep the raw header if it is not valid percent-encoding.
+  }
+  return name.replace(/[\\/:*?"<>|\r\n]/g, '_').trim()
 }
 
 // ── auth ────────────────────────────────────────────────────────────────────
