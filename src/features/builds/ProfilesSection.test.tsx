@@ -55,7 +55,7 @@ function setup(
     profiles?: Record<string, unknown>[]
     capabilities?: ClientBuildCapabilities
     deleteStatus?: number
-    logoBody?: Blob
+    logoBody?: BodyInit
     logoContentType?: string
     profilesStatus?: number
   } = {},
@@ -69,7 +69,7 @@ function setup(
     const body = typeof init?.body === 'string' ? init.body : ''
     requests.push({ url, method, body, cache: String(init?.cache ?? '') })
     if (url.includes('/logo') && method === 'GET') {
-      return new Response(options.logoBody ?? new Blob(['png'], { type: 'image/png' }), {
+      return new Response(options.logoBody ?? 'png', {
         status: 200,
         headers: { 'Content-Type': options.logoContentType ?? 'image/png' },
       })
