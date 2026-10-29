@@ -200,7 +200,13 @@ const GROUPS: { title: string; items: NavEntry[] }[] = [
   {
     title: '运维与审计',
     items: [
-      { key: 'audit', label: '审计与日志', permission: 'audit.read', icon: ICONS.audit },
+      {
+        key: 'audit',
+        label: '审计与日志',
+        ready: true,
+        permission: 'audit.read',
+        icon: ICONS.audit,
+      },
       {
         key: 'builds',
         label: '客户端生成器',
@@ -219,6 +225,7 @@ const TAB_LABELS: Record<string, string> = {
   policies: '连接策略',
   approvals: '审批中心',
   alerts: '告警中心',
+  audit: '审计与日志',
   'address-books': '地址簿',
 }
 const PAGE_KEYS = Object.keys(TAB_LABELS)
