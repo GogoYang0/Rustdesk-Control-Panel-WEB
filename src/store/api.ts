@@ -10,11 +10,13 @@ import {
   fetchSession,
   fetchSessionAlerts,
   fetchSessions,
+  createAccessRule,
   createAddressBook,
   createAddressBookGrant,
   createDeviceGroup,
   createPolicy,
   createUserGroup,
+  deleteAccessRule,
   deleteAddressBook,
   deleteAddressBookGrant,
   deleteAddressBookPeer,
@@ -23,6 +25,7 @@ import {
   deleteUserGroup,
   fetchAddressBook,
   fetchAddressBookGrants,
+  fetchAccessRules,
   fetchAddressBooks,
   fetchAlertPage,
   fetchAllDevices,
@@ -52,6 +55,8 @@ import {
   type AddressBook,
   type AddressBookGrant,
   type AddressBookGrantRequest,
+  type AccessRule,
+  type AccessRuleCreateRequest,
   type AddressBookPeer,
   type AllDevices,
   type DeviceGroup,
@@ -209,6 +214,24 @@ export const panelApi = createApi({
     getUserGroups: build.query<UserGroup[], number>({
       queryFn: (orgId) => wrap(() => fetchUserGroups(orgId)),
       providesTags: (_result, _error, orgId) => [{ type: 'UserGroups', id: orgId }],
+    }),
+    getAccessRules: build.query<AccessRule[], number>({
+      queryFn: (orgId) => wrap(() => fetchAccessRules(orgId)),
+      providesTags: (_result, _error, orgId) => [{ type: 'AccessRules', id: orgId }],
+    }),
+    createAccessRule: build.mutation<
+      AccessRule,
+      { orgId: number; request: AccessRuleCreateRequest }
+    >({
+      queryFn: ({ orgId, request }) => wrap(() => createAccessRule(orgId, request)),
+      invalidatesTags: (_result, _error, { orgId }) => [{ type: 'AccessRules', id: orgId }],
+    }),
+    deleteAccessRule: build.mutation<void, { orgId: number; ruleId: number }>({
+      queryFn: async ({ orgId, ruleId }) => {
+        const result = await wrap(() => deleteAccessRule(orgId, ruleId))
+        return 'data' in result ? { data: undefined } : result
+      },
+      invalidatesTags: (_result, _error, { orgId }) => [{ type: 'AccessRules', id: orgId }],
     }),
     getDeviceGroups: build.query<DeviceGroup[], number>({
       queryFn: (orgId) => wrap(() => fetchDeviceGroups(orgId)),
@@ -478,6 +501,9 @@ export const {
   useCreateAddressBookGrantMutation,
   useDeleteAddressBookGrantMutation,
   useGetUserGroupsQuery,
+  useGetAccessRulesQuery,
+  useCreateAccessRuleMutation,
+  useDeleteAccessRuleMutation,
   useGetDeviceGroupsQuery,
   useGetAllDevicesQuery,
   useCreateUserGroupMutation,

@@ -3,7 +3,14 @@ import { describe, expect, it } from 'vitest'
 import type { DeviceGroup } from '../api/generated'
 import {
   accessError,
+  accessRuleImpact,
+  accessRuleKey,
+  accessRuleTargetLabel,
   deviceGroupOwnership,
+  findDuplicateRule,
+  isDefaultAccessRule,
+  ruleTargetKindLabel,
+  validateRuleForm,
   diffIds,
   groupMemberSummary,
   sameIdSet,
@@ -70,6 +77,70 @@ describe('deviceGroupOwnership', () => {
     expect(map.get(11)).toEqual({ id: 7, name: 'Ops' })
     expect(map.get(13)).toEqual({ id: 8, name: 'Finance' })
     expect(map.get(99)).toBeUndefined()
+  })
+})
+
+describe('access rule helpers', () => {
+  it('keys duplicates consistently for null and zero targets', () => {
+    expect(
+      accessRuleKey({ source_group_id: 1, target_kind: 'all_devices', target_group_id: null }),
+    ).toBe('1|all_devices|0')
+    expect(
+      accessRuleKey({ source_group_id: 1, target_kind: 'all_devices', target_group_id: 0 }),
+    ).toBe('1|all_devices|0')
+    expect(
+      accessRuleKey({ source_group_id: 1, target_kind: 'device_group', target_group_id: 7 }),
+    ).toBe('1|device_group|7')
+  })
+
+  it('detects duplicate and default rules', () => {
+    const rules = [
+      {
+        id: 1,
+        source_group_id: 1,
+        source_group_name: 'everyone',
+        target_kind: 'all_devices' as const,
+        target_group_id: null,
+        target_group_name: '',
+        created_at: '',
+      },
+    ]
+    expect(
+      findDuplicateRule(rules, {
+        source_group_id: 1,
+        target_kind: 'all_devices',
+        target_group_id: null,
+      })?.id,
+    ).toBe(1)
+    expect(isDefaultAccessRule(rules[0], [])).toBe(true)
+    expect(isDefaultAccessRule(rules[0], [{ id: 1, kind: 'custom' }])).toBe(false)
+  })
+
+  it('labels targets and explains their impact', () => {
+    expect(ruleTargetKindLabel('device_group')).toBe('设备组')
+    expect(accessRuleTargetLabel({ target_kind: 'user_group', target_group_name: 'Finance' })).toBe(
+      '用户组 · Finance',
+    )
+    expect(accessRuleTargetLabel({ target_kind: 'all_devices', target_group_name: '' })).toBe(
+      '全部设备',
+    )
+    expect(accessRuleImpact('user_group')).toContain('拥有的')
+    expect(accessRuleImpact('all_devices')).toContain('全部')
+  })
+
+  it('validates source and target selection', () => {
+    expect(
+      validateRuleForm({ sourceGroupId: 0, targetKind: 'all_devices', targetGroupId: null }),
+    ).toContain('来源')
+    expect(
+      validateRuleForm({ sourceGroupId: 1, targetKind: 'device_group', targetGroupId: null }),
+    ).toContain('目标')
+    expect(
+      validateRuleForm({ sourceGroupId: 1, targetKind: 'device_group', targetGroupId: 3 }),
+    ).toBeNull()
+    expect(
+      validateRuleForm({ sourceGroupId: 1, targetKind: 'all_devices', targetGroupId: 3 }),
+    ).toBeNull()
   })
 })
 

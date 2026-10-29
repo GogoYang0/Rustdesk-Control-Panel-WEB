@@ -6,6 +6,8 @@ import type {
   AddressBookPeer,
   AddressBookPeersReplaceRequest,
   AddressBookUpdateRequest,
+  AccessRule,
+  AccessRuleCreateRequest,
   AlertPage,
   AuditLogPage,
   ConnectionLogPage,
@@ -497,6 +499,28 @@ export function replaceUserGroupMembers(
   return apiFetch<UserGroupMemberMutation>(`/api/v1/orgs/${orgId}/user-groups/${groupId}/members`, {
     method: 'PUT',
     body: JSON.stringify({ user_ids: userIds }),
+  })
+}
+
+export type { AccessRule, AccessRuleCreateRequest, AccessRuleTargetKind } from '../api/generated'
+
+export function fetchAccessRules(orgId: number): Promise<AccessRule[]> {
+  return apiFetch<AccessRule[]>(`/api/v1/orgs/${orgId}/access-rules`)
+}
+
+export function createAccessRule(
+  orgId: number,
+  request: AccessRuleCreateRequest,
+): Promise<AccessRule> {
+  return apiFetch<AccessRule>(`/api/v1/orgs/${orgId}/access-rules`, {
+    method: 'POST',
+    body: JSON.stringify(request),
+  })
+}
+
+export async function deleteAccessRule(orgId: number, ruleId: number): Promise<void> {
+  await apiFetch<unknown>(`/api/v1/orgs/${orgId}/access-rules/${ruleId}`, {
+    method: 'DELETE',
   })
 }
 
