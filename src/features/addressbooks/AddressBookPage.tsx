@@ -1,6 +1,6 @@
 import { Banner, Empty, Toast } from '@douyinfe/semi-ui'
 import { useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { useNavigate, useParams, useSearchParams } from 'react-router'
 
 import StateBlock from '../../components/StateBlock'
 import type { AddressBookPeer } from '../../lib/api'
@@ -9,8 +9,11 @@ import {
   useDeleteAddressBookPeerMutation,
   useGetAddressBookQuery,
   useGetMeQuery,
+  useGetMembersQuery,
+  useGetUserGroupsQuery,
 } from '../../store/api'
 import { ConfirmDelete, PeerDialog } from './AddressBookDialogs'
+import BookGrantsPanel from './BookGrantsPanel'
 
 export default function AddressBookPage() {
   const { orgId, bookId } = useParams()
@@ -32,6 +35,37 @@ export default function AddressBookPage() {
   const current = me?.orgs.find((org) => org.id === id)
   const perms = useMemo(() => new Set(current?.permissions ?? []), [current])
   const editable = book ? canEditBook(book, me?.user.id, perms) : false
+  const canManageGroups = perms.has('access.manage')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const showGrants = book?.scope === 'shared' && editable
+  const tab: 'peers' | 'grants' =
+    showGrants && searchParams.get('tab') === 'grants' ? 'grants' : 'peers'
+
+  const {
+    currentData: members,
+    isFetching: membersFetching,
+    isError: membersError,
+    refetch: refetchMembers,
+  } = useGetMembersQuery(id, { skip: !id || !showGrants })
+  const {
+    currentData: groups,
+    isFetching: groupsFetching,
+    isError: groupsError,
+    refetch: refetchGroups,
+  } = useGetUserGroupsQuery(id, { skip: !id || !canManageGroups })
+
+  const emails = useMemo(() => {
+    const map = new Map<number, string>()
+    for (const member of members ?? []) map.set(member.user_id, member.email)
+    return map
+  }, [members])
+
+  function switchTab(next: 'peers' | 'grants') {
+    const params = new URLSearchParams(searchParams)
+    if (next === 'grants') params.set('tab', 'grants')
+    else params.delete('tab')
+    setSearchParams(params, { replace: true })
+  }
 
   const [query, setQuery] = useState('')
   const [adding, setAdding] = useState(false)
@@ -101,23 +135,52 @@ export default function AddressBookPage() {
           >
             {isFetching ? '刷新中…' : '刷新'}
           </button>
-          <button
-            className="btn primary sm"
-            type="button"
-            disabled={!editable || !book || (book.peers?.length ?? 0) >= PEER_LIMIT}
-            title={
-              !editable
-                ? '没有该地址簿的写权限'
-                : (book?.peers?.length ?? 0) >= PEER_LIMIT
-                  ? `最多 ${PEER_LIMIT} 个 peer`
-                  : undefined
-            }
-            onClick={() => setAdding(true)}
-          >
-            添加 peer
-          </button>
+          {tab === 'peers' ? (
+            <button
+              className="btn primary sm"
+              type="button"
+              disabled={!editable || !book || (book.peers?.length ?? 0) >= PEER_LIMIT}
+              title={
+                !editable
+                  ? '没有该地址簿的写权限'
+                  : (book?.peers?.length ?? 0) >= PEER_LIMIT
+                    ? `最多 ${PEER_LIMIT} 个 peer`
+                    : undefined
+              }
+              onClick={() => setAdding(true)}
+            >
+              添加 peer
+            </button>
+          ) : null}
         </div>
       </div>
+
+      {showGrants ? (
+        <div className="tabs" role="tablist" aria-label="地址簿视图">
+          <button
+            type="button"
+            role="tab"
+            id="book-tab-peers"
+            aria-controls={tab === 'peers' ? 'book-tabpanel' : undefined}
+            aria-selected={tab === 'peers'}
+            className={`tab ${tab === 'peers' ? 'on' : ''}`}
+            onClick={() => switchTab('peers')}
+          >
+            Peers
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="book-tab-grants"
+            aria-controls={tab === 'grants' ? 'book-tabpanel' : undefined}
+            aria-selected={tab === 'grants'}
+            className={`tab ${tab === 'grants' ? 'on' : ''}`}
+            onClick={() => switchTab('grants')}
+          >
+            授权
+          </button>
+        </div>
+      ) : null}
 
       {book && !editable ? (
         <div className="banner info mb-14">
@@ -136,109 +199,136 @@ export default function AddressBookPage() {
         />
       ) : null}
 
-      {loading ? (
-        <div className="card">
-          <div className="card-body">
-            <div className="help" role="status">
-              正在加载 peers…
-            </div>
-          </div>
-        </div>
-      ) : error && !book ? null : (book?.peers ?? []).length === 0 ? (
-        <div className="card">
-          <div className="card-body">
-            <Empty title="地址簿还没有 peer" description="添加 peer 后，客户端登录即可看到" />
-          </div>
-        </div>
-      ) : (
-        <div className="card" style={{ overflow: 'hidden' }}>
-          <div className="card-head">
-            <div className="card-title">
-              Peers<span className="hint">按 peer id 排序；最多渲染 200 行</span>
-            </div>
-            <div className="input" style={{ width: 220 }}>
-              <input
-                ref={searchRef}
-                value={query}
-                placeholder="搜索 peer id / 别名 / 主机名"
-                aria-label="搜索 peer"
-                onChange={(event) => setQuery(event.target.value)}
-              />
-            </div>
-          </div>
-          <div className="card-body tight" style={{ overflowX: 'auto' }}>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th style={{ width: 150 }}>Peer ID</th>
-                  <th>别名</th>
-                  <th style={{ width: 160 }}>主机名</th>
-                  <th style={{ width: 110 }}>平台</th>
-                  <th style={{ width: 160 }}>标签</th>
-                  <th style={{ width: 140 }}>操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                {search.visible.map((peer) => (
-                  <tr key={peer.peer_id}>
-                    <td className="mono">{peer.peer_id}</td>
-                    <td className="cell-wrap">{peer.alias || '—'}</td>
-                    <td className="cell-wrap">{peer.hostname || '—'}</td>
-                    <td>{peer.platform || '—'}</td>
-                    <td>
-                      {(peer.tags ?? []).length === 0 ? (
-                        '—'
-                      ) : (
-                        <span className="hstack" style={{ flexWrap: 'wrap', gap: 4 }}>
-                          {(peer.tags ?? []).map((tag) => (
-                            <span key={tag} className="tag grey">
-                              {tag}
-                            </span>
-                          ))}
-                        </span>
-                      )}
-                    </td>
-                    <td>
-                      <div className="hstack" style={{ gap: 4, justifyContent: 'flex-end' }}>
-                        <button
-                          className="btn borderless sm"
-                          type="button"
-                          disabled={!editable}
-                          onClick={() => setEditing(peer)}
-                        >
-                          编辑
-                        </button>
-                        <button
-                          className="btn borderless sm"
-                          type="button"
-                          style={{ color: 'var(--danger)' }}
-                          disabled={!editable}
-                          onClick={() => setDeleting(peer)}
-                        >
-                          删除
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {search.truncated ? (
-              <div className="help" style={{ marginTop: 8 }}>
-                匹配 {search.matched} 个，仅显示前 {search.visible.length} 个；请用搜索缩小范围。
+      <div
+        role={showGrants ? 'tabpanel' : undefined}
+        id={showGrants ? 'book-tabpanel' : undefined}
+        aria-labelledby={showGrants ? `book-tab-${tab}` : undefined}
+      >
+        {tab === 'grants' && book ? (
+          <BookGrantsPanel
+            orgId={id}
+            book={book}
+            emails={emails}
+            members={members ?? []}
+            groups={groups ?? []}
+            canManageGroups={canManageGroups}
+            memberState={{
+              error: membersError,
+              loading: membersFetching,
+              retry: () => void refetchMembers(),
+            }}
+            groupState={{
+              error: groupsError,
+              loading: groupsFetching,
+              retry: () => void refetchGroups(),
+            }}
+          />
+        ) : loading ? (
+          <div className="card">
+            <div className="card-body">
+              <div className="help" role="status">
+                正在加载 peers…
               </div>
-            ) : null}
+            </div>
           </div>
-        </div>
-      )}
+        ) : error && !book ? null : (book?.peers ?? []).length === 0 ? (
+          <div className="card">
+            <div className="card-body">
+              <Empty title="地址簿还没有 peer" description="添加 peer 后，客户端登录即可看到" />
+            </div>
+          </div>
+        ) : (
+          <div className="card" style={{ overflow: 'hidden' }}>
+            <div className="card-head">
+              <div className="card-title">
+                Peers<span className="hint">按 peer id 排序；最多渲染 200 行</span>
+              </div>
+              <div className="input" style={{ width: 220 }}>
+                <input
+                  ref={searchRef}
+                  value={query}
+                  placeholder="搜索 peer id / 别名 / 主机名"
+                  aria-label="搜索 peer"
+                  onChange={(event) => setQuery(event.target.value)}
+                />
+              </div>
+            </div>
+            <div className="card-body tight" style={{ overflowX: 'auto' }}>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th style={{ width: 150 }}>Peer ID</th>
+                    <th>别名</th>
+                    <th style={{ width: 160 }}>主机名</th>
+                    <th style={{ width: 110 }}>平台</th>
+                    <th style={{ width: 160 }}>标签</th>
+                    <th style={{ width: 140 }}>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {search.visible.map((peer) => (
+                    <tr key={peer.peer_id}>
+                      <td className="mono">{peer.peer_id}</td>
+                      <td className="cell-wrap">{peer.alias || '—'}</td>
+                      <td className="cell-wrap">{peer.hostname || '—'}</td>
+                      <td>{peer.platform || '—'}</td>
+                      <td>
+                        {(peer.tags ?? []).length === 0 ? (
+                          '—'
+                        ) : (
+                          <span className="hstack" style={{ flexWrap: 'wrap', gap: 4 }}>
+                            {(peer.tags ?? []).map((tag) => (
+                              <span key={tag} className="tag grey">
+                                {tag}
+                              </span>
+                            ))}
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        <div className="hstack" style={{ gap: 4, justifyContent: 'flex-end' }}>
+                          <button
+                            className="btn borderless sm"
+                            type="button"
+                            disabled={!editable}
+                            onClick={() => setEditing(peer)}
+                          >
+                            编辑
+                          </button>
+                          <button
+                            className="btn borderless sm"
+                            type="button"
+                            style={{ color: 'var(--danger)' }}
+                            disabled={!editable}
+                            onClick={() => setDeleting(peer)}
+                          >
+                            删除
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {search.truncated ? (
+                <div className="help" style={{ marginTop: 8 }}>
+                  匹配 {search.matched} 个，仅显示前 {search.visible.length} 个；请用搜索缩小范围。
+                </div>
+              ) : null}
+            </div>
+          </div>
+        )}
 
-      <p className="help" style={{ marginTop: 12 }}>
-        保存 peers
-        走「全量替换」：控制台会先读取最新内容并核对版本，版本变化时中止保存，避免覆盖他人的修改。
-        删除单个 peer 使用独立端点，不会重写整本。
-      </p>
+        {tab === 'peers' ? (
+          <p className="help" style={{ marginTop: 12 }}>
+            保存 peers
+            走「全量替换」：控制台会先读取最新内容并核对版本，版本变化时中止保存，避免覆盖他人的修改。
+            删除单个 peer 使用独立端点，不会重写整本。
+          </p>
+        ) : null}
+      </div>
 
-      {book && (adding || editing) ? (
+      {tab === 'peers' && book && (adding || editing) ? (
         <PeerDialog
           key={editing ? `edit-${editing.peer_id}` : 'add'}
           orgId={id}
@@ -255,7 +345,7 @@ export default function AddressBookPage() {
         />
       ) : null}
 
-      {deleting ? (
+      {tab === 'peers' && deleting ? (
         <ConfirmDelete
           title="删除 peer"
           confirmLabel="删除"
