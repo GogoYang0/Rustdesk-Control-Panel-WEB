@@ -317,7 +317,7 @@ function MembersDialog({
         已选 {selected.size} 人 · 本次新增 {change.added}、移除 {change.removed}
         。保存会以当前勾选集合全量替换。
       </div>
-      {error ? null : membersLoading ? (
+      {error?.includes('已被其他人修改') ? null : membersLoading ? (
         <div className="help" role="status">
           正在加载成员…
         </div>
@@ -335,6 +335,7 @@ function MembersDialog({
                 type="checkbox"
                 checked={selected.has(member.user_id)}
                 onChange={(event) => {
+                  setError(null)
                   setSelected((prev) => {
                     const next = new Set(prev)
                     if (event.target.checked) next.add(member.user_id)

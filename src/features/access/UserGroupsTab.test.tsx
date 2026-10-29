@@ -49,7 +49,7 @@ function json(body: unknown, status = 200) {
   })
 }
 
-function setup(initialGroups: UserGroup[] = [everyone(), group()]) {
+function setup(initialGroups: UserGroup[] = [everyone(), group()], putStatus = 200) {
   let groups = initialGroups
   const requests: { method: string; url: string; body: unknown }[] = []
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
@@ -58,6 +58,9 @@ function setup(initialGroups: UserGroup[] = [everyone(), group()]) {
     const body = init?.body ? JSON.parse(String(init.body)) : undefined
     requests.push({ method, url, body })
     if (url.includes('/members') && method === 'PUT') {
+      if (putStatus !== 200) {
+        return json({ code: 'internal', message: 'boom' }, putStatus)
+      }
       return json({ code: 'ok', data: { added: 1, removed: 0 } })
     }
     if (url.includes('/members')) return json({ code: 'ok', data: members })
@@ -136,6 +139,20 @@ describe('UserGroupsTab', () => {
     const put = requests.find((request) => request.method === 'PUT')
     expect(put?.url).toContain('/user-groups/10/members')
     expect(put?.body).toEqual({ user_ids: [1, 2] })
+  })
+
+  it('keeps the member list visible after a non-conflict save error', async () => {
+    setup(undefined, 500)
+    await screen.findByText('Finance')
+    fireEvent.click(screen.getByRole('button', { name: '成员' }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: /ops@acme\.local/ }))
+    fireEvent.click(within(dialog).getByRole('button', { name: '保存' }))
+
+    expect(await within(dialog).findByText(/服务异常/)).toBeTruthy()
+    expect(within(dialog).getByRole('checkbox', { name: /owner@acme\.local/ })).toBeTruthy()
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: /owner@acme\.local/ }))
+    expect(within(dialog).queryByText(/服务异常/)).toBeNull()
   })
 
   it('aborts when the member set changed after the dialog opened', async () => {

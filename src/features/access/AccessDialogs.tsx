@@ -80,6 +80,7 @@ export function GroupNameDialog({
   const [busy, setBusy] = useState(false)
 
   async function submit() {
+    if (busy) return
     const problem =
       kind === 'user'
         ? validateUserGroupName(name, groups, exceptId)
