@@ -10,6 +10,11 @@ import type {
   AccessRuleCreateRequest,
   AlertPage,
   AuditLogPage,
+  ClientBuildCapabilities,
+  ClientBuildProfile,
+  ClientBuildProfileCreateRequest,
+  ClientBuildProfilePage,
+  ClientBuildProfileUpdateRequest,
   ConnectionLogPage,
   FileLogPage,
   LogEvent,
@@ -168,6 +173,66 @@ export async function fetchCsv(path: string): Promise<CsvDownload> {
     throw new ApiError(res.status, 'internal', '响应不是 CSV')
   }
   return { filename: csvFilename(disposition), text }
+}
+
+export interface BlobDownload {
+  status: number
+  blob: Blob
+  filename: string
+  contentType: string
+  notModified: boolean
+}
+
+/**
+ * Fetches a binary response through the same refresh contract. Error bodies
+ * are still JSON envelopes, so a failed binary request never becomes a file.
+ */
+export async function apiBlob(
+  path: string,
+  options: { cache?: RequestCache } = {},
+): Promise<BlobDownload> {
+  let res: Response
+  try {
+    res = await authorizedFetch(path, { retryOn401: true, cache: options.cache })
+  } catch {
+    throw new ApiError(0, 'internal', '网络异常')
+  }
+
+  let blob: Blob
+  try {
+    blob = await res.blob()
+  } catch {
+    throw new ApiError(0, 'internal', '网络异常')
+  }
+
+  if (res.status === 304) {
+    return { status: 304, blob, filename: '', contentType: '', notModified: true }
+  }
+  if (!res.ok) {
+    let body: Envelope<unknown> = {}
+    const text = await blob.text().catch(() => '')
+    if (text) {
+      try {
+        body = JSON.parse(text) as Envelope<unknown>
+      } catch {
+        // Proxy error pages are not envelopes; keep them opaque.
+      }
+    }
+    throw new ApiError(
+      res.status,
+      body.code ?? 'internal',
+      body.message ?? res.statusText,
+      body.data,
+    )
+  }
+
+  return {
+    status: res.status,
+    blob,
+    filename: csvFilename(res.headers.get('Content-Disposition') ?? ''),
+    contentType: res.headers.get('Content-Type') ?? '',
+    notModified: false,
+  }
 }
 
 function csvFilename(disposition: string): string {
@@ -604,6 +669,105 @@ export type {
   FileLogPage,
   LogEvent,
 } from '../api/generated'
+
+// ── custom client builds ────────────────────────────────────────────────────
+
+export type {
+  ClientBuildArtifact,
+  ClientBuildCapabilities,
+  ClientBuildCreateRequest,
+  ClientBuildDefaults,
+  ClientBuildDetail,
+  ClientBuildLimits,
+  ClientBuildManifest,
+  ClientBuildManifestLogo,
+  ClientBuildPage,
+  ClientBuildProfile,
+  ClientBuildProfileCreateRequest,
+  ClientBuildProfilePage,
+  ClientBuildProfileUpdateRequest,
+  ClientBuildSummary,
+} from '../api/generated'
+
+export function fetchClientBuildCapabilities(orgId: number): Promise<ClientBuildCapabilities> {
+  return apiFetch<ClientBuildCapabilities>(`/api/v1/orgs/${orgId}/client-build/capabilities`)
+}
+
+export function fetchClientBuildProfiles(
+  orgId: number,
+  page = 1,
+  pageSize = 200,
+): Promise<ClientBuildProfilePage> {
+  const query = new URLSearchParams({ page: String(page), pageSize: String(pageSize) })
+  return apiFetch<ClientBuildProfilePage>(
+    `/api/v1/orgs/${orgId}/client-build-profiles?${query.toString()}`,
+  )
+}
+
+export function createClientBuildProfile(
+  orgId: number,
+  request: ClientBuildProfileCreateRequest,
+): Promise<ClientBuildProfile> {
+  return apiFetch<ClientBuildProfile>(`/api/v1/orgs/${orgId}/client-build-profiles`, {
+    method: 'POST',
+    body: JSON.stringify(request),
+  })
+}
+
+export function updateClientBuildProfile(
+  orgId: number,
+  profileId: number,
+  request: ClientBuildProfileUpdateRequest,
+): Promise<ClientBuildProfile> {
+  return apiFetch<ClientBuildProfile>(`/api/v1/orgs/${orgId}/client-build-profiles/${profileId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(request),
+  })
+}
+
+export async function deleteClientBuildProfile(orgId: number, profileId: number): Promise<void> {
+  await apiFetch<unknown>(`/api/v1/orgs/${orgId}/client-build-profiles/${profileId}`, {
+    method: 'DELETE',
+  })
+}
+
+export function putClientBuildProfileLogo(
+  orgId: number,
+  profileId: number,
+  pngBase64: string,
+): Promise<ClientBuildProfile> {
+  return apiFetch<ClientBuildProfile>(
+    `/api/v1/orgs/${orgId}/client-build-profiles/${profileId}/logo`,
+    { method: 'PUT', body: JSON.stringify({ png_base64: pngBase64 }) },
+  )
+}
+
+export async function deleteClientBuildProfileLogo(
+  orgId: number,
+  profileId: number,
+): Promise<void> {
+  await apiFetch<unknown>(`/api/v1/orgs/${orgId}/client-build-profiles/${profileId}/logo`, {
+    method: 'DELETE',
+  })
+}
+
+/** Logo bytes need the Bearer token, so an `<img src>` cannot load them. */
+export async function fetchClientBuildProfileLogo(
+  orgId: number,
+  profileId: number,
+  sha?: string,
+): Promise<Blob | null> {
+  const version = sha ? `?v=${encodeURIComponent(sha)}` : ''
+  const download = await apiBlob(
+    `/api/v1/orgs/${orgId}/client-build-profiles/${profileId}/logo${version}`,
+    { cache: 'no-store' },
+  )
+  if (download.notModified) return null
+  if (!download.contentType.toLowerCase().includes('image/png')) {
+    throw new ApiError(download.status, 'internal', '响应不是 PNG')
+  }
+  return download.blob
+}
 
 export function fetchAuditLogPage(orgId: number, query: URLSearchParams): Promise<AuditLogPage> {
   return apiFetch<AuditLogPage>(`/api/v1/orgs/${orgId}/audit-logs?${query.toString()}`)
