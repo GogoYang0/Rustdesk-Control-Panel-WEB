@@ -10,8 +10,13 @@ import {
   fetchSession,
   fetchSessionAlerts,
   fetchSessions,
+  createAddressBook,
   createPolicy,
+  deleteAddressBook,
+  deleteAddressBookPeer,
   deletePolicy,
+  fetchAddressBook,
+  fetchAddressBooks,
   fetchAlertPage,
   fetchApproval,
   fetchApprovalPage,
@@ -20,11 +25,15 @@ import {
   rebindDevice,
   registerDevice,
   removeMember,
+  replaceAddressBookPeers,
   requestDeviceDisconnect,
   submitApprovalDecision,
+  updateAddressBook,
   updateDevice,
   updateMember,
   updatePolicy,
+  type AddressBook,
+  type AddressBookPeer,
   type AlertPage,
   type Approval,
   type ApprovalDecisionRequest,
@@ -73,6 +82,8 @@ export const panelApi = createApi({
     'Approvals',
     'Approval',
     'Alerts',
+    'AddressBooks',
+    'AddressBook',
   ],
   endpoints: (build) => ({
     getMe: build.query<Me, void>({
@@ -125,6 +136,68 @@ export const panelApi = createApi({
     getDevices: build.query<DevicePage, number>({
       queryFn: (orgId) => wrap(() => fetchDevices(orgId)),
       providesTags: (_result, _error, orgId) => [{ type: 'Devices', id: orgId }],
+    }),
+    getAddressBooks: build.query<AddressBook[], number>({
+      queryFn: (orgId) => wrap(() => fetchAddressBooks(orgId)),
+      providesTags: (_result, _error, orgId) => [{ type: 'AddressBooks', id: orgId }],
+    }),
+    getAddressBook: build.query<AddressBook, { orgId: number; bookId: number }>({
+      queryFn: ({ orgId, bookId }) => wrap(() => fetchAddressBook(orgId, bookId)),
+      providesTags: (_result, _error, { orgId, bookId }) => [
+        { type: 'AddressBook', id: `${orgId}-${bookId}` },
+      ],
+    }),
+    createAddressBook: build.mutation<
+      AddressBook,
+      { orgId: number; name: string; scope: 'personal' | 'shared' }
+    >({
+      queryFn: ({ orgId, name, scope }) => wrap(() => createAddressBook(orgId, { name, scope })),
+      invalidatesTags: (_result, _error, { orgId }) => [{ type: 'AddressBooks', id: orgId }],
+    }),
+    updateAddressBook: build.mutation<AddressBook, { orgId: number; bookId: number; name: string }>(
+      {
+        queryFn: ({ orgId, bookId, name }) =>
+          wrap(() => updateAddressBook(orgId, bookId, { name })),
+        // Mutating responses reload only the book row: `peers` and `tags` come
+        // back empty, so patching the detail would blank them. Refetch instead.
+        invalidatesTags: (_result, _error, { orgId, bookId }) => [
+          { type: 'AddressBook', id: `${orgId}-${bookId}` },
+          { type: 'AddressBooks', id: orgId },
+        ],
+      },
+    ),
+    deleteAddressBook: build.mutation<void, { orgId: number; bookId: number }>({
+      queryFn: async ({ orgId, bookId }) => {
+        const result = await wrap(() => deleteAddressBook(orgId, bookId))
+        return 'data' in result ? { data: undefined } : result
+      },
+      invalidatesTags: (_result, _error, { orgId, bookId }) => [
+        { type: 'AddressBook', id: `${orgId}-${bookId}` },
+        { type: 'AddressBooks', id: orgId },
+      ],
+    }),
+    replaceAddressBookPeers: build.mutation<
+      AddressBook,
+      { orgId: number; bookId: number; peers: AddressBookPeer[] }
+    >({
+      queryFn: ({ orgId, bookId, peers }) =>
+        wrap(() => replaceAddressBookPeers(orgId, bookId, peers)),
+      // Same as updateAddressBook: the response omits peers, so refetch the
+      // detail instead of patching it with a peer-less row.
+      invalidatesTags: (_result, _error, { orgId, bookId }) => [
+        { type: 'AddressBook', id: `${orgId}-${bookId}` },
+        { type: 'AddressBooks', id: orgId },
+      ],
+    }),
+    deleteAddressBookPeer: build.mutation<void, { orgId: number; bookId: number; peerId: string }>({
+      queryFn: async ({ orgId, bookId, peerId }) => {
+        const result = await wrap(() => deleteAddressBookPeer(orgId, bookId, peerId))
+        return 'data' in result ? { data: undefined } : result
+      },
+      invalidatesTags: (_result, _error, { orgId, bookId }) => [
+        { type: 'AddressBook', id: `${orgId}-${bookId}` },
+        { type: 'AddressBooks', id: orgId },
+      ],
     }),
     getDevicePage: build.query<DevicePage, { orgId: number; queryString: string }>({
       queryFn: ({ orgId, queryString }) =>
@@ -235,6 +308,13 @@ export const {
   useCreatePolicyMutation,
   useUpdatePolicyMutation,
   useDeletePolicyMutation,
+  useGetAddressBooksQuery,
+  useGetAddressBookQuery,
+  useCreateAddressBookMutation,
+  useUpdateAddressBookMutation,
+  useDeleteAddressBookMutation,
+  useReplaceAddressBookPeersMutation,
+  useDeleteAddressBookPeerMutation,
   useGetAlertPageQuery,
   useGetApprovalPageQuery,
   useGetApprovalQuery,

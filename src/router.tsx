@@ -3,6 +3,8 @@ import { createBrowserRouter, Navigate } from 'react-router'
 
 import LoginPage from './features/auth/LoginPage'
 import MembersPage from './features/members/MembersPage'
+import AddressBookPage from './features/addressbooks/AddressBookPage'
+import AddressBooksPage from './features/addressbooks/AddressBooksPage'
 import AlertsPage from './features/alerts/AlertsPage'
 import ApprovalsPage from './features/approvals/ApprovalsPage'
 import DevicesPage from './features/devices/DevicesPage'
@@ -62,6 +64,8 @@ export const router = createBrowserRouter([
       { path: 'policies', element: <PoliciesPage /> },
       { path: 'approvals', element: <ApprovalsPage /> },
       { path: 'alerts', element: <AlertsPage /> },
+      { path: 'address-books', element: <AddressBooksPage /> },
+      { path: 'address-books/:bookId', element: <AddressBookPage /> },
       {
         path: '*',
         element: (

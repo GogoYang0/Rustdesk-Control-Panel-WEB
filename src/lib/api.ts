@@ -1,4 +1,9 @@
 import type {
+  AddressBook,
+  AddressBookCreateRequest,
+  AddressBookPeer,
+  AddressBookPeersReplaceRequest,
+  AddressBookUpdateRequest,
   AlertPage,
   Approval,
   ApprovalDecisionRequest,
@@ -266,6 +271,67 @@ export function requestDeviceDisconnect(
     method: 'POST',
     body: JSON.stringify({ reason }),
   })
+}
+
+// ── address books ───────────────────────────────────────────────────────────
+
+export type { AddressBook, AddressBookPeer } from '../api/generated'
+
+export function fetchAddressBooks(orgId: number): Promise<AddressBook[]> {
+  return apiFetch<AddressBook[]>(`/api/v1/orgs/${orgId}/address-books`)
+}
+
+export function fetchAddressBook(orgId: number, bookId: number): Promise<AddressBook> {
+  return apiFetch<AddressBook>(`/api/v1/orgs/${orgId}/address-books/${bookId}`)
+}
+
+export function createAddressBook(
+  orgId: number,
+  input: AddressBookCreateRequest,
+): Promise<AddressBook> {
+  return apiFetch<AddressBook>(`/api/v1/orgs/${orgId}/address-books`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function updateAddressBook(
+  orgId: number,
+  bookId: number,
+  input: AddressBookUpdateRequest,
+): Promise<AddressBook> {
+  return apiFetch<AddressBook>(`/api/v1/orgs/${orgId}/address-books/${bookId}`, {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  })
+}
+
+export async function deleteAddressBook(orgId: number, bookId: number): Promise<void> {
+  await apiFetch<unknown>(`/api/v1/orgs/${orgId}/address-books/${bookId}`, { method: 'DELETE' })
+}
+
+/** Replacement is whole-list: the array must contain every peer to keep. */
+export function replaceAddressBookPeers(
+  orgId: number,
+  bookId: number,
+  peers: AddressBookPeer[],
+): Promise<AddressBook> {
+  const body: AddressBookPeersReplaceRequest = { peers }
+  return apiFetch<AddressBook>(`/api/v1/orgs/${orgId}/address-books/${bookId}/peers`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  })
+}
+
+export async function deleteAddressBookPeer(
+  orgId: number,
+  bookId: number,
+  peerId: string,
+): Promise<void> {
+  await apiFetch<unknown>(
+    `/api/v1/orgs/${orgId}/address-books/${bookId}/peers/${encodeURIComponent(peerId)}`,
+    { method: 'DELETE' },
+  )
 }
 
 // ── approvals ───────────────────────────────────────────────────────────────
