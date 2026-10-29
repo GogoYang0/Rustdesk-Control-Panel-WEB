@@ -171,6 +171,7 @@ describe('AuditPage', () => {
     const { requests } = setup({ initial: '/orgs/1/audit?page=2', auditTotal: 100 })
     await screen.findByText('org.1.audit')
     fireEvent.change(screen.getByLabelText('动作'), { target: { value: 'org.1.audit' } })
+    fireEvent.blur(screen.getByLabelText('动作'))
     await waitFor(() => expect(screen.getByTestId('loc').textContent).not.toContain('page=2'))
 
     fireEvent.change(screen.getByLabelText('操作人'), { target: { value: '0' } })
@@ -203,6 +204,7 @@ describe('AuditPage', () => {
     fireEvent.change(screen.getByLabelText('RustDesk ID'), {
       target: { value: '100000001' },
     })
+    fireEvent.blur(screen.getByLabelText('RustDesk ID'))
     await waitFor(() =>
       expect(screen.getByTestId('loc').textContent).toContain('rustdeskId=100000001'),
     )
@@ -210,6 +212,7 @@ describe('AuditPage', () => {
     fireEvent.click(screen.getByRole('tab', { name: '请求审计' }))
     await screen.findByText('org.1.audit')
     fireEvent.change(screen.getByLabelText('动作'), { target: { value: 'org.1.audit' } })
+    fireEvent.blur(screen.getByLabelText('动作'))
     await waitFor(() => expect(screen.getByTestId('loc').textContent).toContain('action='))
 
     fireEvent.click(screen.getByRole('button', { name: '重置筛选' }))
@@ -229,8 +232,12 @@ describe('AuditPage', () => {
     await screen.findByText('org.1.audit')
     const action = screen.getByLabelText('动作') as HTMLInputElement
     fireEvent.change(action, { target: { value: 'GET ' } })
-    await waitFor(() => expect(action.value).toBe('GET '))
-    expect(screen.getByTestId('loc').textContent).toContain('action=GET')
+    expect(action.value).toBe('GET ')
+    expect(screen.getByTestId('loc').textContent).not.toContain('action=')
+
+    fireEvent.blur(action)
+    await waitFor(() => expect(screen.getByTestId('loc').textContent).toContain('action=GET'))
+    expect(action.value).toBe('GET ')
   })
 
   it('keeps an unknown actor id visible in the filter', async () => {

@@ -14,6 +14,7 @@ import {
   type AuditTab,
 } from '../../lib/audit-query'
 import { useGetMeQuery, useGetMembersQuery } from '../../store/api'
+import AuditFilterInput from './AuditFilterInput'
 import AuditLogTab from './AuditLogTab'
 import ConnectionLogTab from './ConnectionLogTab'
 import FileLogTab from './FileLogTab'
@@ -167,15 +168,14 @@ export default function AuditPage() {
 
         {tab === 'audit' ? (
           <>
-            <div className="input" style={{ width: 220 }}>
-              <input
-                aria-label="动作"
-                maxLength={128}
-                placeholder="动作（精确匹配）"
-                value={effective.action}
-                onChange={(event) => change({ action: event.target.value })}
-              />
-            </div>
+            <AuditFilterInput
+              label="动作"
+              value={effective.action}
+              maxLength={128}
+              width={220}
+              placeholder="动作（精确匹配）"
+              onCommit={(action) => change({ action })}
+            />
             <select
               className="select-native"
               aria-label="操作人"
@@ -202,35 +202,32 @@ export default function AuditPage() {
                 </option>
               ) : null}
             </select>
-            <div className="input" style={{ width: 170 }}>
-              <input
-                aria-label="目标类型"
-                maxLength={64}
-                placeholder="目标类型（精确）"
-                value={effective.targetType}
-                onChange={(event) => change({ targetType: event.target.value })}
-              />
-            </div>
-            <div className="input" style={{ width: 170 }}>
-              <input
-                aria-label="目标 ID"
-                maxLength={64}
-                placeholder="目标 ID（精确）"
-                value={effective.targetId}
-                onChange={(event) => change({ targetId: event.target.value })}
-              />
-            </div>
+            <AuditFilterInput
+              label="目标类型"
+              value={effective.targetType}
+              maxLength={64}
+              width={170}
+              placeholder="目标类型（精确）"
+              onCommit={(targetType) => change({ targetType })}
+            />
+            <AuditFilterInput
+              label="目标 ID"
+              value={effective.targetId}
+              maxLength={64}
+              width={170}
+              placeholder="目标 ID（精确）"
+              onCommit={(targetId) => change({ targetId })}
+            />
           </>
         ) : (
-          <div className="input" style={{ width: 220 }}>
-            <input
-              aria-label="RustDesk ID"
-              maxLength={64}
-              placeholder="RustDesk ID（精确）"
-              value={effective.rustdeskId}
-              onChange={(event) => change({ rustdeskId: event.target.value })}
-            />
-          </div>
+          <AuditFilterInput
+            label="RustDesk ID"
+            value={effective.rustdeskId}
+            maxLength={64}
+            width={220}
+            placeholder="RustDesk ID（精确）"
+            onCommit={(rustdeskId) => change({ rustdeskId })}
+          />
         )}
 
         <div className="spacer" />
