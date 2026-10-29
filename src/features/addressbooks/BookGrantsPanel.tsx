@@ -283,7 +283,9 @@ function GrantDialog({
   const existing =
     form.userId || form.groupId || form.kind === 'everyone' ? findGrant(grants, subject) : undefined
   const impact = grantImpactNote(form.kind, form.access)
-  const activeMembers = members.filter((member) => !member.disabled)
+  const activeMembers = members.filter(
+    (member) => !member.disabled || member.user_id === initial?.subject_user_id,
+  )
 
   function patch(next: Partial<GrantForm>) {
     setForm((prev) => ({ ...prev, ...next }))
@@ -379,6 +381,12 @@ function GrantDialog({
                 {member.email}
               </option>
             ))}
+            {initial?.subject_user_id &&
+            !members.some((member) => member.user_id === initial.subject_user_id) ? (
+              <option value={String(initial.subject_user_id)}>
+                用户 #{initial.subject_user_id}（不在成员字典中）
+              </option>
+            ) : null}
           </select>
           {errors.userId ? <div className="help err">{errors.userId}</div> : null}
           {activeMembers.length === 0 ? <div className="help">没有可选的活跃成员。</div> : null}
@@ -403,6 +411,12 @@ function GrantDialog({
                 {group.name}
               </option>
             ))}
+            {initial?.subject_group_id &&
+            !groups.some((group) => group.id === initial.subject_group_id) ? (
+              <option value={String(initial.subject_group_id)}>
+                用户组 #{initial.subject_group_id}（不在用户组列表中）
+              </option>
+            ) : null}
           </select>
           {errors.groupId ? <div className="help err">{errors.groupId}</div> : null}
           <div className="help">内置 everyone 组不在此列出；它对应下面的「所有人」。</div>

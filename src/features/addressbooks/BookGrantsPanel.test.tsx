@@ -54,6 +54,18 @@ const grants: AddressBookGrant[] = [
   },
 ]
 
+const disabledUserGrant: AddressBookGrant[] = [
+  {
+    id: 10,
+    subject_kind: 'user',
+    subject_user_id: 2,
+    subject_group_id: null,
+    access: 'write',
+    created_by: 1,
+    created_at: '2026-10-29T00:00:00Z',
+  },
+]
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -61,19 +73,23 @@ function json(body: unknown, status = 200) {
   })
 }
 
-function setup(canManageGroups = true) {
+function setup(
+  canManageGroups = true,
+  list: AddressBookGrant[] = grants,
+  memberList: Member[] = members,
+) {
   const posts: string[] = []
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (_input, init) => {
     if (init?.method === 'POST') {
       posts.push(String(init.body))
-      return json({ code: 'ok', message: 'ok', data: grants[0] }, 201)
+      return json({ code: 'ok', message: 'ok', data: list[0] }, 201)
     }
     if (init?.method === 'DELETE') {
       return json({ code: 'ok', message: 'ok' })
     }
-    return json({ code: 'ok', message: 'ok', data: grants })
+    return json({ code: 'ok', message: 'ok', data: list })
   })
-  const emails = new Map(members.map((member) => [member.user_id, member.email]))
+  const emails = new Map(memberList.map((member) => [member.user_id, member.email]))
   const store = configureStore({
     reducer: { [panelApi.reducerPath]: panelApi.reducer },
     middleware: (getDefault) => getDefault().concat(panelApi.middleware),
@@ -84,7 +100,7 @@ function setup(canManageGroups = true) {
         orgId={1}
         book={book}
         emails={emails}
-        members={members}
+        members={memberList}
         groups={groups}
         canManageGroups={canManageGroups}
       />
@@ -152,5 +168,31 @@ describe('BookGrantsPanel', () => {
       subject_user_id: 1,
       access: 'read',
     })
+  })
+
+  it('keeps a disabled member selectable when editing their grant', async () => {
+    const { posts } = setup(true, disabledUserGrant)
+    fireEvent.click(await screen.findByRole('button', { name: '修改权限' }))
+    const select = screen.getByLabelText('成员') as HTMLSelectElement
+    expect(select.value).toBe('2')
+    expect([...select.options].map((option) => option.value)).toContain('2')
+    fireEvent.click(screen.getByRole('button', { name: '更新' }))
+    await waitFor(() => expect(posts).toHaveLength(1))
+    expect(JSON.parse(posts[0])).toEqual({
+      subject_kind: 'user',
+      subject_user_id: 2,
+      access: 'write',
+    })
+  })
+
+  it('falls back to a label when the grant subject is missing from members', async () => {
+    setup(
+      true,
+      disabledUserGrant,
+      members.filter((member) => member.user_id !== 2),
+    )
+    fireEvent.click(await screen.findByRole('button', { name: '修改权限' }))
+    expect((screen.getByLabelText('成员') as HTMLSelectElement).value).toBe('2')
+    expect(screen.getByRole('option', { name: /不在成员字典中/ })).toBeTruthy()
   })
 })
