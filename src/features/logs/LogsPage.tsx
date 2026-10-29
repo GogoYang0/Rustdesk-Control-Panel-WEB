@@ -90,7 +90,7 @@ export default function LogsPage() {
   // fails): RTK Query drops `currentData` as soon as the `since` argument moves.
   const cachedRows = lastGood?.key === filterKey ? lastGood.rows : undefined
   const events = rows ?? cachedRows ?? []
-  const selectedRow = selected
+  const selectedRow = orgChanged ? null : selected
 
   useEffect(() => {
     if (selected && rows && !rows.some((row) => row.id === selected.id)) setSelected(null)

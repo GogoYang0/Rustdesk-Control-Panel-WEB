@@ -324,6 +324,7 @@ describe('LogsPage', () => {
     expect(await screen.findByRole('dialog')).toBeTruthy()
 
     fireEvent.click(screen.getByRole('link', { name: '切组织' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
     await waitFor(() => expect(screen.getByTestId('loc').textContent).toBe('/orgs/2/logs'))
     expect((await screen.findAllByText('ERROR org.2.relay')).length).toBeGreaterThan(0)
     expect(screen.queryByRole('dialog')).toBeNull()
