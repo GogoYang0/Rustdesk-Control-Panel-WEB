@@ -1,11 +1,16 @@
+import { Banner, Toast } from '@douyinfe/semi-ui'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router'
 
 import StateBlock from '../../components/StateBlock'
+import { fetchCsv } from '../../lib/api'
 import {
   AUDIT_RANGES,
   AUDIT_TABS,
   DEFAULT_AUDIT_FILTERS,
+  auditExportError,
+  auditExportFallbackName,
+  auditExportPath,
   auditRangeLabel,
   auditTabLabel,
   parseAuditFilters,
@@ -13,6 +18,7 @@ import {
   type AuditFilters,
   type AuditTab,
 } from '../../lib/audit-query'
+import { saveTextFile } from '../../lib/download'
 import { useGetMeQuery, useGetMembersQuery } from '../../store/api'
 import AuditFilterInput from './AuditFilterInput'
 import AuditLogTab from './AuditLogTab'
@@ -36,6 +42,8 @@ export default function AuditPage() {
   const effective: AuditFilters = orgChanged ? { ...DEFAULT_AUDIT_FILTERS } : filters
 
   const [refreshNonce, setRefreshNonce] = useState(0)
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
   const rangeKey = `${id}|${effective.range}|${refreshNonce}`
   const now = useMemo(() => new Date(), [rangeKey])
 
@@ -55,6 +63,7 @@ export default function AuditPage() {
   }, [orgChanged, searchParams, setSearchParams])
 
   function change(patch: Partial<AuditFilters>) {
+    setExportError(null)
     const touchesFilters = Object.keys(patch).some((key) => key !== 'page')
     setSearchParams(
       toAuditSearchParams({
@@ -75,6 +84,20 @@ export default function AuditPage() {
       change({ action: '', actorUserId: null, targetType: '', targetId: '', page: 1 })
     } else {
       change({ rustdeskId: '', page: 1 })
+    }
+  }
+
+  async function exportCsv() {
+    setExporting(true)
+    setExportError(null)
+    try {
+      const { filename, text } = await fetchCsv(auditExportPath(id, effective, now))
+      saveTextFile(filename || auditExportFallbackName(effective.tab, id, now), text)
+      Toast.success('已导出 CSV（最多 1000 行）')
+    } catch (err) {
+      setExportError(auditExportError(err))
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -132,7 +155,24 @@ export default function AuditPage() {
           <h1 className="page-title">审计与日志</h1>
           <div className="page-sub">请求审计 / 连接日志 / 文件日志；可见范围由角色审计范围决定</div>
         </div>
+        <div className="spacer" />
+        <div className="head-actions">
+          <button
+            className="btn outline sm"
+            type="button"
+            disabled={exporting}
+            onClick={() => void exportCsv()}
+          >
+            {exporting ? '导出中…' : '导出 CSV'}
+          </button>
+        </div>
       </div>
+
+      {exportError ? (
+        <div className="mb-14">
+          <Banner type="danger" closeIcon={null} description={`导出失败：${exportError}`} />
+        </div>
+      ) : null}
 
       <div className="tabs" role="tablist" aria-label="日志类型">
         {AUDIT_TABS.map((value) => (
@@ -259,7 +299,7 @@ export default function AuditPage() {
 
       <p className="help" style={{ marginTop: 12 }}>
         动作、目标与 RustDesk ID 为精确匹配。审计可见范围由角色决定（全局，或仅本人及本人设备）；
-        查看列表不产生审计记录。
+        查看列表不产生审计记录。导出使用当前筛选（最多 1000 行），导出动作会写入审计。
       </p>
     </section>
   )
