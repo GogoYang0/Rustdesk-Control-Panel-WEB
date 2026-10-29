@@ -12,6 +12,7 @@ import type {
   AuditLogPage,
   ConnectionLogPage,
   FileLogPage,
+  LogEvent,
   UserGroup,
   UserGroupDeleteData,
   UserGroupMemberMutation,
@@ -601,6 +602,7 @@ export type {
   ConnectionLogPage,
   FileLog,
   FileLogPage,
+  LogEvent,
 } from '../api/generated'
 
 export function fetchAuditLogPage(orgId: number, query: URLSearchParams): Promise<AuditLogPage> {
@@ -616,6 +618,11 @@ export function fetchConnectionLogPage(
 
 export function fetchFileLogPage(orgId: number, query: URLSearchParams): Promise<FileLogPage> {
   return apiFetch<FileLogPage>(`/api/v1/orgs/${orgId}/file-logs?${query.toString()}`)
+}
+
+/** Parsed hbbs/hbbr events; scoped by the role's audit_scope server-side. */
+export function fetchLogEvents(orgId: number, query: URLSearchParams): Promise<LogEvent[]> {
+  return apiFetch<LogEvent[]>(`/api/v1/orgs/${orgId}/log-events?${query.toString()}`)
 }
 
 export function fetchApprovalPage(orgId: number, query: URLSearchParams): Promise<ApprovalPage> {
