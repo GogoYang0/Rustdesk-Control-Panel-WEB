@@ -9,6 +9,7 @@ import {
   platformLabel,
 } from '../../lib/client-build'
 import { useGetClientBuildCapabilitiesQuery, useGetMeQuery } from '../../store/api'
+import BuildsSection from './BuildsSection'
 import ProfilesSection from './ProfilesSection'
 
 export default function BuildsPage() {
@@ -73,7 +74,7 @@ export default function BuildsPage() {
         <div>
           <h1 className="page-title">客户端生成器</h1>
           <div className="page-sub">
-            品牌 Profile 与 Logo；构建能力由部署配置管理，生成包在自建 GitHub 仓库执行
+            品牌 Profile → 构建快照 → 产物下载；构建在自建 GitHub 仓库执行，不签名
           </div>
         </div>
       </div>
@@ -121,6 +122,8 @@ export default function BuildsPage() {
       ) : null}
 
       <ProfilesSection key={id} orgId={id} caps={caps} />
+
+      <BuildsSection orgId={id} caps={caps} />
     </section>
   )
 }
