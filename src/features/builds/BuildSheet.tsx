@@ -37,7 +37,7 @@ export default function BuildSheet({
     isLoading,
     error,
     refetch,
-  } = useGetClientBuildQuery({ orgId, buildId })
+  } = useGetClientBuildQuery({ orgId, buildId }, { refetchOnMountOrArgChange: true })
   const [cancel] = useCancelClientBuildMutation()
   const [busy, setBusy] = useState(false)
   const [downloading, setDownloading] = useState<number | null>(null)
