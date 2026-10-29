@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { Provider } from 'react-redux'
 import { Link, MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -72,6 +72,7 @@ function setup(
     auditTotal?: number
     exportStatus?: number
     exportDisposition?: string | null
+    exportGate?: Promise<Response>
   } = {},
 ) {
   const {
@@ -80,6 +81,7 @@ function setup(
     auditTotal = 1,
     exportStatus = 200,
     exportDisposition = 'attachment; filename="audit-org-1.csv"',
+    exportGate,
   } = options
   const requests: string[] = []
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
@@ -91,6 +93,7 @@ function setup(
     const org = Number(url.match(/\/orgs\/(\d+)\//)?.[1] ?? 1)
     if (url.includes('/members')) return json({ code: 'ok', message: 'ok', data: [] })
     if (url.includes('/export')) {
+      if (exportGate) return exportGate
       if (exportStatus !== 200) {
         return json({ code: 'invalid_request', message: 'too many rows (1001)' }, exportStatus)
       }
@@ -346,6 +349,34 @@ describe('AuditPage', () => {
     fireEvent.click(screen.getByRole('button', { name: '导出 CSV' }))
 
     expect(await screen.findByText(/当前角色没有审计读取权限/)).toBeTruthy()
+    expect(saveTextFile).not.toHaveBeenCalled()
+  })
+
+  it('drops an export that finishes after an organization switch', async () => {
+    let resolveExport!: (response: Response) => void
+    const gate = new Promise<Response>((resolve) => {
+      resolveExport = resolve
+    })
+    setup({ exportGate: gate })
+    await screen.findByText('org.1.audit')
+
+    fireEvent.click(screen.getByRole('button', { name: '导出 CSV' }))
+    fireEvent.click(screen.getByRole('link', { name: '切组织' }))
+    expect(await screen.findByText('org.2.audit')).toBeTruthy()
+
+    await act(async () => {
+      resolveExport(
+        new Response(['created_at,action', '1,test', ''].join(String.fromCharCode(10)), {
+          status: 200,
+          headers: {
+            'Content-Type': 'text/csv',
+            'Content-Disposition': 'attachment; filename="audit-org-1.csv"',
+          },
+        }),
+      )
+      await Promise.resolve()
+      await Promise.resolve()
+    })
     expect(saveTextFile).not.toHaveBeenCalled()
   })
 

@@ -41,7 +41,6 @@ export default function AuditPage() {
   const filters = parseAuditFilters(searchParams)
   const effective: AuditFilters = orgChanged ? { ...DEFAULT_AUDIT_FILTERS } : filters
   const filtersRef = useRef(effective)
-  filtersRef.current = effective
 
   const [refreshNonce, setRefreshNonce] = useState(0)
   const [exporting, setExporting] = useState(false)
@@ -58,9 +57,16 @@ export default function AuditPage() {
     scopeRef.current = id
   }, [id])
 
+  // Sync only when the URL/org actually commits; unrelated renders must not
+  // overwrite the value written by change() during a blur-commit.
+  useLayoutEffect(() => {
+    filtersRef.current = orgChanged ? { ...DEFAULT_AUDIT_FILTERS } : parseAuditFilters(searchParams)
+  }, [searchParams, orgChanged])
+
   useEffect(() => {
     if (!orgChanged) return
     setExportError(null)
+    setExporting(false)
     if (searchParams.toString()) setSearchParams(new URLSearchParams(), { replace: true })
   }, [orgChanged, searchParams, setSearchParams])
 
@@ -92,16 +98,19 @@ export default function AuditPage() {
   }
 
   async function exportCsv() {
+    const scope = id
     setExporting(true)
     setExportError(null)
     try {
-      const { filename, text } = await fetchCsv(auditExportPath(id, effective, now))
-      saveTextFile(filename || auditExportFallbackName(effective.tab, id, now), text)
+      const latest = filtersRef.current
+      const { filename, text } = await fetchCsv(auditExportPath(scope, latest, now))
+      if (scopeRef.current !== scope) return
+      saveTextFile(filename || auditExportFallbackName(latest.tab, scope, now), text)
       Toast.success('已导出 CSV（最多 1000 行）')
     } catch (err) {
-      setExportError(auditExportError(err))
+      if (scopeRef.current === scope) setExportError(auditExportError(err))
     } finally {
-      setExporting(false)
+      if (scopeRef.current === scope) setExporting(false)
     }
   }
 
