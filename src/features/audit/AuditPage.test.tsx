@@ -57,6 +57,11 @@ function LocationProbe() {
   return <div data-testid="loc">{`${location.pathname}${location.search}`}</div>
 }
 
+function SwitchOrg() {
+  const location = useLocation()
+  return <Link to={`/orgs/2/audit${location.search}`}>切组织</Link>
+}
+
 function setup(options: { initial?: string; permissions?: string[]; auditTotal?: number } = {}) {
   const { initial = '/orgs/1/audit', permissions = ['audit.read'], auditTotal = 1 } = options
   const requests: string[] = []
@@ -112,7 +117,7 @@ function setup(options: { initial?: string; permissions?: string[]; auditTotal?:
               <>
                 <AuditPage />
                 <LocationProbe />
-                <Link to="/orgs/2/audit">切组织</Link>
+                <SwitchOrg />
               </>
             }
           />
@@ -190,5 +195,39 @@ describe('AuditPage', () => {
     expect(await screen.findByText('org.2.audit')).toBeTruthy()
     expect(screen.queryByText('100000001')).toBeNull()
     expect(screen.queryByText('客户端连接标识，非面板会话')).toBeNull()
+  })
+
+  it('resets only the active tab filters', async () => {
+    setup({ initial: '/orgs/1/audit?tab=connections' })
+    await screen.findByText('100000001')
+    fireEvent.change(screen.getByLabelText('RustDesk ID'), {
+      target: { value: '100000001' },
+    })
+    await waitFor(() =>
+      expect(screen.getByTestId('loc').textContent).toContain('rustdeskId=100000001'),
+    )
+
+    fireEvent.click(screen.getByRole('tab', { name: '请求审计' }))
+    await screen.findByText('org.1.audit')
+    fireEvent.change(screen.getByLabelText('动作'), { target: { value: 'org.1.audit' } })
+    await waitFor(() => expect(screen.getByTestId('loc').textContent).toContain('action='))
+
+    fireEvent.click(screen.getByRole('button', { name: '重置筛选' }))
+    await waitFor(() => {
+      const location = screen.getByTestId('loc').textContent ?? ''
+      expect(location).not.toContain('action=')
+      expect(location).toContain('rustdeskId=100000001')
+    })
+
+    fireEvent.click(screen.getByRole('tab', { name: '连接日志' }))
+    await screen.findByText('100000001')
+    expect((screen.getByLabelText('RustDesk ID') as HTMLInputElement).value).toBe('100000001')
+  })
+
+  it('keeps an unknown actor id visible in the filter', async () => {
+    setup({ initial: '/orgs/1/audit?actorUserId=99' })
+    await screen.findByText('org.1.audit')
+    expect((screen.getByLabelText('操作人') as HTMLSelectElement).value).toBe('99')
+    expect(screen.getByRole('option', { name: /用户 #99/ })).toBeTruthy()
   })
 })

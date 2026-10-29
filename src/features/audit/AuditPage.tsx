@@ -70,14 +70,11 @@ export default function AuditPage() {
   }
 
   function resetFilters() {
-    change({
-      action: '',
-      actorUserId: null,
-      targetType: '',
-      targetId: '',
-      rustdeskId: '',
-      page: 1,
-    })
+    if (effective.tab === 'audit') {
+      change({ action: '', actorUserId: null, targetType: '', targetId: '', page: 1 })
+    } else {
+      change({ rustdeskId: '', page: 1 })
+    }
   }
 
   if (!Number.isSafeInteger(id) || id <= 0) {
@@ -197,6 +194,13 @@ export default function AuditPage() {
                   {member.disabled ? '（停用）' : ''}
                 </option>
               ))}
+              {effective.actorUserId !== null &&
+              effective.actorUserId !== 0 &&
+              !(members ?? []).some((member) => member.user_id === effective.actorUserId) ? (
+                <option value={String(effective.actorUserId)}>
+                  用户 #{effective.actorUserId}（不在成员列表）
+                </option>
+              ) : null}
             </select>
             <div className="input" style={{ width: 170 }}>
               <input

@@ -79,8 +79,8 @@ function setup(
     reducer: { [panelApi.reducerPath]: panelApi.reducer },
     middleware: (getDefault) => getDefault().concat(panelApi.middleware),
   })
-  const now = new Date('2026-10-29T06:00:00.000Z')
-  const tree = (refreshSignal: number) => (
+  const baseNow = new Date('2026-10-29T06:00:00.000Z')
+  const tree = (refreshSignal: number, now = baseNow) => (
     <Provider store={store}>
       <AuditLogTab
         orgId={1}
@@ -137,6 +137,15 @@ describe('AuditLogTab', () => {
     expect(requests).toHaveLength(1)
 
     view.rerender(tree(1))
+    await waitFor(() => expect(requests).toHaveLength(2))
+  })
+
+  it('refetches when the frozen window advances', async () => {
+    const { requests, view, tree } = setup()
+    await screen.findByText('session.ticket.redeem')
+    expect(requests).toHaveLength(1)
+
+    view.rerender(tree(0, new Date('2026-10-29T06:01:00.000Z')))
     await waitFor(() => expect(requests).toHaveLength(2))
   })
 })

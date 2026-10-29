@@ -22,8 +22,12 @@ export function AuditLogSheet({
   return (
     <SideSheet title={`审计 #${row.seq}`} onClose={onClose}>
       <dl className="desc">
+        <dt>记录 ID</dt>
+        <dd className="mono">{row.id}</dd>
         <dt>序号</dt>
         <dd className="mono">{row.seq}</dd>
+        <dt>操作者 ID</dt>
+        <dd className="mono">{row.actor_user_id}</dd>
         <dt>时间</dt>
         <dd className="mono">{formatTime(row.created_at)}</dd>
         <dt>操作人</dt>

@@ -143,6 +143,7 @@ describe('toAuditRequestQuery', () => {
     expect(query.get('targetType')).toBeNull()
     expect(query.get('targetId')).toBeNull()
     expect(query.get('from')).toBe('2026-10-22T06:00:00.000Z')
+    expect(query.get('to')).toBe('2026-10-29T06:00:00.000Z')
   })
 
   it('omits bounds for all', () => {

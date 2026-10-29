@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { Provider } from 'react-redux'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -149,14 +149,18 @@ describe('ConnectionLogTab', () => {
   afterEach(() => vi.restoreAllMocks())
 
   it('renders status, device name and client connection ids without a session link', async () => {
-    setup('connections')
+    const { requests } = setup('connections')
     expect(await screen.findByText('进行中')).toBeTruthy()
     expect(screen.getByText('已关闭')).toBeTruthy()
     expect(screen.getAllByText('lab-pc')).toHaveLength(2)
     expect(screen.getByText(/conn #12/)).toBeTruthy()
     expect(screen.getByText(/session #34/)).toBeTruthy()
+    expect(screen.queryByRole('link', { name: /会话/ })).toBeNull()
     expect(screen.queryByRole('button', { name: /会话/ })).toBeNull()
-    expect((await screen.findAllByText('—')).length).toBeGreaterThan(0)
+    expect(requests.some((url) => url.includes('/sessions'))).toBe(false)
+
+    const rows = await screen.findAllByRole('row')
+    expect(within(rows[1]).getAllByRole('cell')[1].textContent).toBe('—')
   })
 
   it('falls back without device.read and does not request devices', async () => {
