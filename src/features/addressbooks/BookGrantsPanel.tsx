@@ -20,6 +20,7 @@ import {
   subjectLabel,
   toGrantRequest,
   validateGrantForm,
+  type GrantDictionaryState,
   type GrantForm,
 } from '../../lib/addressbook-grant'
 import { formatTime } from '../../lib/format'
@@ -36,6 +37,17 @@ const KIND_LABELS: Record<AddressBookGrantKind, string> = {
   everyone: '所有人',
 }
 
+function DictionaryError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="banner danger" style={{ padding: '9px 11px', marginTop: 8 }}>
+      <div>{message}</div>
+      <button className="btn outline sm" type="button" style={{ marginTop: 8 }} onClick={onRetry}>
+        重试
+      </button>
+    </div>
+  )
+}
+
 export default function BookGrantsPanel({
   orgId,
   book,
@@ -43,6 +55,8 @@ export default function BookGrantsPanel({
   members,
   groups,
   canManageGroups,
+  memberState,
+  groupState,
 }: {
   orgId: number
   book: AddressBook
@@ -50,6 +64,8 @@ export default function BookGrantsPanel({
   members: Member[]
   groups: UserGroup[]
   canManageGroups: boolean
+  memberState: GrantDictionaryState
+  groupState: GrantDictionaryState
 }) {
   const {
     currentData: grants,
@@ -204,6 +220,8 @@ export default function BookGrantsPanel({
           members={members}
           groups={grantableGroups(groups)}
           canManageGroups={canManageGroups}
+          memberState={memberState}
+          groupState={groupState}
           initial={editing ?? undefined}
           onClose={() => {
             setCreating(false)
@@ -250,6 +268,8 @@ function GrantDialog({
   members,
   groups,
   canManageGroups,
+  memberState,
+  groupState,
   initial,
   onClose,
   onDone,
@@ -260,6 +280,8 @@ function GrantDialog({
   members: Member[]
   groups: UserGroup[]
   canManageGroups: boolean
+  memberState: GrantDictionaryState
+  groupState: GrantDictionaryState
   initial?: AddressBookGrant
   onClose: () => void
   onDone: () => void
@@ -361,6 +383,16 @@ function GrantDialog({
         {!canManageGroups ? (
           <div className="help">当前角色没有 access.manage，无法列用户组，因此不能按组授权。</div>
         ) : null}
+        {canManageGroups && groupState.error ? (
+          <DictionaryError
+            message={
+              groups.length === 0
+                ? '加载用户组失败，暂时无法按组授权。'
+                : '刷新用户组列表失败，当前显示的是上次结果。'
+            }
+            onRetry={groupState.retry}
+          />
+        ) : null}
       </div>
 
       {form.kind === 'user' ? (
@@ -389,7 +421,20 @@ function GrantDialog({
             ) : null}
           </select>
           {errors.userId ? <div className="help err">{errors.userId}</div> : null}
-          {activeMembers.length === 0 ? <div className="help">没有可选的活跃成员。</div> : null}
+          {memberState.error ? (
+            <DictionaryError
+              message={
+                activeMembers.length === 0
+                  ? '加载成员失败，暂时无法选择成员。'
+                  : '刷新成员列表失败，当前显示的是上次结果。'
+              }
+              onRetry={memberState.retry}
+            />
+          ) : activeMembers.length === 0 ? (
+            <div className="help">
+              {memberState.loading ? '正在加载成员…' : '没有可选的活跃成员。'}
+            </div>
+          ) : null}
         </div>
       ) : null}
 

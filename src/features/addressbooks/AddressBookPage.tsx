@@ -41,8 +41,18 @@ export default function AddressBookPage() {
   const tab: 'peers' | 'grants' =
     showGrants && searchParams.get('tab') === 'grants' ? 'grants' : 'peers'
 
-  const { currentData: members } = useGetMembersQuery(id, { skip: !id || !showGrants })
-  const { currentData: groups } = useGetUserGroupsQuery(id, { skip: !id || !canManageGroups })
+  const {
+    currentData: members,
+    isFetching: membersFetching,
+    isError: membersError,
+    refetch: refetchMembers,
+  } = useGetMembersQuery(id, { skip: !id || !showGrants })
+  const {
+    currentData: groups,
+    isFetching: groupsFetching,
+    isError: groupsError,
+    refetch: refetchGroups,
+  } = useGetUserGroupsQuery(id, { skip: !id || !canManageGroups })
 
   const emails = useMemo(() => {
     const map = new Map<number, string>()
@@ -202,6 +212,16 @@ export default function AddressBookPage() {
             members={members ?? []}
             groups={groups ?? []}
             canManageGroups={canManageGroups}
+            memberState={{
+              error: membersError,
+              loading: membersFetching,
+              retry: () => void refetchMembers(),
+            }}
+            groupState={{
+              error: groupsError,
+              loading: groupsFetching,
+              retry: () => void refetchGroups(),
+            }}
           />
         ) : loading ? (
           <div className="card">

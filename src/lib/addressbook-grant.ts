@@ -26,6 +26,13 @@ export interface GrantForm {
   access: AddressBookGrantAccess
 }
 
+/** Load state of the member/group dictionary the grant dialog depends on. */
+export interface GrantDictionaryState {
+  error: boolean
+  loading: boolean
+  retry: () => void
+}
+
 export function grantSubjectKey(subject: GrantSubject): string {
   if (subject.subject_kind === 'everyone') return 'everyone'
   if (subject.subject_kind === 'user_group') return `group:${subject.subject_group_id ?? 0}`

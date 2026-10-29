@@ -4,6 +4,7 @@ import { Provider } from 'react-redux'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { AddressBook, AddressBookGrant, Member, UserGroup } from '../../lib/api'
+import type { GrantDictionaryState } from '../../lib/addressbook-grant'
 import { panelApi } from '../../store/api'
 import BookGrantsPanel from './BookGrantsPanel'
 
@@ -73,10 +74,15 @@ function json(body: unknown, status = 200) {
   })
 }
 
+const idleState: GrantDictionaryState = { error: false, loading: false, retry: () => {} }
+
 function setup(
   canManageGroups = true,
   list: AddressBookGrant[] = grants,
   memberList: Member[] = members,
+  memberState: GrantDictionaryState = idleState,
+  groupState: GrantDictionaryState = idleState,
+  groupList: UserGroup[] = groups,
 ) {
   const posts: string[] = []
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (_input, init) => {
@@ -101,8 +107,10 @@ function setup(
         book={book}
         emails={emails}
         members={memberList}
-        groups={groups}
+        groups={groupList}
         canManageGroups={canManageGroups}
+        memberState={memberState}
+        groupState={groupState}
       />
     </Provider>,
   )
@@ -194,5 +202,24 @@ describe('BookGrantsPanel', () => {
     fireEvent.click(await screen.findByRole('button', { name: '修改权限' }))
     expect((screen.getByLabelText('成员') as HTMLSelectElement).value).toBe('2')
     expect(screen.getByRole('option', { name: /不在成员字典中/ })).toBeTruthy()
+  })
+
+  it('offers a retry when the member dictionary fails to load', async () => {
+    const retry = vi.fn()
+    setup(true, disabledUserGrant, [], { error: true, loading: false, retry })
+    fireEvent.click(await screen.findByRole('button', { name: '修改权限' }))
+    expect(screen.getByText(/加载成员失败/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '重试' }))
+    expect(retry).toHaveBeenCalledTimes(1)
+  })
+
+  it('offers a retry when the user group dictionary fails to load', async () => {
+    const retry = vi.fn()
+    setup(true, grants, members, undefined, { error: true, loading: false, retry }, [])
+    await screen.findAllByText('所有人')
+    fireEvent.click(screen.getByRole('button', { name: '添加授权' }))
+    expect(screen.getByText(/加载用户组失败/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '重试' }))
+    expect(retry).toHaveBeenCalledTimes(1)
   })
 })
