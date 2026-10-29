@@ -194,7 +194,13 @@ const GROUPS: { title: string; items: NavEntry[] }[] = [
       { key: 'policies', label: '连接策略', ready: true, icon: ICONS.policies },
       { key: 'approvals', label: '审批中心', ready: true, icon: ICONS.approvals },
       { key: 'alerts', label: '告警中心', ready: true, icon: ICONS.alerts },
-      { key: 'access', label: '访问控制', permission: 'access.manage', icon: ICONS.access },
+      {
+        key: 'access',
+        label: '访问控制',
+        ready: true,
+        permission: 'access.manage',
+        icon: ICONS.access,
+      },
     ],
   },
   {
@@ -226,6 +232,7 @@ const TAB_LABELS: Record<string, string> = {
   approvals: '审批中心',
   alerts: '告警中心',
   audit: '审计与日志',
+  access: '访问控制',
   'address-books': '地址簿',
 }
 const PAGE_KEYS = Object.keys(TAB_LABELS)

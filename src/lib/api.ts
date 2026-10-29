@@ -11,12 +11,17 @@ import type {
   ConnectionLogPage,
   FileLogPage,
   UserGroup,
+  UserGroupDeleteData,
+  UserGroupMemberMutation,
   Approval,
   ApprovalDecisionRequest,
   ApprovalPage,
   Device,
   DeviceCreateRequest,
   DeviceDisconnect,
+  DeviceGroup,
+  DeviceGroupDeleteData,
+  DeviceGroupMemberMutation,
   DevicePage,
   DeviceUpdateRequest,
   Member,
@@ -297,6 +302,34 @@ export function fetchDevices(orgId: number, pageSize = 200): Promise<DevicePage>
   return apiFetch<DevicePage>(`/api/v1/orgs/${orgId}/devices?page=1&pageSize=${pageSize}`)
 }
 
+export interface AllDevices {
+  items: Device[]
+  total: number
+  truncated: boolean
+}
+
+/**
+ * Loads every device for a full replacement picker. The API caps one page at
+ * 200; stop at 2000 so an enormous organization cannot make the dialog fetch
+ * unbounded pages. Callers must disable destructive saves when truncated.
+ */
+export async function fetchAllDevices(orgId: number): Promise<AllDevices> {
+  const items: Device[] = []
+  let total = 0
+  let page = 1
+  while (items.length < 2000) {
+    const data = await fetchDevicePage(
+      orgId,
+      new URLSearchParams({ page: String(page), pageSize: '200' }),
+    )
+    total = data.total
+    items.push(...data.items)
+    if (data.items.length === 0 || items.length >= total) break
+    page += 1
+  }
+  return { items: items.slice(0, 2000), total, truncated: total > 2000 }
+}
+
 // ── device management ───────────────────────────────────────────────────────
 
 export type { Device, DeviceDisconnect, DevicePage, DeviceUpdateRequest } from '../api/generated'
@@ -431,6 +464,79 @@ export async function deleteAddressBookGrant(
 /** Requires `access.manage`; includes the built-in everyone group. */
 export function fetchUserGroups(orgId: number): Promise<UserGroup[]> {
   return apiFetch<UserGroup[]>(`/api/v1/orgs/${orgId}/user-groups`)
+}
+
+export type { DeviceGroup, UserGroupDeleteData, UserGroupMemberMutation } from '../api/generated'
+export type { DeviceGroupDeleteData, DeviceGroupMemberMutation } from '../api/generated'
+
+export function createUserGroup(orgId: number, name: string): Promise<UserGroup> {
+  return apiFetch<UserGroup>(`/api/v1/orgs/${orgId}/user-groups`, {
+    method: 'POST',
+    body: JSON.stringify({ name }),
+  })
+}
+
+export function renameUserGroup(orgId: number, groupId: number, name: string): Promise<UserGroup> {
+  return apiFetch<UserGroup>(`/api/v1/orgs/${orgId}/user-groups/${groupId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name }),
+  })
+}
+
+export function deleteUserGroup(orgId: number, groupId: number): Promise<UserGroupDeleteData> {
+  return apiFetch<UserGroupDeleteData>(`/api/v1/orgs/${orgId}/user-groups/${groupId}`, {
+    method: 'DELETE',
+  })
+}
+
+export function replaceUserGroupMembers(
+  orgId: number,
+  groupId: number,
+  userIds: number[],
+): Promise<UserGroupMemberMutation> {
+  return apiFetch<UserGroupMemberMutation>(`/api/v1/orgs/${orgId}/user-groups/${groupId}/members`, {
+    method: 'PUT',
+    body: JSON.stringify({ user_ids: userIds }),
+  })
+}
+
+export function fetchDeviceGroups(orgId: number): Promise<DeviceGroup[]> {
+  return apiFetch<DeviceGroup[]>(`/api/v1/orgs/${orgId}/device-groups`)
+}
+
+export function createDeviceGroup(orgId: number, name: string): Promise<DeviceGroup> {
+  return apiFetch<DeviceGroup>(`/api/v1/orgs/${orgId}/device-groups`, {
+    method: 'POST',
+    body: JSON.stringify({ name }),
+  })
+}
+
+export function renameDeviceGroup(
+  orgId: number,
+  groupId: number,
+  name: string,
+): Promise<DeviceGroup> {
+  return apiFetch<DeviceGroup>(`/api/v1/orgs/${orgId}/device-groups/${groupId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name }),
+  })
+}
+
+export function deleteDeviceGroup(orgId: number, groupId: number): Promise<DeviceGroupDeleteData> {
+  return apiFetch<DeviceGroupDeleteData>(`/api/v1/orgs/${orgId}/device-groups/${groupId}`, {
+    method: 'DELETE',
+  })
+}
+
+export function replaceDeviceGroupDevices(
+  orgId: number,
+  groupId: number,
+  deviceIds: number[],
+): Promise<DeviceGroupMemberMutation> {
+  return apiFetch<DeviceGroupMemberMutation>(
+    `/api/v1/orgs/${orgId}/device-groups/${groupId}/devices`,
+    { method: 'PUT', body: JSON.stringify({ device_ids: deviceIds }) },
+  )
 }
 
 export async function deleteAddressBookPeer(

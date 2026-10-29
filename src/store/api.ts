@@ -12,15 +12,21 @@ import {
   fetchSessions,
   createAddressBook,
   createAddressBookGrant,
+  createDeviceGroup,
   createPolicy,
+  createUserGroup,
   deleteAddressBook,
   deleteAddressBookGrant,
   deleteAddressBookPeer,
+  deleteDeviceGroup,
   deletePolicy,
+  deleteUserGroup,
   fetchAddressBook,
   fetchAddressBookGrants,
   fetchAddressBooks,
   fetchAlertPage,
+  fetchAllDevices,
+  fetchDeviceGroups,
   fetchApproval,
   fetchApprovalPage,
   fetchAuditLogPage,
@@ -28,11 +34,15 @@ import {
   fetchFileLogPage,
   fetchPolicies,
   fetchUserGroups,
+  renameDeviceGroup,
+  renameUserGroup,
   inviteMember,
   rebindDevice,
   registerDevice,
   removeMember,
   replaceAddressBookPeers,
+  replaceDeviceGroupDevices,
+  replaceUserGroupMembers,
   requestDeviceDisconnect,
   submitApprovalDecision,
   updateAddressBook,
@@ -43,7 +53,13 @@ import {
   type AddressBookGrant,
   type AddressBookGrantRequest,
   type AddressBookPeer,
+  type AllDevices,
+  type DeviceGroup,
+  type DeviceGroupDeleteData,
+  type DeviceGroupMemberMutation,
   type UserGroup,
+  type UserGroupDeleteData,
+  type UserGroupMemberMutation,
   type AlertPage,
   type AuditLogPage,
   type ConnectionLogPage,
@@ -99,6 +115,9 @@ export const panelApi = createApi({
     'AddressBook',
     'AddressBookGrants',
     'UserGroups',
+    'DeviceGroups',
+    'AccessDevices',
+    'AccessRules',
   ],
   endpoints: (build) => ({
     getMe: build.query<Me, void>({
@@ -129,7 +148,10 @@ export const panelApi = createApi({
     }),
     removeMember: build.mutation<MemberMutation, { orgId: number; userId: number }>({
       queryFn: ({ orgId, userId }) => wrap(() => removeMember(orgId, userId)),
-      invalidatesTags: (_result, _error, { orgId }) => [{ type: 'Members', id: orgId }],
+      invalidatesTags: (_result, _error, { orgId }) => [
+        { type: 'Members', id: orgId },
+        { type: 'UserGroups', id: orgId },
+      ],
     }),
     getSessions: build.query<SessionPage, { orgId: number; queryString: string }>({
       queryFn: ({ orgId, queryString }) =>
@@ -187,6 +209,85 @@ export const panelApi = createApi({
     getUserGroups: build.query<UserGroup[], number>({
       queryFn: (orgId) => wrap(() => fetchUserGroups(orgId)),
       providesTags: (_result, _error, orgId) => [{ type: 'UserGroups', id: orgId }],
+    }),
+    getDeviceGroups: build.query<DeviceGroup[], number>({
+      queryFn: (orgId) => wrap(() => fetchDeviceGroups(orgId)),
+      providesTags: (_result, _error, orgId) => [{ type: 'DeviceGroups', id: orgId }],
+    }),
+    getAllDevices: build.query<AllDevices, number>({
+      queryFn: (orgId) => wrap(() => fetchAllDevices(orgId)),
+      providesTags: (_result, _error, orgId) => [{ type: 'AccessDevices', id: orgId }],
+    }),
+    createUserGroup: build.mutation<UserGroup, { orgId: number; name: string }>({
+      queryFn: ({ orgId, name }) => wrap(() => createUserGroup(orgId, name)),
+      invalidatesTags: (_result, _error, { orgId }) => [
+        { type: 'UserGroups', id: orgId },
+        { type: 'AccessRules', id: orgId },
+      ],
+    }),
+    renameUserGroup: build.mutation<UserGroup, { orgId: number; groupId: number; name: string }>({
+      queryFn: ({ orgId, groupId, name }) => wrap(() => renameUserGroup(orgId, groupId, name)),
+      invalidatesTags: (_result, _error, { orgId }) => [
+        { type: 'UserGroups', id: orgId },
+        { type: 'AccessRules', id: orgId },
+      ],
+    }),
+    deleteUserGroup: build.mutation<UserGroupDeleteData, { orgId: number; groupId: number }>({
+      queryFn: ({ orgId, groupId }) => wrap(() => deleteUserGroup(orgId, groupId)),
+      invalidatesTags: (_result, _error, { orgId }) => [
+        { type: 'UserGroups', id: orgId },
+        { type: 'AccessRules', id: orgId },
+        { type: 'AddressBookGrants' },
+      ],
+    }),
+    replaceUserGroupMembers: build.mutation<
+      UserGroupMemberMutation,
+      { orgId: number; groupId: number; userIds: number[] }
+    >({
+      queryFn: ({ orgId, groupId, userIds }) =>
+        wrap(() => replaceUserGroupMembers(orgId, groupId, userIds)),
+      invalidatesTags: (_result, _error, { orgId }) => [{ type: 'UserGroups', id: orgId }],
+    }),
+    createDeviceGroup: build.mutation<DeviceGroup, { orgId: number; name: string }>({
+      queryFn: ({ orgId, name }) => wrap(() => createDeviceGroup(orgId, name)),
+      invalidatesTags: (_result, _error, { orgId }) => [
+        { type: 'DeviceGroups', id: orgId },
+        { type: 'Devices', id: orgId },
+        { type: 'AccessDevices', id: orgId },
+        { type: 'AccessRules', id: orgId },
+      ],
+    }),
+    renameDeviceGroup: build.mutation<
+      DeviceGroup,
+      { orgId: number; groupId: number; name: string }
+    >({
+      queryFn: ({ orgId, groupId, name }) => wrap(() => renameDeviceGroup(orgId, groupId, name)),
+      invalidatesTags: (_result, _error, { orgId }) => [
+        { type: 'DeviceGroups', id: orgId },
+        { type: 'AccessRules', id: orgId },
+      ],
+    }),
+    deleteDeviceGroup: build.mutation<DeviceGroupDeleteData, { orgId: number; groupId: number }>({
+      queryFn: ({ orgId, groupId }) => wrap(() => deleteDeviceGroup(orgId, groupId)),
+      invalidatesTags: (_result, _error, { orgId }) => [
+        { type: 'DeviceGroups', id: orgId },
+        { type: 'Devices', id: orgId },
+        { type: 'AccessDevices', id: orgId },
+        { type: 'AccessRules', id: orgId },
+      ],
+    }),
+    replaceDeviceGroupDevices: build.mutation<
+      DeviceGroupMemberMutation,
+      { orgId: number; groupId: number; deviceIds: number[] }
+    >({
+      queryFn: ({ orgId, groupId, deviceIds }) =>
+        wrap(() => replaceDeviceGroupDevices(orgId, groupId, deviceIds)),
+      invalidatesTags: (_result, _error, { orgId }) => [
+        { type: 'DeviceGroups', id: orgId },
+        { type: 'Devices', id: orgId },
+        { type: 'AccessDevices', id: orgId },
+        { type: 'AccessRules', id: orgId },
+      ],
     }),
     getAddressBook: build.query<AddressBook, { orgId: number; bookId: number }>({
       queryFn: ({ orgId, bookId }) => wrap(() => fetchAddressBook(orgId, bookId)),
@@ -254,14 +355,20 @@ export const panelApi = createApi({
     registerDevice: build.mutation<Device, { orgId: number; name: string; rustdesk_id: string }>({
       queryFn: ({ orgId, name, rustdesk_id }) =>
         wrap(() => registerDevice(orgId, { name, rustdesk_id })),
-      invalidatesTags: (_result, _error, { orgId }) => [{ type: 'Devices', id: orgId }],
+      invalidatesTags: (_result, _error, { orgId }) => [
+        { type: 'Devices', id: orgId },
+        { type: 'AccessDevices', id: orgId },
+      ],
     }),
     updateDevice: build.mutation<
       Device,
       { orgId: number; deviceId: number; patch: DeviceUpdateRequest }
     >({
       queryFn: ({ orgId, deviceId, patch }) => wrap(() => updateDevice(orgId, deviceId, patch)),
-      invalidatesTags: (_result, _error, { orgId }) => [{ type: 'Devices', id: orgId }],
+      invalidatesTags: (_result, _error, { orgId }) => [
+        { type: 'Devices', id: orgId },
+        { type: 'AccessDevices', id: orgId },
+      ],
     }),
     rebindDevice: build.mutation<Device, { orgId: number; deviceId: number; reason: string }>({
       queryFn: ({ orgId, deviceId, reason }) => wrap(() => rebindDevice(orgId, deviceId, reason)),
@@ -371,6 +478,16 @@ export const {
   useCreateAddressBookGrantMutation,
   useDeleteAddressBookGrantMutation,
   useGetUserGroupsQuery,
+  useGetDeviceGroupsQuery,
+  useGetAllDevicesQuery,
+  useCreateUserGroupMutation,
+  useRenameUserGroupMutation,
+  useDeleteUserGroupMutation,
+  useReplaceUserGroupMembersMutation,
+  useCreateDeviceGroupMutation,
+  useRenameDeviceGroupMutation,
+  useDeleteDeviceGroupMutation,
+  useReplaceDeviceGroupDevicesMutation,
   useGetAddressBooksQuery,
   useGetAddressBookQuery,
   useCreateAddressBookMutation,
