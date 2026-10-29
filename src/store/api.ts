@@ -35,6 +35,7 @@ import {
   fetchAuditLogPage,
   fetchConnectionLogPage,
   fetchFileLogPage,
+  fetchLogEvents,
   fetchPolicies,
   fetchUserGroups,
   renameDeviceGroup,
@@ -69,6 +70,7 @@ import {
   type AuditLogPage,
   type ConnectionLogPage,
   type FileLogPage,
+  type LogEvent,
   type Approval,
   type ApprovalDecisionRequest,
   type ApprovalPage,
@@ -123,6 +125,7 @@ export const panelApi = createApi({
     'DeviceGroups',
     'AccessDevices',
     'AccessRules',
+    'LogEvents',
   ],
   endpoints: (build) => ({
     getMe: build.query<Me, void>({
@@ -438,6 +441,11 @@ export const panelApi = createApi({
       queryFn: ({ orgId, queryString }) =>
         wrap(() => fetchFileLogPage(orgId, new URLSearchParams(queryString))),
     }),
+    getLogEvents: build.query<LogEvent[], { orgId: number; queryString: string }>({
+      queryFn: ({ orgId, queryString }) =>
+        wrap(() => fetchLogEvents(orgId, new URLSearchParams(queryString))),
+      providesTags: (_result, _error, { orgId }) => [{ type: 'LogEvents', id: orgId }],
+    }),
     getApprovalPage: build.query<ApprovalPage, { orgId: number; queryString: string }>({
       queryFn: ({ orgId, queryString }) =>
         wrap(() => fetchApprovalPage(orgId, new URLSearchParams(queryString))),
@@ -525,6 +533,7 @@ export const {
   useGetAuditLogPageQuery,
   useGetConnectionLogPageQuery,
   useGetFileLogPageQuery,
+  useGetLogEventsQuery,
   useGetApprovalPageQuery,
   useGetApprovalQuery,
   useDecideApprovalMutation,

@@ -149,6 +149,19 @@ const ICONS: Record<string, ReactElement> = {
       <path d="M6 6h6M6 9h6M6 12h4" />
     </svg>
   ),
+  logs: (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 18 18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    >
+      <path d="M3 4.5h12M3 9h12M3 13.5h7" />
+    </svg>
+  ),
   builds: (
     <svg
       width="18"
@@ -207,6 +220,13 @@ const GROUPS: { title: string; items: NavEntry[] }[] = [
     title: '运维与审计',
     items: [
       {
+        key: 'logs',
+        label: '日志采集',
+        ready: true,
+        permission: 'audit.read',
+        icon: ICONS.logs,
+      },
+      {
         key: 'audit',
         label: '审计与日志',
         ready: true,
@@ -231,6 +251,7 @@ const TAB_LABELS: Record<string, string> = {
   policies: '连接策略',
   approvals: '审批中心',
   alerts: '告警中心',
+  logs: '日志采集',
   audit: '审计与日志',
   access: '访问控制',
   'address-books': '地址簿',

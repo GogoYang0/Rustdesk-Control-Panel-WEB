@@ -1545,7 +1545,11 @@ export const replaceAddressBookTags = <ThrowOnError extends boolean = false>(opt
 /**
  * 查询采集日志事件
  *
- * 返回本组织采集的 hbbs/hbbr 日志事件，按发生时间倒序，limit 上限 200。
+ * 返回本组织采集的 hbbs/hbbr 日志事件，按发生时间倒序，limit 上限 200（v0.12.2）。
+ * 需要 `audit.read`；可见范围由角色 `audit_scope` 决定：`global` 查全组织，
+ * `individual` 只返回自己拥有设备（`devices.owner_user_id`）的事件；无法关联设备
+ * （`device_id` 为 null）的事件对 `individual` 不可见。列表轮询不写审计。
+ *
  */
 export const listLogEvents = <ThrowOnError extends boolean = false>(options: Options<ListLogEventsData, ThrowOnError>): RequestResult<ListLogEventsResponses, ListLogEventsErrors, ThrowOnError> => (options.client ?? client).get<ListLogEventsResponses, ListLogEventsErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
