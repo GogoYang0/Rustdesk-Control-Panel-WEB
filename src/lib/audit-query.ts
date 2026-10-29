@@ -100,11 +100,8 @@ export function auditRangeBounds(range: AuditRange, now: Date): { from?: string;
   }
 }
 
-export function toAuditRequestQuery(
-  filters: AuditFilters,
-  now: Date,
-  pageSize = AUDIT_PAGE_SIZE,
-): URLSearchParams {
+/** Filters shared by the list and the export; pagination is added per caller. */
+export function toAuditExportQuery(filters: AuditFilters, now: Date): URLSearchParams {
   const query = new URLSearchParams()
   const action = filters.action.trim()
   const targetType = filters.targetType.trim()
@@ -121,9 +118,55 @@ export function toAuditRequestQuery(
   const { from, to } = auditRangeBounds(filters.range, now)
   if (from) query.set('from', from)
   if (to) query.set('to', to)
+  return query
+}
+
+export function toAuditRequestQuery(
+  filters: AuditFilters,
+  now: Date,
+  pageSize = AUDIT_PAGE_SIZE,
+): URLSearchParams {
+  const query = toAuditExportQuery(filters, now)
   query.set('page', String(filters.page))
   query.set('pageSize', String(pageSize))
   return query
+}
+
+const EXPORT_SEGMENT: Record<AuditTab, string> = {
+  audit: 'audit-logs',
+  connections: 'connection-logs',
+  files: 'file-logs',
+}
+
+export function auditExportPath(orgId: number, filters: AuditFilters, now: Date): string {
+  return `/api/v1/orgs/${orgId}/${EXPORT_SEGMENT[filters.tab]}/export?${toAuditExportQuery(
+    filters,
+    now,
+  ).toString()}`
+}
+
+export function auditExportFallbackName(tab: AuditTab, orgId: number, now: Date): string {
+  const prefix = tab === 'audit' ? 'audit' : tab === 'connections' ? 'connection' : 'file'
+  const stamp = now
+    .toISOString()
+    .replace(/[-:]/g, '')
+    .replace(/\.\d{3}Z$/, 'Z')
+  return `${prefix}-org-${orgId}-${stamp}.csv`
+}
+
+/** Chinese copy for CSV export failures; a 400 means the result was too wide. */
+export function auditExportError(err: unknown): string {
+  if (err instanceof ApiError) {
+    if (err.status === 0) return '网络异常，请稍后重试'
+    if (err.status === 400) {
+      return '导出被拒绝：结果可能超过 1000 行，请缩小时间范围或补充筛选后再试'
+    }
+    if (err.status === 401) return '登录已失效，请重新登录'
+    if (err.status === 403) return '当前角色没有审计读取权限'
+    if (err.status >= 500) return '服务异常，请稍后重试'
+    return '导出失败，请稍后重试'
+  }
+  return '网络异常，请稍后重试'
 }
 
 const TAB_LABELS: Record<AuditTab, string> = {
