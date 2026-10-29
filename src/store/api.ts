@@ -23,6 +23,9 @@ import {
   fetchAlertPage,
   fetchApproval,
   fetchApprovalPage,
+  fetchAuditLogPage,
+  fetchConnectionLogPage,
+  fetchFileLogPage,
   fetchPolicies,
   fetchUserGroups,
   inviteMember,
@@ -42,6 +45,9 @@ import {
   type AddressBookPeer,
   type UserGroup,
   type AlertPage,
+  type AuditLogPage,
+  type ConnectionLogPage,
+  type FileLogPage,
   type Approval,
   type ApprovalDecisionRequest,
   type ApprovalPage,
@@ -290,6 +296,18 @@ export const panelApi = createApi({
         wrap(() => fetchAlertPage(orgId, new URLSearchParams(queryString))),
       providesTags: (_result, _error, { orgId }) => [{ type: 'Alerts', id: orgId }],
     }),
+    getAuditLogPage: build.query<AuditLogPage, { orgId: number; queryString: string }>({
+      queryFn: ({ orgId, queryString }) =>
+        wrap(() => fetchAuditLogPage(orgId, new URLSearchParams(queryString))),
+    }),
+    getConnectionLogPage: build.query<ConnectionLogPage, { orgId: number; queryString: string }>({
+      queryFn: ({ orgId, queryString }) =>
+        wrap(() => fetchConnectionLogPage(orgId, new URLSearchParams(queryString))),
+    }),
+    getFileLogPage: build.query<FileLogPage, { orgId: number; queryString: string }>({
+      queryFn: ({ orgId, queryString }) =>
+        wrap(() => fetchFileLogPage(orgId, new URLSearchParams(queryString))),
+    }),
     getApprovalPage: build.query<ApprovalPage, { orgId: number; queryString: string }>({
       queryFn: ({ orgId, queryString }) =>
         wrap(() => fetchApprovalPage(orgId, new URLSearchParams(queryString))),
@@ -361,6 +379,9 @@ export const {
   useReplaceAddressBookPeersMutation,
   useDeleteAddressBookPeerMutation,
   useGetAlertPageQuery,
+  useGetAuditLogPageQuery,
+  useGetConnectionLogPageQuery,
+  useGetFileLogPageQuery,
   useGetApprovalPageQuery,
   useGetApprovalQuery,
   useDecideApprovalMutation,

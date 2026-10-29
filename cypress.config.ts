@@ -6,5 +6,7 @@ export default defineConfig({
     baseUrl: 'http://localhost:5173',
     specPattern: 'cypress/e2e/**/*.cy.ts',
     supportFile: false,
+    // The panel rate-limits password logins; keep one login per spec.
+    testIsolation: false,
   },
 })

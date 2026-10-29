@@ -7,6 +7,9 @@ import type {
   AddressBookPeersReplaceRequest,
   AddressBookUpdateRequest,
   AlertPage,
+  AuditLogPage,
+  ConnectionLogPage,
+  FileLogPage,
   UserGroup,
   Approval,
   ApprovalDecisionRequest,
@@ -392,6 +395,32 @@ export type { AlertSeverity } from '../api/generated'
 /** Alerts are records: the API has no detail, disposition or export endpoint. */
 export function fetchAlertPage(orgId: number, query: URLSearchParams): Promise<AlertPage> {
   return apiFetch<AlertPage>(`/api/v1/orgs/${orgId}/alerts?${query.toString()}`)
+}
+
+// ── audit & client-reported logs ────────────────────────────────────────────
+
+export type {
+  AuditLog,
+  AuditLogPage,
+  ConnectionLog,
+  ConnectionLogPage,
+  FileLog,
+  FileLogPage,
+} from '../api/generated'
+
+export function fetchAuditLogPage(orgId: number, query: URLSearchParams): Promise<AuditLogPage> {
+  return apiFetch<AuditLogPage>(`/api/v1/orgs/${orgId}/audit-logs?${query.toString()}`)
+}
+
+export function fetchConnectionLogPage(
+  orgId: number,
+  query: URLSearchParams,
+): Promise<ConnectionLogPage> {
+  return apiFetch<ConnectionLogPage>(`/api/v1/orgs/${orgId}/connection-logs?${query.toString()}`)
+}
+
+export function fetchFileLogPage(orgId: number, query: URLSearchParams): Promise<FileLogPage> {
+  return apiFetch<FileLogPage>(`/api/v1/orgs/${orgId}/file-logs?${query.toString()}`)
 }
 
 export function fetchApprovalPage(orgId: number, query: URLSearchParams): Promise<ApprovalPage> {
