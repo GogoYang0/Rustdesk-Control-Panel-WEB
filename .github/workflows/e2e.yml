@@ -64,7 +64,7 @@ jobs:
           nohup /tmp/panel > /tmp/panel.log 2>&1 &
           echo $! > /tmp/panel.pid
           for _ in $(seq 1 60); do
-            if curl -fsS http://127.0.0.1:8080/healthz > /dev/null; then
+            if curl -fsS http://localhost:8080/healthz > /dev/null; then
               exit 0
             fi
             sleep 1
@@ -78,7 +78,7 @@ jobs:
           nohup pnpm dev > /tmp/web.log 2>&1 &
           echo $! > /tmp/web.pid
           for _ in $(seq 1 60); do
-            if curl -fsS http://127.0.0.1:5173/ > /dev/null; then
+            if curl -fsS http://localhost:5173/ > /dev/null; then
               exit 0
             fi
             sleep 1
