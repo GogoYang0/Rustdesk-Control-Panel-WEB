@@ -12,9 +12,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # A skipped sole job makes the workflow green, so a fork PR would claim e2e
+  # coverage without running it. Fail visibly instead; run the branch in this
+  # repository or run Cypress locally before merging.
+  fork-guard:
+    if: github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: explain the private API requirement
+        run: |
+          echo "::error::Cypress e2e needs the private API repo and its token. Push the branch to this repository or run 'pnpm exec cypress run --expose consoleE2E=true' locally against a seeded panel."
+          exit 1
+
   cypress:
     # The API repo is private and API_REPO_TOKEN is not exposed to fork PRs;
-    # fork runs are skipped rather than failing with a missing seed/API.
+    # same-repo PRs run the full seed + Cypress flow.
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 20
