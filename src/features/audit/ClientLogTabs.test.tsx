@@ -76,6 +76,16 @@ const files: FileLog[] = [
     files: 'oops' as unknown as FileLog['files'],
     created_at: '2026-10-29T04:00:00Z',
   },
+  {
+    id: 11,
+    organization_id: 1,
+    device_id: 5,
+    rustdesk_id: '123456789',
+    direction: 'receive',
+    file_count: 12,
+    files: Array.from({ length: 12 }, (_, index) => [`f${index + 1}.bin`, index + 1]),
+    created_at: '2026-10-29T03:00:00Z',
+  },
 ]
 
 function json(body: unknown, status = 200) {
@@ -168,19 +178,29 @@ describe('FileLogTab', () => {
   it('renders directions and opens a sheet with files and raw info', async () => {
     setup('files')
     expect(await screen.findByText('发送')).toBeTruthy()
-    expect(screen.getByText('接收')).toBeTruthy()
+    expect(screen.getAllByText('接收').length).toBeGreaterThan(0)
     expect(screen.getByText('/home/lab/report.csv')).toBeTruthy()
     fireEvent.click(screen.getAllByRole('button', { name: '详情' })[0])
     expect(await screen.findByText('report.csv · 1024')).toBeTruthy()
     expect(screen.getByText('notes.txt · 12')).toBeTruthy()
     expect(screen.getByText(/"peer":"987654321"/)).toBeTruthy()
+    expect(screen.queryByText('仅展示前 10 项')).toBeNull()
   })
 
   it('renders a malformed files payload without crashing', async () => {
     setup('files')
-    await screen.findByText('接收')
+    await screen.findAllByText('接收')
     fireEvent.click(screen.getAllByRole('button', { name: '详情' })[1])
     expect((await screen.findAllByText('—')).length).toBeGreaterThan(0)
+    expect(screen.queryByText('仅展示前 10 项')).toBeNull()
+  })
+
+  it('notes that only the first ten files are shown', async () => {
+    setup('files', { total: 3 })
+    await waitFor(() => expect(screen.getAllByRole('button', { name: '详情' })).toHaveLength(3))
+    fireEvent.click(screen.getAllByRole('button', { name: '详情' })[2])
+    expect(await screen.findByText('仅展示前 10 项')).toBeTruthy()
+    expect(screen.getByText('f10.bin · 10')).toBeTruthy()
   })
 
   it('maps a 403 to Chinese copy and offers a retry', async () => {

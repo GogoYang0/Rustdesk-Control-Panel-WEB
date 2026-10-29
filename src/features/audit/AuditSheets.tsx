@@ -136,7 +136,7 @@ export function FileLogSheet({
                     : String(entry)}
                 </div>
               ))}
-          {row.file_count != null && row.file_count > files.length ? (
+          {files.length === 10 && row.file_count != null && row.file_count > 10 ? (
             <div className="help">仅展示前 10 项</div>
           ) : null}
         </dd>
