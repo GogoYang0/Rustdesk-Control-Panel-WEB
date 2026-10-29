@@ -178,7 +178,7 @@ const GROUPS: { title: string; items: NavEntry[] }[] = [
       },
       { key: 'members', label: '组织与成员', ready: true, icon: ICONS.members },
       { key: 'roles', label: '角色与权限', ready: true, icon: ICONS.access },
-      { key: 'addressbook', label: '地址簿', permission: 'device.read', icon: ICONS.addressbook },
+      { key: 'address-books', label: '地址簿', ready: true, icon: ICONS.addressbook },
     ],
   },
   {
@@ -219,6 +219,7 @@ const TAB_LABELS: Record<string, string> = {
   policies: '连接策略',
   approvals: '审批中心',
   alerts: '告警中心',
+  'address-books': '地址簿',
 }
 const PAGE_KEYS = Object.keys(TAB_LABELS)
 
@@ -258,7 +259,9 @@ export default function AppShell() {
       ? me?.orgs[0]
       : me?.orgs.find((org) => Number.isInteger(requestedOrgId) && org.id === requestedOrgId)
   const perms = useMemo(() => new Set(current?.permissions ?? []), [current])
-  const activeKey = PAGE_KEYS.find((key) => location.pathname.endsWith(`/${key}`)) ?? 'members'
+  // `includes` keeps the tab highlighted on detail routes such as
+  // /address-books/12, which do not end with the page key.
+  const activeKey = PAGE_KEYS.find((key) => location.pathname.includes(`/${key}`)) ?? 'members'
 
   useEffect(() => {
     setTabs((prev) => pushTab(prev, activeKey))
