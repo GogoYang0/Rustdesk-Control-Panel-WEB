@@ -9,7 +9,7 @@ vi.mock('./session', () => ({
   logout: () => logout(),
 }))
 
-const { ApiError, apiFetch, fetchCsv } = await import('./api')
+const { ApiError, apiBlob, apiFetch, fetchCsv } = await import('./api')
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -87,6 +87,68 @@ describe('fetchCsv', () => {
   it('turns a network failure into ApiError(0)', async () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('fetch failed'))
     await expect(fetchCsv('/export')).rejects.toMatchObject({ status: 0 })
+  })
+})
+
+describe('apiBlob', () => {
+  beforeEach(() => {
+    refreshAccessToken.mockReset()
+    logout.mockReset()
+  })
+  afterEach(() => vi.restoreAllMocks())
+
+  it('returns the blob, content type and sanitized filename', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('png-bytes', {
+        status: 200,
+        headers: {
+          'Content-Type': 'image/png',
+          'Content-Disposition': 'attachment; filename="../logo.png"',
+        },
+      }),
+    )
+    const result = await apiBlob('/logo', { cache: 'no-store' })
+    expect(result.status).toBe(200)
+    expect(result.contentType).toBe('image/png')
+    expect(result.filename).toBe('.._logo.png')
+    expect(result.notModified).toBe(false)
+    await expect(result.blob.text()).resolves.toBe('png-bytes')
+  })
+
+  it('throws the JSON envelope on a failed binary request', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({ code: 'conflict', message: 'profile has active builds' }, 409),
+    )
+    await expect(apiBlob('/logo')).rejects.toMatchObject({
+      status: 409,
+      code: 'conflict',
+    })
+  })
+
+  it('marks 304 as not modified instead of a body', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 304 }))
+    await expect(apiBlob('/logo')).resolves.toMatchObject({
+      status: 304,
+      notModified: true,
+      filename: '',
+    })
+  })
+
+  it('replays once after a refresh', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(jsonResponse({ code: 'unauthorized' }, 401))
+      .mockResolvedValueOnce(
+        new Response('x', { status: 200, headers: { 'Content-Type': 'image/png' } }),
+      )
+    refreshAccessToken.mockResolvedValue({ access: 'access-2', invalid: false })
+    await expect(apiBlob('/logo')).resolves.toMatchObject({ status: 200, contentType: 'image/png' })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('turns a network failure into ApiError(0)', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('fetch failed'))
+    await expect(apiBlob('/logo')).rejects.toMatchObject({ status: 0 })
   })
 })
 

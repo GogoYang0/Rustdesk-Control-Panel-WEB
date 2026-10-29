@@ -13,6 +13,7 @@ import {
   createAccessRule,
   createAddressBook,
   createAddressBookGrant,
+  createClientBuildProfile,
   createDeviceGroup,
   createPolicy,
   createUserGroup,
@@ -20,6 +21,8 @@ import {
   deleteAddressBook,
   deleteAddressBookGrant,
   deleteAddressBookPeer,
+  deleteClientBuildProfile,
+  deleteClientBuildProfileLogo,
   deleteDeviceGroup,
   deletePolicy,
   deleteUserGroup,
@@ -29,6 +32,8 @@ import {
   fetchAddressBooks,
   fetchAlertPage,
   fetchAllDevices,
+  fetchClientBuildCapabilities,
+  fetchClientBuildProfiles,
   fetchDeviceGroups,
   fetchApproval,
   fetchApprovalPage,
@@ -41,6 +46,7 @@ import {
   renameDeviceGroup,
   renameUserGroup,
   inviteMember,
+  putClientBuildProfileLogo,
   rebindDevice,
   registerDevice,
   removeMember,
@@ -50,6 +56,7 @@ import {
   requestDeviceDisconnect,
   submitApprovalDecision,
   updateAddressBook,
+  updateClientBuildProfile,
   updateDevice,
   updateMember,
   updatePolicy,
@@ -68,6 +75,10 @@ import {
   type UserGroupMemberMutation,
   type AlertPage,
   type AuditLogPage,
+  type ClientBuildCapabilities,
+  type ClientBuildProfile,
+  type ClientBuildProfilePage,
+  type ClientBuildProfileUpdateRequest,
   type ConnectionLogPage,
   type FileLogPage,
   type LogEvent,
@@ -126,6 +137,8 @@ export const panelApi = createApi({
     'AccessDevices',
     'AccessRules',
     'LogEvents',
+    'ClientBuildCaps',
+    'ClientBuildProfiles',
   ],
   endpoints: (build) => ({
     getMe: build.query<Me, void>({
@@ -446,6 +459,52 @@ export const panelApi = createApi({
         wrap(() => fetchLogEvents(orgId, new URLSearchParams(queryString))),
       providesTags: (_result, _error, { orgId }) => [{ type: 'LogEvents', id: orgId }],
     }),
+    getClientBuildCapabilities: build.query<ClientBuildCapabilities, number>({
+      queryFn: (orgId) => wrap(() => fetchClientBuildCapabilities(orgId)),
+      providesTags: (_result, _error, orgId) => [{ type: 'ClientBuildCaps', id: orgId }],
+    }),
+    getClientBuildProfiles: build.query<ClientBuildProfilePage, number>({
+      queryFn: (orgId) => wrap(() => fetchClientBuildProfiles(orgId)),
+      providesTags: (_result, _error, orgId) => [{ type: 'ClientBuildProfiles', id: orgId }],
+    }),
+    createClientBuildProfile: build.mutation<
+      ClientBuildProfile,
+      { orgId: number; name: string; app_name: string }
+    >({
+      queryFn: ({ orgId, name, app_name }) =>
+        wrap(() => createClientBuildProfile(orgId, { name, app_name })),
+      invalidatesTags: (_result, _error, { orgId }) => [{ type: 'ClientBuildProfiles', id: orgId }],
+    }),
+    updateClientBuildProfile: build.mutation<
+      ClientBuildProfile,
+      { orgId: number; profileId: number; patch: ClientBuildProfileUpdateRequest }
+    >({
+      queryFn: ({ orgId, profileId, patch }) =>
+        wrap(() => updateClientBuildProfile(orgId, profileId, patch)),
+      invalidatesTags: (_result, _error, { orgId }) => [{ type: 'ClientBuildProfiles', id: orgId }],
+    }),
+    deleteClientBuildProfile: build.mutation<void, { orgId: number; profileId: number }>({
+      queryFn: async ({ orgId, profileId }) => {
+        const result = await wrap(() => deleteClientBuildProfile(orgId, profileId))
+        return 'data' in result ? { data: undefined } : result
+      },
+      invalidatesTags: (_result, _error, { orgId }) => [{ type: 'ClientBuildProfiles', id: orgId }],
+    }),
+    putClientBuildProfileLogo: build.mutation<
+      ClientBuildProfile,
+      { orgId: number; profileId: number; pngBase64: string }
+    >({
+      queryFn: ({ orgId, profileId, pngBase64 }) =>
+        wrap(() => putClientBuildProfileLogo(orgId, profileId, pngBase64)),
+      invalidatesTags: (_result, _error, { orgId }) => [{ type: 'ClientBuildProfiles', id: orgId }],
+    }),
+    deleteClientBuildProfileLogo: build.mutation<void, { orgId: number; profileId: number }>({
+      queryFn: async ({ orgId, profileId }) => {
+        const result = await wrap(() => deleteClientBuildProfileLogo(orgId, profileId))
+        return 'data' in result ? { data: undefined } : result
+      },
+      invalidatesTags: (_result, _error, { orgId }) => [{ type: 'ClientBuildProfiles', id: orgId }],
+    }),
     getApprovalPage: build.query<ApprovalPage, { orgId: number; queryString: string }>({
       queryFn: ({ orgId, queryString }) =>
         wrap(() => fetchApprovalPage(orgId, new URLSearchParams(queryString))),
@@ -534,6 +593,13 @@ export const {
   useGetConnectionLogPageQuery,
   useGetFileLogPageQuery,
   useGetLogEventsQuery,
+  useGetClientBuildCapabilitiesQuery,
+  useGetClientBuildProfilesQuery,
+  useCreateClientBuildProfileMutation,
+  useUpdateClientBuildProfileMutation,
+  useDeleteClientBuildProfileMutation,
+  usePutClientBuildProfileLogoMutation,
+  useDeleteClientBuildProfileLogoMutation,
   useGetApprovalPageQuery,
   useGetApprovalQuery,
   useDecideApprovalMutation,
