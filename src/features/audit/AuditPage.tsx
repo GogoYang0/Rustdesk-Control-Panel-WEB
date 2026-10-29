@@ -40,6 +40,8 @@ export default function AuditPage() {
   const orgChanged = scopeRef.current !== id
   const filters = parseAuditFilters(searchParams)
   const effective: AuditFilters = orgChanged ? { ...DEFAULT_AUDIT_FILTERS } : filters
+  const filtersRef = useRef(effective)
+  filtersRef.current = effective
 
   const [refreshNonce, setRefreshNonce] = useState(0)
   const [exporting, setExporting] = useState(false)
@@ -57,25 +59,27 @@ export default function AuditPage() {
   }, [id])
 
   useEffect(() => {
-    if (orgChanged && searchParams.toString()) {
-      setSearchParams(new URLSearchParams(), { replace: true })
-    }
+    if (!orgChanged) return
+    setExportError(null)
+    if (searchParams.toString()) setSearchParams(new URLSearchParams(), { replace: true })
   }, [orgChanged, searchParams, setSearchParams])
 
   function change(patch: Partial<AuditFilters>) {
-    setExportError(null)
     const touchesFilters = Object.keys(patch).some((key) => key !== 'page')
-    setSearchParams(
-      toAuditSearchParams({
-        ...effective,
-        ...patch,
-        page: patch.page ?? (touchesFilters ? 1 : effective.page),
-      }),
-      { replace: true },
-    )
+    const next = {
+      ...effective,
+      ...patch,
+      page: patch.page ?? (touchesFilters ? 1 : effective.page),
+    }
+    // A blur commits a draft in the same interaction that clicks export; keep
+    // the ref ahead of the transition so the export uses that latest filter.
+    filtersRef.current = next
+    setExportError(null)
+    setSearchParams(toAuditSearchParams(next), { replace: true })
   }
 
   function refresh() {
+    setExportError(null)
     setRefreshNonce((nonce) => nonce + 1)
   }
 

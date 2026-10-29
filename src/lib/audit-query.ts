@@ -159,7 +159,7 @@ export function auditExportError(err: unknown): string {
   if (err instanceof ApiError) {
     if (err.status === 0) return '网络异常，请稍后重试'
     if (err.status === 400) {
-      return '导出被拒绝：结果可能超过 1000 行，请缩小时间范围或补充筛选后再试'
+      return '结果可能超过 1000 行，请缩小时间范围或补充筛选后再试'
     }
     if (err.status === 401) return '登录已失效，请重新登录'
     if (err.status === 403) return '当前角色没有审计读取权限'

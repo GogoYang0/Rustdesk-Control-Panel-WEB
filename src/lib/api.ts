@@ -131,7 +131,12 @@ export async function fetchCsv(path: string): Promise<CsvDownload> {
     throw new ApiError(0, 'internal', '网络异常')
   }
 
-  const text = await res.text()
+  let text: string
+  try {
+    text = await res.text()
+  } catch {
+    throw new ApiError(0, 'internal', '网络异常')
+  }
   if (!res.ok) {
     let body: Envelope<unknown> = {}
     if (text) {

@@ -285,10 +285,8 @@ describe('AuditPage', () => {
     await screen.findByText('org.1.audit')
     fireEvent.change(screen.getByLabelText('动作'), { target: { value: 'org.1.audit' } })
     fireEvent.blur(screen.getByLabelText('动作'))
-    await waitFor(() =>
-      expect(screen.getByTestId('loc').textContent).toContain('action=org.1.audit'),
-    )
-
+    // Export immediately after the blur commit: the ref must carry the latest
+    // filter even before the URL transition renders.
     fireEvent.click(screen.getByRole('button', { name: '导出 CSV' }))
     await waitFor(() => expect(saveTextFile).toHaveBeenCalledTimes(1))
 
@@ -308,7 +306,7 @@ describe('AuditPage', () => {
     await screen.findByText('org.1.audit')
     fireEvent.click(screen.getByRole('button', { name: '导出 CSV' }))
 
-    expect(await screen.findByText(/1000 行/)).toBeTruthy()
+    expect(await screen.findByText(/结果可能超过 1000 行/)).toBeTruthy()
     expect(saveTextFile).not.toHaveBeenCalled()
   })
 
@@ -330,6 +328,25 @@ describe('AuditPage', () => {
 
     await waitFor(() => expect(saveTextFile).toHaveBeenCalledTimes(1))
     expect(saveTextFile.mock.calls[0][0]).toMatch(/^audit-org-1-\d{8}T\d{6}Z\.csv$/)
+  })
+
+  it('exports the active file tab', async () => {
+    const { requests } = setup({ initial: '/orgs/1/audit?tab=files' })
+    await screen.findByRole('button', { name: '导出 CSV' })
+    fireEvent.click(screen.getByRole('button', { name: '导出 CSV' }))
+
+    await waitFor(() => expect(saveTextFile).toHaveBeenCalledTimes(1))
+    const exportUrl = requests.find((url) => url.includes('/export'))
+    expect(exportUrl).toContain('/api/v1/orgs/1/file-logs/export?')
+  })
+
+  it('maps an export 403 without downloading', async () => {
+    setup({ exportStatus: 403 })
+    await screen.findByText('org.1.audit')
+    fireEvent.click(screen.getByRole('button', { name: '导出 CSV' }))
+
+    expect(await screen.findByText(/当前角色没有审计读取权限/)).toBeTruthy()
+    expect(saveTextFile).not.toHaveBeenCalled()
   })
 
   it('keeps an unknown actor id visible in the filter', async () => {

@@ -239,6 +239,13 @@ describe('export helpers', () => {
     expect(query.get('page')).toBeNull()
   })
 
+  it('omits the time bounds for an all-time export', () => {
+    const path = auditExportPath(3, { ...DEFAULT_AUDIT_FILTERS, range: 'all' }, now)
+    const query = new URLSearchParams(path.split('?')[1])
+    expect(query.get('from')).toBeNull()
+    expect(query.get('to')).toBeNull()
+  })
+
   it('provides timestamped fallback names without colons', () => {
     expect(auditExportFallbackName('audit', 3, now)).toBe('audit-org-3-20261029T060000Z.csv')
     expect(auditExportFallbackName('connections', 3, now)).toMatch(
