@@ -1,0 +1,135 @@
+name: e2e
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # A skipped sole job makes the workflow green, so a fork PR would claim e2e
+  # coverage without running it. Fail visibly instead; run the branch in this
+  # repository or run Cypress locally before merging.
+  fork-guard:
+    if: github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: explain the private API requirement
+        run: |
+          echo "::error::Cypress e2e needs the private API repo and its token. Push the branch to this repository or run 'pnpm exec cypress run --expose consoleE2E=true' locally against a seeded panel."
+          exit 1
+
+  cypress:
+    # The API repo is private and API_REPO_TOKEN is not exposed to fork PRs;
+    # same-repo PRs run the full seed + Cypress flow.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PANEL_DEV_SEED: '1'
+      # Disposable CI values: the API and its SQLite DB live only in this job.
+      PANEL_AUTH_SECRET: ci-${{ github.run_id }}-${{ github.run_attempt }}-0123456789abcdef
+      PANEL_SEED_EMAIL: admin@acme.local
+      PANEL_SEED_PASSWORD: e2e-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: checkout panel API
+        uses: actions/checkout@v4
+        with:
+          repository: GogoYang0/Rustdesk-Control-Panel-API
+          # Pinned to the API develop commit that added tools/devseed; bump it
+          # deliberately when the panel API changes so e2e stays reproducible.
+          ref: 7fb0bb586a5a2b0434102c5c84786ea4225f4460
+          path: rustdesk-control-panel-api
+          token: ${{ secrets.API_REPO_TOKEN }}
+          persist-credentials: false
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: rustdesk-control-panel-api/go.mod
+          cache-dependency-path: rustdesk-control-panel-api/go.sum
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.x'
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: install Cypress binary
+        run: pnpm exec cypress install
+
+      - name: build panel API
+        working-directory: rustdesk-control-panel-api
+        run: go build -o /tmp/panel ./cmd/server
+
+      - name: seed e2e organization
+        working-directory: rustdesk-control-panel-api
+        run: go run ./tools/devseed -config configs/config.yaml
+
+      - name: start panel API
+        working-directory: rustdesk-control-panel-api
+        run: |
+          nohup /tmp/panel > /tmp/panel.log 2>&1 &
+          echo $! > /tmp/panel.pid
+          for _ in $(seq 1 60); do
+            if curl -fsS http://localhost:8080/healthz > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "panel API did not become healthy" >&2
+          cat /tmp/panel.log
+          exit 1
+
+      - name: start web dev server
+        run: |
+          nohup pnpm dev > /tmp/web.log 2>&1 &
+          echo $! > /tmp/web.pid
+          for _ in $(seq 1 60); do
+            if curl -fsS http://localhost:5173/ > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "web dev server did not become healthy" >&2
+          cat /tmp/web.log
+          exit 1
+
+      - name: run Cypress
+        run: >-
+          pnpm exec cypress run
+          --expose consoleE2E=true
+          --env "consoleEmail=$PANEL_SEED_EMAIL,consolePassword=$PANEL_SEED_PASSWORD"
+
+      - name: upload Cypress screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-screenshots
+          path: cypress/screenshots
+          if-no-files-found: ignore
+
+      - name: show server logs
+        if: failure()
+        run: |
+          echo '--- panel API ---'
+          cat /tmp/panel.log || true
+          echo '--- web dev server ---'
+          cat /tmp/web.log || true
+
+      - name: stop servers
+        if: always()
+        run: |
+          kill "$(cat /tmp/web.pid)" 2>/dev/null || true
+          kill "$(cat /tmp/panel.pid)" 2>/dev/null || true
