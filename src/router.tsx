@@ -7,6 +7,7 @@ import AddressBookPage from './features/addressbooks/AddressBookPage'
 import AddressBooksPage from './features/addressbooks/AddressBooksPage'
 import AlertsPage from './features/alerts/AlertsPage'
 import ApprovalsPage from './features/approvals/ApprovalsPage'
+import AccessPage from './features/access/AccessPage'
 import AuditPage from './features/audit/AuditPage'
 import DevicesPage from './features/devices/DevicesPage'
 import PoliciesPage from './features/policies/PoliciesPage'
@@ -66,6 +67,7 @@ export const router = createBrowserRouter([
       { path: 'approvals', element: <ApprovalsPage /> },
       { path: 'alerts', element: <AlertsPage /> },
       { path: 'audit', element: <AuditPage /> },
+      { path: 'access', element: <AccessPage /> },
       { path: 'address-books', element: <AddressBooksPage /> },
       { path: 'address-books/:bookId', element: <AddressBookPage /> },
       {
