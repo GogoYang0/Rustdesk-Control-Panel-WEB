@@ -18,6 +18,7 @@ const stamp = Date.now().toString().slice(-6)
     const name = `E2E 用户组 ${stamp}`
     const renamed = `${name} 改名`
 
+    cy.contains('[role=tab]', '用户组').click()
     cy.contains('button', '新建用户组').click()
     cy.get('input[aria-label="用户组名称"]').type(name)
     cy.contains('#modalRoot button', '保存').click()

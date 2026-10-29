@@ -4,18 +4,22 @@ import { useParams, useSearchParams } from 'react-router'
 import StateBlock from '../../components/StateBlock'
 import { useGetMeQuery } from '../../store/api'
 import DeviceGroupsTab from './DeviceGroupsTab'
+import RulesTab from './RulesTab'
 import UserGroupsTab from './UserGroupsTab'
 
-const TABS = ['user-groups', 'device-groups'] as const
+const TABS = ['rules', 'user-groups', 'device-groups'] as const
 type AccessTab = (typeof TABS)[number]
 
 const TAB_LABELS: Record<AccessTab, string> = {
+  rules: '规则',
   'user-groups': '用户组',
   'device-groups': '设备组',
 }
 
 function parseTab(value: string | null): AccessTab {
-  return value === 'device-groups' ? 'device-groups' : 'user-groups'
+  if (value === 'user-groups') return 'user-groups'
+  if (value === 'device-groups') return 'device-groups'
+  return 'rules'
 }
 
 export default function AccessPage() {
@@ -29,7 +33,7 @@ export default function AccessPage() {
 
   const scopeRef = useRef(id)
   const orgChanged = scopeRef.current !== id
-  const tab = orgChanged ? 'user-groups' : parseTab(searchParams.get('tab'))
+  const tab = orgChanged ? 'rules' : parseTab(searchParams.get('tab'))
 
   useLayoutEffect(() => {
     if (scopeRef.current === id) return
@@ -44,7 +48,7 @@ export default function AccessPage() {
 
   function changeTab(next: AccessTab) {
     const params = new URLSearchParams(searchParams)
-    if (next === 'user-groups') params.delete('tab')
+    if (next === 'rules') params.delete('tab')
     else params.set('tab', next)
     setSearchParams(params, { replace: true })
   }
@@ -92,15 +96,15 @@ export default function AccessPage() {
       <div className="page-head">
         <div>
           <h1 className="page-title">访问控制</h1>
-          <div className="page-sub">用户组 / 设备组；规则页签与 allow-only 规则在 10b 接入</div>
+          <div className="page-sub">allow-only 规则 / 用户组 / 设备组；规则取并集</div>
         </div>
       </div>
 
       <div className="banner info mb-14">
         <div>
-          <b>当前默认 everyone → 全部设备规则仍生效。</b>
-          创建组、添加成员或设备本身不会收紧访问；规则页签（10b）接入后才会按组放行。 owner/admin
-          不受规则限制，停用设备对所有人不可达。
+          <b>规则只有 allow、取并集。</b>
+          创建组不会自动授予访问；默认 everyone → 全部设备规则可删除，以收紧为精确组规则。
+          owner/admin 不受规则限制；有效成员可访问本人未停用设备；停用设备对所有人不可达。
         </div>
       </div>
 
@@ -122,7 +126,9 @@ export default function AccessPage() {
       </div>
 
       <div role="tabpanel" id="access-tabpanel" aria-labelledby={`access-tab-${tab}`}>
-        {tab === 'user-groups' ? (
+        {tab === 'rules' ? (
+          <RulesTab key={`${id}-rules`} orgId={id} />
+        ) : tab === 'user-groups' ? (
           <UserGroupsTab key={`${id}-user-groups`} orgId={id} />
         ) : (
           <DeviceGroupsTab key={`${id}-device-groups`} orgId={id} />

@@ -1,7 +1,7 @@
 // Access-control groups: name rules, full-replacement diffs and the device →
 // group map used to explain moves before saving.
 
-import type { DeviceGroup } from '../api/generated'
+import type { AccessRule, AccessRuleTargetKind, DeviceGroup } from '../api/generated'
 import { ApiError } from './api'
 
 export const EVERYONE_NAME = 'everyone'
@@ -100,4 +100,83 @@ export function accessError(err: unknown): string {
     return '操作失败，请稍后重试'
   }
   return '网络异常，请稍后重试'
+}
+
+export interface RuleSubject {
+  source_group_id: number
+  target_kind: AccessRuleTargetKind
+  target_group_id?: number | null
+}
+
+/** Stable duplicate key; null and 0 both mean “no target group”. */
+export function accessRuleKey(rule: RuleSubject): string {
+  return `${rule.source_group_id}|${rule.target_kind}|${rule.target_group_id ?? 0}`
+}
+
+export function findDuplicateRule(
+  rules: AccessRule[],
+  subject: RuleSubject,
+): AccessRule | undefined {
+  const key = accessRuleKey(subject)
+  return rules.find((rule) => accessRuleKey(rule) === key)
+}
+
+export function isDefaultAccessRule(
+  rule: AccessRule,
+  groups: { id: number; kind: string }[] = [],
+): boolean {
+  if (rule.target_kind !== 'all_devices') return false
+  const source = groups.find((group) => group.id === rule.source_group_id)
+  if (source) return source.kind === 'everyone'
+  return rule.source_group_name === EVERYONE_NAME
+}
+
+const TARGET_LABELS: Record<AccessRuleTargetKind, string> = {
+  device_group: '设备组',
+  user_group: '用户组',
+  all_devices: '全部设备',
+}
+
+export function ruleTargetKindLabel(kind: AccessRuleTargetKind): string {
+  return TARGET_LABELS[kind]
+}
+
+export function accessRuleTargetLabel(rule: {
+  target_kind: AccessRuleTargetKind
+  target_group_name: string
+}): string {
+  if (rule.target_kind === 'all_devices') return '全部设备'
+  return `${ruleTargetKindLabel(rule.target_kind)} · ${rule.target_group_name}`
+}
+
+export function accessRuleImpact(kind: AccessRuleTargetKind): string {
+  if (kind === 'all_devices') {
+    return '源组成员可以访问组织内全部未停用设备。'
+  }
+  if (kind === 'user_group') {
+    return '源组成员可以访问目标用户组显式成员拥有的未停用设备；目标是 everyone 时等于所有有效成员拥有的设备。'
+  }
+  return '源组成员可以访问该设备组当前及以后加入的未停用设备。'
+}
+
+export function validateRuleForm(form: {
+  sourceGroupId: number
+  targetKind: AccessRuleTargetKind
+  targetGroupId: number | null
+}): string | null {
+  if (form.sourceGroupId <= 0) return '请选择来源用户组'
+  if (form.targetKind === 'all_devices') return null
+  if (form.targetGroupId == null || form.targetGroupId <= 0) {
+    return `请选择目标${ruleTargetKindLabel(form.targetKind)}`
+  }
+  return null
+}
+
+/** Chinese copy for rule writes: 400 often means a concurrently deleted group. */
+export function ruleError(err: unknown): string {
+  if (err instanceof ApiError) {
+    if (err.status === 400) return '规则参数不合法，或目标组已被删除，请刷新后重试'
+    if (err.status === 409) return '相同来源与目标的规则已存在'
+  }
+  return accessError(err)
 }
