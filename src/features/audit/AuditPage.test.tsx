@@ -1,11 +1,14 @@
 import { configureStore } from '@reduxjs/toolkit'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { Provider } from 'react-redux'
 import { Link, MemoryRouter, Route, Routes, useLocation } from 'react-router'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { panelApi } from '../../store/api'
 import AuditPage from './AuditPage'
+
+const { saveTextFile } = vi.hoisted(() => ({ saveTextFile: vi.fn() }))
+vi.mock('../../lib/download', () => ({ saveTextFile }))
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -62,8 +65,24 @@ function SwitchOrg() {
   return <Link to={`/orgs/2/audit${location.search}`}>切组织</Link>
 }
 
-function setup(options: { initial?: string; permissions?: string[]; auditTotal?: number } = {}) {
-  const { initial = '/orgs/1/audit', permissions = ['audit.read'], auditTotal = 1 } = options
+function setup(
+  options: {
+    initial?: string
+    permissions?: string[]
+    auditTotal?: number
+    exportStatus?: number
+    exportDisposition?: string | null
+    exportGate?: Promise<Response>
+  } = {},
+) {
+  const {
+    initial = '/orgs/1/audit',
+    permissions = ['audit.read'],
+    auditTotal = 1,
+    exportStatus = 200,
+    exportDisposition = 'attachment; filename="audit-org-1.csv"',
+    exportGate,
+  } = options
   const requests: string[] = []
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
     const url = String(input)
@@ -73,6 +92,18 @@ function setup(options: { initial?: string; permissions?: string[]; auditTotal?:
     }
     const org = Number(url.match(/\/orgs\/(\d+)\//)?.[1] ?? 1)
     if (url.includes('/members')) return json({ code: 'ok', message: 'ok', data: [] })
+    if (url.includes('/export')) {
+      if (exportGate) return exportGate
+      if (exportStatus !== 200) {
+        return json({ code: 'invalid_request', message: 'too many rows (1001)' }, exportStatus)
+      }
+      const headers: Record<string, string> = { 'Content-Type': 'text/csv; charset=utf-8' }
+      if (exportDisposition !== null) headers['Content-Disposition'] = exportDisposition
+      return new Response(['created_at,action', '1,test', ''].join('\n'), {
+        status: 200,
+        headers,
+      })
+    }
     if (url.includes('/audit-logs')) {
       return json({
         code: 'ok',
@@ -130,6 +161,7 @@ function setup(options: { initial?: string; permissions?: string[]; auditTotal?:
 
 describe('AuditPage', () => {
   afterEach(() => vi.restoreAllMocks())
+  beforeEach(() => saveTextFile.mockReset())
 
   it('gates the page without audit.read and never requests audit logs', async () => {
     const { requests } = setup({ permissions: ['device.read'] })
@@ -249,6 +281,103 @@ describe('AuditPage', () => {
     expect(await screen.findByText('org.2.audit')).toBeTruthy()
     expect(screen.getByTestId('loc').textContent).toBe('/orgs/2/audit')
     expect((screen.getByLabelText('动作') as HTMLInputElement).value).toBe('')
+  })
+
+  it('exports the frozen audit filters and resumes the download', async () => {
+    const { requests } = setup()
+    await screen.findByText('org.1.audit')
+    fireEvent.change(screen.getByLabelText('动作'), { target: { value: 'org.1.audit' } })
+    fireEvent.blur(screen.getByLabelText('动作'))
+    // Export immediately after the blur commit: the ref must carry the latest
+    // filter even before the URL transition renders.
+    fireEvent.click(screen.getByRole('button', { name: '导出 CSV' }))
+    await waitFor(() => expect(saveTextFile).toHaveBeenCalledTimes(1))
+
+    const [filename, text] = saveTextFile.mock.calls[0]
+    expect(filename).toBe('audit-org-1.csv')
+    expect(text).toContain('created_at,action')
+    const exportUrl = requests.find((url) => url.includes('/export'))
+    expect(exportUrl).toContain('/api/v1/orgs/1/audit-logs/export?')
+    const query = new URLSearchParams(exportUrl!.split('?')[1])
+    expect(query.get('action')).toBe('org.1.audit')
+    expect(query.get('page')).toBeNull()
+    expect(query.get('pageSize')).toBeNull()
+  })
+
+  it('shows the 1000-row hint and does not download on 400', async () => {
+    setup({ exportStatus: 400 })
+    await screen.findByText('org.1.audit')
+    fireEvent.click(screen.getByRole('button', { name: '导出 CSV' }))
+
+    expect(await screen.findByText(/结果可能超过 1000 行/)).toBeTruthy()
+    expect(saveTextFile).not.toHaveBeenCalled()
+  })
+
+  it('exports the active connection tab', async () => {
+    const { requests } = setup({ initial: '/orgs/1/audit?tab=connections' })
+    await screen.findByText('100000001')
+    fireEvent.click(screen.getByRole('button', { name: '导出 CSV' }))
+
+    await waitFor(() => expect(saveTextFile).toHaveBeenCalledTimes(1))
+    const exportUrl = requests.find((url) => url.includes('/export'))
+    expect(exportUrl).toContain('/api/v1/orgs/1/connection-logs/export?')
+    expect(exportUrl).not.toContain('page=')
+  })
+
+  it('falls back to a timestamped filename without a disposition', async () => {
+    setup({ exportDisposition: null })
+    await screen.findByText('org.1.audit')
+    fireEvent.click(screen.getByRole('button', { name: '导出 CSV' }))
+
+    await waitFor(() => expect(saveTextFile).toHaveBeenCalledTimes(1))
+    expect(saveTextFile.mock.calls[0][0]).toMatch(/^audit-org-1-\d{8}T\d{6}Z\.csv$/)
+  })
+
+  it('exports the active file tab', async () => {
+    const { requests } = setup({ initial: '/orgs/1/audit?tab=files' })
+    await screen.findByRole('button', { name: '导出 CSV' })
+    fireEvent.click(screen.getByRole('button', { name: '导出 CSV' }))
+
+    await waitFor(() => expect(saveTextFile).toHaveBeenCalledTimes(1))
+    const exportUrl = requests.find((url) => url.includes('/export'))
+    expect(exportUrl).toContain('/api/v1/orgs/1/file-logs/export?')
+  })
+
+  it('maps an export 403 without downloading', async () => {
+    setup({ exportStatus: 403 })
+    await screen.findByText('org.1.audit')
+    fireEvent.click(screen.getByRole('button', { name: '导出 CSV' }))
+
+    expect(await screen.findByText(/当前角色没有审计读取权限/)).toBeTruthy()
+    expect(saveTextFile).not.toHaveBeenCalled()
+  })
+
+  it('drops an export that finishes after an organization switch', async () => {
+    let resolveExport!: (response: Response) => void
+    const gate = new Promise<Response>((resolve) => {
+      resolveExport = resolve
+    })
+    setup({ exportGate: gate })
+    await screen.findByText('org.1.audit')
+
+    fireEvent.click(screen.getByRole('button', { name: '导出 CSV' }))
+    fireEvent.click(screen.getByRole('link', { name: '切组织' }))
+    expect(await screen.findByText('org.2.audit')).toBeTruthy()
+
+    await act(async () => {
+      resolveExport(
+        new Response(['created_at,action', '1,test', ''].join(String.fromCharCode(10)), {
+          status: 200,
+          headers: {
+            'Content-Type': 'text/csv',
+            'Content-Disposition': 'attachment; filename="audit-org-1.csv"',
+          },
+        }),
+      )
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(saveTextFile).not.toHaveBeenCalled()
   })
 
   it('keeps an unknown actor id visible in the filter', async () => {

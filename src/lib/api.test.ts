@@ -9,7 +9,7 @@ vi.mock('./session', () => ({
   logout: () => logout(),
 }))
 
-const { ApiError, apiFetch } = await import('./api')
+const { ApiError, apiFetch, fetchCsv } = await import('./api')
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -17,6 +17,78 @@ function jsonResponse(body: unknown, status = 200) {
     headers: { 'Content-Type': 'application/json' },
   })
 }
+
+function csvResponse(body: string, disposition = 'attachment; filename="audit-org-1.csv"') {
+  return new Response(body, {
+    status: 200,
+    headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': disposition },
+  })
+}
+
+describe('fetchCsv', () => {
+  beforeEach(() => {
+    refreshAccessToken.mockReset()
+    logout.mockReset()
+  })
+  afterEach(() => vi.restoreAllMocks())
+
+  it('returns the filename and unmodified CSV text', async () => {
+    const csv = ['created_at,action', '1,test', ''].join('\n')
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(csvResponse(csv))
+    await expect(fetchCsv('/api/v1/orgs/1/audit-logs/export')).resolves.toEqual({
+      filename: 'audit-org-1.csv',
+      text: csv,
+    })
+  })
+
+  it('throws the JSON envelope on an export 400', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({ code: 'invalid_request', message: 'too many rows (1001)' }, 400),
+    )
+    await expect(fetchCsv('/export')).rejects.toMatchObject({
+      status: 400,
+      code: 'invalid_request',
+      message: 'too many rows (1001)',
+    })
+    expect(logout).not.toHaveBeenCalled()
+  })
+
+  it('replays once after a refresh and accepts a disposition without text/csv', async () => {
+    const csv = ['a,b', ''].join('\n')
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(jsonResponse({ code: 'unauthorized' }, 401))
+      .mockResolvedValueOnce(
+        new Response(csv, {
+          status: 200,
+          headers: { 'Content-Disposition': 'attachment; filename="x.csv"' },
+        }),
+      )
+    refreshAccessToken.mockResolvedValue({ access: 'access-2', invalid: false })
+
+    await expect(fetchCsv('/export')).resolves.toEqual({ filename: 'x.csv', text: csv })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('rejects a 200 that is neither CSV nor an attachment', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ ok: true }))
+    await expect(fetchCsv('/export')).rejects.toMatchObject({ status: 200 })
+  })
+
+  it('sanitizes path separators and reserved characters in the filename', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      csvResponse('a', 'attachment; filename="../evil:name?.csv"'),
+    )
+    await expect(fetchCsv('/export')).resolves.toMatchObject({
+      filename: '.._evil_name_.csv',
+    })
+  })
+
+  it('turns a network failure into ApiError(0)', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('fetch failed'))
+    await expect(fetchCsv('/export')).rejects.toMatchObject({ status: 0 })
+  })
+})
 
 describe('apiFetch', () => {
   beforeEach(() => {

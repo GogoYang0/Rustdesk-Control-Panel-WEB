@@ -7,6 +7,9 @@ import {
   MAX_AUDIT_PAGE,
   auditActorLabel,
   auditDetailText,
+  auditExportError,
+  auditExportFallbackName,
+  auditExportPath,
   auditListError,
   auditRangeBounds,
   auditTargetLabel,
@@ -194,6 +197,72 @@ describe('labels and details', () => {
     expect(auditDetailText('raw detail')).toBe('raw detail')
     expect(auditDetailText({ status: 200 })).toBe('{\n  "status": 200\n}')
     expect(auditDetailText(null)).toBe('')
+  })
+})
+
+describe('export helpers', () => {
+  it('builds the audit export path without pagination', () => {
+    const path = auditExportPath(
+      3,
+      {
+        ...DEFAULT_AUDIT_FILTERS,
+        action: ' GET /api/v1/me ',
+        actorUserId: 0,
+        targetType: 'user',
+        targetId: '7',
+        page: 4,
+      },
+      now,
+    )
+    expect(path).toContain('/api/v1/orgs/3/audit-logs/export?')
+    const query = new URLSearchParams(path.split('?')[1])
+    expect(query.get('action')).toBe('GET /api/v1/me')
+    expect(query.get('actorUserId')).toBe('0')
+    expect(query.get('targetType')).toBe('user')
+    expect(query.get('targetId')).toBe('7')
+    expect(query.get('from')).toBe('2026-10-22T06:00:00.000Z')
+    expect(query.get('to')).toBe('2026-10-29T06:00:00.000Z')
+    expect(query.get('page')).toBeNull()
+    expect(query.get('pageSize')).toBeNull()
+  })
+
+  it('uses the rustdeskId-only path for client logs', () => {
+    const path = auditExportPath(
+      3,
+      { ...DEFAULT_AUDIT_FILTERS, tab: 'connections', rustdeskId: ' 123 ' },
+      now,
+    )
+    expect(path).toContain('/api/v1/orgs/3/connection-logs/export?')
+    const query = new URLSearchParams(path.split('?')[1])
+    expect(query.get('rustdeskId')).toBe('123')
+    expect(query.get('action')).toBeNull()
+    expect(query.get('page')).toBeNull()
+  })
+
+  it('omits the time bounds for an all-time export', () => {
+    const path = auditExportPath(3, { ...DEFAULT_AUDIT_FILTERS, range: 'all' }, now)
+    const query = new URLSearchParams(path.split('?')[1])
+    expect(query.get('from')).toBeNull()
+    expect(query.get('to')).toBeNull()
+  })
+
+  it('provides timestamped fallback names without colons', () => {
+    expect(auditExportFallbackName('audit', 3, now)).toBe('audit-org-3-20261029T060000Z.csv')
+    expect(auditExportFallbackName('connections', 3, now)).toMatch(
+      /^connection-org-3-\d{8}T\d{6}Z\.csv$/,
+    )
+    expect(auditExportFallbackName('files', 3, now)).toMatch(/^file-org-3-\d{8}T\d{6}Z\.csv$/)
+  })
+})
+
+describe('auditExportError', () => {
+  it('explains the 1000-row limit and maps auth/network errors', () => {
+    expect(auditExportError(new ApiError(400, 'invalid', 'too many rows'))).toContain('1000')
+    expect(auditExportError(new ApiError(403, 'forbidden', 'no'))).toContain('权限')
+    expect(auditExportError(new ApiError(401, 'unauthorized', 'no'))).toContain('登录')
+    expect(auditExportError(new ApiError(0, 'internal', 'net'))).toContain('网络')
+    expect(auditExportError(new ApiError(500, 'internal', 'boom'))).toContain('服务异常')
+    expect(auditExportError(new Error('boom'))).toContain('网络')
   })
 })
 
