@@ -64,6 +64,20 @@ function userGroups(org: number) {
   ]
 }
 
+function rules(org: number) {
+  return [
+    {
+      id: org,
+      source_group_id: 1,
+      source_group_name: 'everyone',
+      target_kind: 'all_devices',
+      target_group_id: null,
+      target_group_name: '',
+      created_at: '2026-10-29T00:00:00Z',
+    },
+  ]
+}
+
 function deviceGroups(org: number) {
   return [
     {
@@ -97,6 +111,7 @@ function setup(permissions = ['access.manage'], initial = '/orgs/1/access') {
     if (url.includes('/members')) return json({ code: 'ok', data: members })
     if (url.includes('/user-groups')) return json({ code: 'ok', data: userGroups(org) })
     if (url.includes('/device-groups')) return json({ code: 'ok', data: deviceGroups(org) })
+    if (url.includes('/access-rules')) return json({ code: 'ok', data: rules(org) })
     return json({ code: 'ok', data: [] })
   })
   const store = configureStore({
@@ -132,33 +147,35 @@ describe('AccessPage', () => {
     expect(await screen.findByText(/没有访问控制权限/)).toBeTruthy()
     expect(requests.some((url) => url.includes('/user-groups'))).toBe(false)
     expect(requests.some((url) => url.includes('/device-groups'))).toBe(false)
+    expect(requests.some((url) => url.includes('/access-rules'))).toBe(false)
   })
 
-  it('renders user groups by default and switches tabs through the URL', async () => {
+  it('renders rules by default and switches tabs through the URL', async () => {
     setup()
-    expect(await screen.findByText('Group 1')).toBeTruthy()
-    expect(screen.getByText('全部有效成员')).toBeTruthy()
+    expect((await screen.findAllByText('全部设备')).length).toBeGreaterThan(0)
     const tabs = screen.getAllByRole('tab')
-    expect(tabs.map((tab) => tab.textContent)).toEqual(['用户组', '设备组'])
+    expect(tabs.map((tab) => tab.textContent)).toEqual(['规则', '用户组', '设备组'])
     expect(tabs[0].getAttribute('aria-selected')).toBe('true')
 
     fireEvent.click(tabs[1])
-    await waitFor(() =>
-      expect(screen.getByTestId('loc').textContent).toContain('tab=device-groups'),
-    )
-    expect(await screen.findByText('Devices 1')).toBeTruthy()
+    await waitFor(() => expect(screen.getByTestId('loc').textContent).toContain('tab=user-groups'))
+    expect(await screen.findByText('Group 1')).toBeTruthy()
+    expect(screen.getByText('全部有效成员')).toBeTruthy()
     expect(screen.getByRole('tabpanel').getAttribute('aria-labelledby')).toBe(
-      'access-tab-device-groups',
+      'access-tab-user-groups',
     )
   })
 
   it('clears the tab and remounts data when the organization changes', async () => {
-    setup(['access.manage'], '/orgs/1/access?tab=device-groups')
+    const { requests } = setup(['access.manage'], '/orgs/1/access?tab=device-groups')
     expect(await screen.findByText('Devices 1')).toBeTruthy()
 
     fireEvent.click(screen.getByRole('link', { name: '切组织' }))
     await waitFor(() => expect(screen.getByTestId('loc').textContent).toBe('/orgs/2/access'))
-    expect(await screen.findByText('Group 2')).toBeTruthy()
-    expect(screen.queryByText('Group 1')).toBeNull()
+    expect((await screen.findAllByText('全部设备')).length).toBeGreaterThan(0)
+    expect(screen.queryByText('Devices 1')).toBeNull()
+    await waitFor(() =>
+      expect(requests.some((url) => url.includes('/orgs/2/access-rules'))).toBe(true),
+    )
   })
 })
