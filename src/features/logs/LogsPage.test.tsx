@@ -1,5 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { useLayoutEffect } from 'react'
 import { Provider } from 'react-redux'
 import { Link, MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -45,6 +46,20 @@ function LocationProbe() {
 function SwitchOrg() {
   const location = useLocation()
   return <Link to={`/orgs/2/logs${location.search}`}>切组织</Link>
+}
+
+const sheetSeenOnOrg2: boolean[] = []
+
+// Passive effects run before RTL returns from fireEvent, so a DOM assertion
+// alone cannot catch a stale sheet that was mounted for one committed frame.
+function OrgSwitchProbe() {
+  const location = useLocation()
+  useLayoutEffect(() => {
+    if (location.pathname === '/orgs/2/logs') {
+      sheetSeenOnOrg2.push(document.querySelector('[role="dialog"]') !== null)
+    }
+  })
+  return null
 }
 
 function setup(
@@ -124,6 +139,7 @@ function setup(
                 <LogsPage />
                 <LocationProbe />
                 <SwitchOrg />
+                <OrgSwitchProbe />
               </>
             }
           />
@@ -323,7 +339,9 @@ describe('LogsPage', () => {
     )
     expect(await screen.findByRole('dialog')).toBeTruthy()
 
+    sheetSeenOnOrg2.length = 0
     fireEvent.click(screen.getByRole('link', { name: '切组织' }))
+    expect(sheetSeenOnOrg2).not.toContain(true)
     expect(screen.queryByRole('dialog')).toBeNull()
     await waitFor(() => expect(screen.getByTestId('loc').textContent).toBe('/orgs/2/logs'))
     expect((await screen.findAllByText('ERROR org.2.relay')).length).toBeGreaterThan(0)
