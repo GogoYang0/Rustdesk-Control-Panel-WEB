@@ -1,10 +1,13 @@
 import type {
   AddressBook,
   AddressBookCreateRequest,
+  AddressBookGrant,
+  AddressBookGrantRequest,
   AddressBookPeer,
   AddressBookPeersReplaceRequest,
   AddressBookUpdateRequest,
   AlertPage,
+  UserGroup,
   Approval,
   ApprovalDecisionRequest,
   ApprovalPage,
@@ -275,7 +278,15 @@ export function requestDeviceDisconnect(
 
 // ── address books ───────────────────────────────────────────────────────────
 
-export type { AddressBook, AddressBookPeer } from '../api/generated'
+export type {
+  AddressBook,
+  AddressBookGrant,
+  AddressBookGrantAccess,
+  AddressBookGrantKind,
+  AddressBookGrantRequest,
+  AddressBookPeer,
+  UserGroup,
+} from '../api/generated'
 
 export function fetchAddressBooks(orgId: number): Promise<AddressBook[]> {
   return apiFetch<AddressBook[]>(`/api/v1/orgs/${orgId}/address-books`)
@@ -321,6 +332,37 @@ export function replaceAddressBookPeers(
     method: 'PUT',
     body: JSON.stringify(body),
   })
+}
+
+export function fetchAddressBookGrants(orgId: number, bookId: number): Promise<AddressBookGrant[]> {
+  return apiFetch<AddressBookGrant[]>(`/api/v1/orgs/${orgId}/address-books/${bookId}/grants`)
+}
+
+/** Re-posting the same subject updates its access level (upsert). */
+export function createAddressBookGrant(
+  orgId: number,
+  bookId: number,
+  request: AddressBookGrantRequest,
+): Promise<AddressBookGrant> {
+  return apiFetch<AddressBookGrant>(`/api/v1/orgs/${orgId}/address-books/${bookId}/grants`, {
+    method: 'POST',
+    body: JSON.stringify(request),
+  })
+}
+
+export async function deleteAddressBookGrant(
+  orgId: number,
+  bookId: number,
+  grantId: number,
+): Promise<void> {
+  await apiFetch<unknown>(`/api/v1/orgs/${orgId}/address-books/${bookId}/grants/${grantId}`, {
+    method: 'DELETE',
+  })
+}
+
+/** Requires `access.manage`; includes the built-in everyone group. */
+export function fetchUserGroups(orgId: number): Promise<UserGroup[]> {
+  return apiFetch<UserGroup[]>(`/api/v1/orgs/${orgId}/user-groups`)
 }
 
 export async function deleteAddressBookPeer(

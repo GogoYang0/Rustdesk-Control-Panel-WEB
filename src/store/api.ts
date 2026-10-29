@@ -11,16 +11,20 @@ import {
   fetchSessionAlerts,
   fetchSessions,
   createAddressBook,
+  createAddressBookGrant,
   createPolicy,
   deleteAddressBook,
+  deleteAddressBookGrant,
   deleteAddressBookPeer,
   deletePolicy,
   fetchAddressBook,
+  fetchAddressBookGrants,
   fetchAddressBooks,
   fetchAlertPage,
   fetchApproval,
   fetchApprovalPage,
   fetchPolicies,
+  fetchUserGroups,
   inviteMember,
   rebindDevice,
   registerDevice,
@@ -33,7 +37,10 @@ import {
   updateMember,
   updatePolicy,
   type AddressBook,
+  type AddressBookGrant,
+  type AddressBookGrantRequest,
   type AddressBookPeer,
+  type UserGroup,
   type AlertPage,
   type Approval,
   type ApprovalDecisionRequest,
@@ -84,6 +91,8 @@ export const panelApi = createApi({
     'Alerts',
     'AddressBooks',
     'AddressBook',
+    'AddressBookGrants',
+    'UserGroups',
   ],
   endpoints: (build) => ({
     getMe: build.query<Me, void>({
@@ -140,6 +149,38 @@ export const panelApi = createApi({
     getAddressBooks: build.query<AddressBook[], number>({
       queryFn: (orgId) => wrap(() => fetchAddressBooks(orgId)),
       providesTags: (_result, _error, orgId) => [{ type: 'AddressBooks', id: orgId }],
+    }),
+    getAddressBookGrants: build.query<AddressBookGrant[], { orgId: number; bookId: number }>({
+      queryFn: ({ orgId, bookId }) => wrap(() => fetchAddressBookGrants(orgId, bookId)),
+      providesTags: (_result, _error, { orgId, bookId }) => [
+        { type: 'AddressBookGrants', id: `${orgId}-${bookId}` },
+      ],
+    }),
+    createAddressBookGrant: build.mutation<
+      AddressBookGrant,
+      { orgId: number; bookId: number; request: AddressBookGrantRequest }
+    >({
+      queryFn: ({ orgId, bookId, request }) =>
+        wrap(() => createAddressBookGrant(orgId, bookId, request)),
+      invalidatesTags: (_result, _error, { orgId, bookId }) => [
+        { type: 'AddressBookGrants', id: `${orgId}-${bookId}` },
+      ],
+    }),
+    deleteAddressBookGrant: build.mutation<
+      void,
+      { orgId: number; bookId: number; grantId: number }
+    >({
+      queryFn: async ({ orgId, bookId, grantId }) => {
+        const result = await wrap(() => deleteAddressBookGrant(orgId, bookId, grantId))
+        return 'data' in result ? { data: undefined } : result
+      },
+      invalidatesTags: (_result, _error, { orgId, bookId }) => [
+        { type: 'AddressBookGrants', id: `${orgId}-${bookId}` },
+      ],
+    }),
+    getUserGroups: build.query<UserGroup[], number>({
+      queryFn: (orgId) => wrap(() => fetchUserGroups(orgId)),
+      providesTags: (_result, _error, orgId) => [{ type: 'UserGroups', id: orgId }],
     }),
     getAddressBook: build.query<AddressBook, { orgId: number; bookId: number }>({
       queryFn: ({ orgId, bookId }) => wrap(() => fetchAddressBook(orgId, bookId)),
@@ -308,6 +349,10 @@ export const {
   useCreatePolicyMutation,
   useUpdatePolicyMutation,
   useDeletePolicyMutation,
+  useGetAddressBookGrantsQuery,
+  useCreateAddressBookGrantMutation,
+  useDeleteAddressBookGrantMutation,
+  useGetUserGroupsQuery,
   useGetAddressBooksQuery,
   useGetAddressBookQuery,
   useCreateAddressBookMutation,

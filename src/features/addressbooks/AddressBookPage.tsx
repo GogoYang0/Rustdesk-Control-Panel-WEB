@@ -1,6 +1,6 @@
 import { Banner, Empty, Toast } from '@douyinfe/semi-ui'
 import { useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { useNavigate, useParams, useSearchParams } from 'react-router'
 
 import StateBlock from '../../components/StateBlock'
 import type { AddressBookPeer } from '../../lib/api'
@@ -9,8 +9,11 @@ import {
   useDeleteAddressBookPeerMutation,
   useGetAddressBookQuery,
   useGetMeQuery,
+  useGetMembersQuery,
+  useGetUserGroupsQuery,
 } from '../../store/api'
 import { ConfirmDelete, PeerDialog } from './AddressBookDialogs'
+import BookGrantsPanel from './BookGrantsPanel'
 
 export default function AddressBookPage() {
   const { orgId, bookId } = useParams()
@@ -32,6 +35,27 @@ export default function AddressBookPage() {
   const current = me?.orgs.find((org) => org.id === id)
   const perms = useMemo(() => new Set(current?.permissions ?? []), [current])
   const editable = book ? canEditBook(book, me?.user.id, perms) : false
+  const canManageGroups = perms.has('access.manage')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const showGrants = book?.scope === 'shared' && editable
+  const tab: 'peers' | 'grants' =
+    showGrants && searchParams.get('tab') === 'grants' ? 'grants' : 'peers'
+
+  const { currentData: members } = useGetMembersQuery(id, { skip: !id || !showGrants })
+  const { currentData: groups } = useGetUserGroupsQuery(id, { skip: !id || !canManageGroups })
+
+  const emails = useMemo(() => {
+    const map = new Map<number, string>()
+    for (const member of members ?? []) map.set(member.user_id, member.email)
+    return map
+  }, [members])
+
+  function switchTab(next: 'peers' | 'grants') {
+    const params = new URLSearchParams(searchParams)
+    if (next === 'grants') params.set('tab', 'grants')
+    else params.delete('tab')
+    setSearchParams(params, { replace: true })
+  }
 
   const [query, setQuery] = useState('')
   const [adding, setAdding] = useState(false)
@@ -101,23 +125,48 @@ export default function AddressBookPage() {
           >
             {isFetching ? '刷新中…' : '刷新'}
           </button>
-          <button
-            className="btn primary sm"
-            type="button"
-            disabled={!editable || !book || (book.peers?.length ?? 0) >= PEER_LIMIT}
-            title={
-              !editable
-                ? '没有该地址簿的写权限'
-                : (book?.peers?.length ?? 0) >= PEER_LIMIT
-                  ? `最多 ${PEER_LIMIT} 个 peer`
-                  : undefined
-            }
-            onClick={() => setAdding(true)}
-          >
-            添加 peer
-          </button>
+          {tab === 'peers' ? (
+            <button
+              className="btn primary sm"
+              type="button"
+              disabled={!editable || !book || (book.peers?.length ?? 0) >= PEER_LIMIT}
+              title={
+                !editable
+                  ? '没有该地址簿的写权限'
+                  : (book?.peers?.length ?? 0) >= PEER_LIMIT
+                    ? `最多 ${PEER_LIMIT} 个 peer`
+                    : undefined
+              }
+              onClick={() => setAdding(true)}
+            >
+              添加 peer
+            </button>
+          ) : null}
         </div>
       </div>
+
+      {showGrants ? (
+        <div className="tabs" role="tablist" aria-label="地址簿视图">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'peers'}
+            className={`tab ${tab === 'peers' ? 'on' : ''}`}
+            onClick={() => switchTab('peers')}
+          >
+            Peers
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'grants'}
+            className={`tab ${tab === 'grants' ? 'on' : ''}`}
+            onClick={() => switchTab('grants')}
+          >
+            授权
+          </button>
+        </div>
+      ) : null}
 
       {book && !editable ? (
         <div className="banner info mb-14">
@@ -136,7 +185,16 @@ export default function AddressBookPage() {
         />
       ) : null}
 
-      {loading ? (
+      {tab === 'grants' && book ? (
+        <BookGrantsPanel
+          orgId={id}
+          book={book}
+          emails={emails}
+          members={members ?? []}
+          groups={groups ?? []}
+          canManageGroups={canManageGroups}
+        />
+      ) : loading ? (
         <div className="card">
           <div className="card-body">
             <div className="help" role="status">
@@ -232,13 +290,15 @@ export default function AddressBookPage() {
         </div>
       )}
 
-      <p className="help" style={{ marginTop: 12 }}>
-        保存 peers
-        走「全量替换」：控制台会先读取最新内容并核对版本，版本变化时中止保存，避免覆盖他人的修改。
-        删除单个 peer 使用独立端点，不会重写整本。
-      </p>
+      {tab === 'peers' ? (
+        <p className="help" style={{ marginTop: 12 }}>
+          保存 peers
+          走「全量替换」：控制台会先读取最新内容并核对版本，版本变化时中止保存，避免覆盖他人的修改。
+          删除单个 peer 使用独立端点，不会重写整本。
+        </p>
+      ) : null}
 
-      {book && (adding || editing) ? (
+      {tab === 'peers' && book && (adding || editing) ? (
         <PeerDialog
           key={editing ? `edit-${editing.peer_id}` : 'add'}
           orgId={id}
@@ -255,7 +315,7 @@ export default function AddressBookPage() {
         />
       ) : null}
 
-      {deleting ? (
+      {tab === 'peers' && deleting ? (
         <ConfirmDelete
           title="删除 peer"
           confirmLabel="删除"
