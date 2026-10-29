@@ -45,8 +45,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: GogoYang0/Rustdesk-Control-Panel-API
-          # Switch to develop once the devseed tool lands there.
-          ref: feature/devseed-tool
+          ref: develop
           path: rustdesk-control-panel-api
           token: ${{ secrets.API_REPO_TOKEN }}
           persist-credentials: false
