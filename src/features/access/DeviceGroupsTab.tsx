@@ -233,6 +233,7 @@ function DevicesDialog({
   const [selected, setSelected] = useState(() => new Set(group.device_ids))
   const [search, setSearch] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
   const {
     currentData: all,
     isLoading,
@@ -257,12 +258,15 @@ function DevicesDialog({
   const truncated = all?.truncated ?? false
 
   async function save() {
+    if (saving) return
+    setSaving(true)
     setError(null)
     try {
       const latest = await refetchGroups().unwrap()
       const current = latest.find((item) => item.id === group.id)
       if (!current) {
-        setError('该设备组已不存在，请关闭后刷新列表')
+        Toast.error('该设备组已不存在，列表已刷新')
+        onClose()
         return
       }
       if (!sameIdSet(current.device_ids, baseline.current)) {
@@ -277,15 +281,23 @@ function DevicesDialog({
       Toast.success(`设备已更新：移入 ${result.added} 台，移出 ${result.removed} 台`)
       onClose()
     } catch (err) {
+      if ((err as { status?: number }).status === 404) {
+        Toast.error('该设备组已不存在，列表已刷新')
+        onClose()
+        void refetchGroups()
+        return
+      }
       setError(accessError(err))
+    } finally {
+      setSaving(false)
     }
   }
 
   return (
     <SaveDialog
       title={`编辑设备 · ${group.name}`}
-      busy={replaceState.isLoading || isLoading}
-      saveDisabled={isLoading || truncated}
+      busy={replaceState.isLoading || isLoading || saving}
+      saveDisabled={isLoading || truncated || Boolean(devicesError) || saving}
       onClose={onClose}
       onSave={() => void save()}
     >
@@ -294,7 +306,7 @@ function DevicesDialog({
       {truncated ? (
         <div className="banner warning mb-14" style={{ padding: '9px 11px' }}>
           <div>
-            组织设备超过 {all?.total ?? 0} 台，页面只加载前 2000 台；为避免误删，暂不允许在此改组。
+            组织共有 {all?.total ?? 0} 台设备，超过页面 2000 台上限；为避免误删，暂不允许在此改组。
           </div>
         </div>
       ) : null}

@@ -166,7 +166,7 @@ describe('DeviceGroupsTab', () => {
     )
     const dialog = await screen.findByRole('dialog')
 
-    expect(await within(dialog).findByText(/超过 2001 台/)).toBeTruthy()
+    expect(await within(dialog).findByText(/2000 台上限/)).toBeTruthy()
     expect(
       (within(dialog).getByRole('button', { name: '保存' }) as HTMLButtonElement).disabled,
     ).toBe(true)

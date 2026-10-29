@@ -148,7 +148,10 @@ export const panelApi = createApi({
     }),
     removeMember: build.mutation<MemberMutation, { orgId: number; userId: number }>({
       queryFn: ({ orgId, userId }) => wrap(() => removeMember(orgId, userId)),
-      invalidatesTags: (_result, _error, { orgId }) => [{ type: 'Members', id: orgId }],
+      invalidatesTags: (_result, _error, { orgId }) => [
+        { type: 'Members', id: orgId },
+        { type: 'UserGroups', id: orgId },
+      ],
     }),
     getSessions: build.query<SessionPage, { orgId: number; queryString: string }>({
       queryFn: ({ orgId, queryString }) =>

@@ -6,7 +6,6 @@ import { ApiError } from './api'
 
 export const EVERYONE_NAME = 'everyone'
 export const GROUP_NAME_MAX = 64
-export const DEVICE_PICKER_LIMIT = 2000
 
 interface NamedGroup {
   id?: number

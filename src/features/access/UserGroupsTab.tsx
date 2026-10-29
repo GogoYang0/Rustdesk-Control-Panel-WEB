@@ -246,6 +246,7 @@ function MembersDialog({
   const [selected, setSelected] = useState(() => new Set(group.member_ids))
   const [search, setSearch] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
   const { refetch } = useGetUserGroupsQuery(orgId)
   const [replace, replaceState] = useReplaceUserGroupMembersMutation()
 
@@ -258,12 +259,15 @@ function MembersDialog({
   const change = diffIds(baseline.current, [...selected])
 
   async function save() {
+    if (saving) return
+    setSaving(true)
     setError(null)
     try {
       const latest = await refetch().unwrap()
       const current = latest.find((item) => item.id === group.id)
       if (!current) {
-        setError('该用户组已不存在，请关闭后刷新列表')
+        Toast.error('该用户组已不存在，列表已刷新')
+        onClose()
         return
       }
       if (!sameIdSet(current.member_ids, baseline.current)) {
@@ -278,17 +282,25 @@ function MembersDialog({
       Toast.success(`成员已更新：新增 ${result.added}，移除 ${result.removed}`)
       onClose()
     } catch (err) {
+      if ((err as { status?: number }).status === 404) {
+        Toast.error('该用户组已不存在，列表已刷新')
+        onClose()
+        void refetch()
+        return
+      }
       setError(accessError(err))
+    } finally {
+      setSaving(false)
     }
   }
 
   return (
     <SaveDialog
       title={`编辑成员 · ${group.name}`}
-      busy={replaceState.isLoading || membersLoading}
+      busy={replaceState.isLoading || membersLoading || saving}
       onClose={onClose}
       onSave={() => void save()}
-      saveDisabled={membersLoading}
+      saveDisabled={membersLoading || saving}
     >
       <ErrorBanner message={error} />
       <div className="field mb-14">
