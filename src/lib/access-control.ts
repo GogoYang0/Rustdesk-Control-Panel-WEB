@@ -171,3 +171,12 @@ export function validateRuleForm(form: {
   }
   return null
 }
+
+/** Chinese copy for rule writes: 400 often means a concurrently deleted group. */
+export function ruleError(err: unknown): string {
+  if (err instanceof ApiError) {
+    if (err.status === 400) return '规则参数不合法，或目标组已被删除，请刷新后重试'
+    if (err.status === 409) return '相同来源与目标的规则已存在'
+  }
+  return accessError(err)
+}

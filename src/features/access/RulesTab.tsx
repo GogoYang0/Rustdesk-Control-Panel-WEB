@@ -4,6 +4,7 @@ import { useState } from 'react'
 import type { AccessRule, AccessRuleTargetKind, DeviceGroup, UserGroup } from '../../lib/api'
 import {
   accessError,
+  ruleError,
   accessRuleImpact,
   accessRuleTargetLabel,
   findDuplicateRule,
@@ -63,13 +64,16 @@ export default function RulesTab({ orgId }: { orgId: number }) {
       <div className="card" style={{ overflow: 'hidden' }}>
         <div className="card-head">
           <div className="card-title">
-            访问规则<span className="hint">只有 allow、取并集；规则页签外不改变访问</span>
+            访问规则<span className="hint">只有 allow、取并集；删除默认规则即收紧</span>
           </div>
           <button
             className="btn primary sm"
             type="button"
             disabled={!rules || !groups}
-            onClick={() => setCreating(true)}
+            onClick={() => {
+              void refetch()
+              setCreating(true)
+            }}
           >
             新建规则
           </button>
@@ -250,7 +254,7 @@ function CreateRuleDialog({
       Toast.success('访问规则已创建')
       onClose()
     } catch (err) {
-      setError(accessError(err))
+      setError(ruleError(err))
     }
   }
 
@@ -258,7 +262,7 @@ function CreateRuleDialog({
     <SaveDialog
       title="新建访问规则"
       busy={createState.isLoading}
-      saveDisabled={Boolean(duplicate) || validation != null}
+      saveDisabled={Boolean(duplicate)}
       onClose={onClose}
       onSave={() => void submit()}
     >

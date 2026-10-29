@@ -481,7 +481,7 @@ function DeviceSheet({
         <dt>设备组</dt>
         <dd className="mono">
           {device.device_group_id ? `#${device.device_group_id}` : '—'}
-          <span className="help"> （访问控制波次接入）</span>
+          <span className="help"> （在访问控制页管理）</span>
         </dd>
         <dt>策略</dt>
         <dd className="mono">

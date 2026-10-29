@@ -69,7 +69,7 @@ function rules(org: number) {
     {
       id: org,
       source_group_id: 1,
-      source_group_name: 'everyone',
+      source_group_name: `Source ${org}`,
       target_kind: 'all_devices',
       target_group_id: null,
       target_group_name: '',
@@ -152,7 +152,7 @@ describe('AccessPage', () => {
 
   it('renders rules by default and switches tabs through the URL', async () => {
     setup()
-    expect((await screen.findAllByText('全部设备')).length).toBeGreaterThan(0)
+    expect(await screen.findByText('Source 1')).toBeTruthy()
     const tabs = screen.getAllByRole('tab')
     expect(tabs.map((tab) => tab.textContent)).toEqual(['规则', '用户组', '设备组'])
     expect(tabs[0].getAttribute('aria-selected')).toBe('true')

@@ -140,6 +140,30 @@ describe('RulesTab', () => {
     expect(post?.body).toEqual({ source_group_id: 3, target_kind: 'all_devices' })
   })
 
+  it('creates a user-group rule with the selected group', async () => {
+    const { requests } = setup([])
+    await screen.findByText('还没有访问规则')
+    fireEvent.click(screen.getByRole('button', { name: '新建规则' }))
+    const dialog = await screen.findByRole('dialog')
+
+    fireEvent.change(within(dialog).getByLabelText('来源用户组'), {
+      target: { value: '3' },
+    })
+    fireEvent.click(within(dialog).getByRole('button', { name: '用户组' }))
+    fireEvent.change(within(dialog).getByLabelText('目标用户组'), {
+      target: { value: '1' },
+    })
+    fireEvent.click(within(dialog).getByRole('button', { name: '保存' }))
+
+    await waitFor(() => expect(requests.some((request) => request.method === 'POST')).toBe(true))
+    const post = requests.find((request) => request.method === 'POST')
+    expect(post?.body).toEqual({
+      source_group_id: 3,
+      target_kind: 'user_group',
+      target_group_id: 1,
+    })
+  })
+
   it('disables a duplicate source/target rule', async () => {
     setup()
     await screen.findByText('Ops')

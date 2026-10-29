@@ -9,6 +9,7 @@ import {
   deviceGroupOwnership,
   findDuplicateRule,
   isDefaultAccessRule,
+  ruleError,
   ruleTargetKindLabel,
   validateRuleForm,
   diffIds,
@@ -141,6 +142,14 @@ describe('access rule helpers', () => {
     expect(
       validateRuleForm({ sourceGroupId: 1, targetKind: 'all_devices', targetGroupId: 3 }),
     ).toBeNull()
+  })
+})
+
+describe('ruleError', () => {
+  it('maps rule-specific 400/409 without backend English', () => {
+    expect(ruleError(new ApiError(400, 'invalid', 'bad'))).toContain('目标组')
+    expect(ruleError(new ApiError(409, 'conflict', 'dup'))).toContain('已存在')
+    expect(ruleError(new ApiError(403, 'forbidden', 'no'))).toContain('权限')
   })
 })
 
