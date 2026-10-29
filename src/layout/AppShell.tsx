@@ -236,6 +236,7 @@ const GROUPS: { title: string; items: NavEntry[] }[] = [
       {
         key: 'builds',
         label: '客户端生成器',
+        ready: true,
         permission: 'client_build.manage',
         icon: ICONS.builds,
       },
@@ -253,6 +254,7 @@ const TAB_LABELS: Record<string, string> = {
   alerts: '告警中心',
   logs: '日志采集',
   audit: '审计与日志',
+  builds: '客户端生成器',
   access: '访问控制',
   'address-books': '地址簿',
 }
