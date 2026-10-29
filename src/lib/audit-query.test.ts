@@ -35,7 +35,30 @@ describe('parseAuditFilters', () => {
     expect(f.action).toBe('get')
     expect(f.targetType).toBe('user')
     expect(f.targetId).toBe('7')
-    expect(f.rustdeskId).toBe('123')
+    expect(f.rustdeskId).toBe(' 123 ')
+  })
+
+  it('keeps typed spaces while parsing but trims them for the request', () => {
+    const f = parseAuditFilters(new URLSearchParams('action=+GET+&targetType=+http+'))
+    expect(f.action).toBe(' GET ')
+    expect(f.targetType).toBe(' http ')
+
+    const audit = toAuditRequestQuery(f, now)
+    expect(audit.get('action')).toBe('GET')
+    expect(audit.get('targetType')).toBe('http')
+
+    const client = toAuditRequestQuery({ ...f, tab: 'connections', rustdeskId: ' 123 ' }, now)
+    expect(client.get('rustdeskId')).toBe('123')
+  })
+
+  it('drops whitespace-only filters from the request', () => {
+    const query = toAuditRequestQuery(
+      { ...DEFAULT_AUDIT_FILTERS, action: '   ', targetType: ' ', targetId: ' ' },
+      now,
+    )
+    expect(query.get('action')).toBeNull()
+    expect(query.get('targetType')).toBeNull()
+    expect(query.get('targetId')).toBeNull()
   })
 
   it('keeps system actor 0 and rejects negative or fractional ids', () => {

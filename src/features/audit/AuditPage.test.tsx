@@ -224,6 +224,15 @@ describe('AuditPage', () => {
     expect((screen.getByLabelText('RustDesk ID') as HTMLInputElement).value).toBe('100000001')
   })
 
+  it('keeps a typed trailing space in the action input', async () => {
+    setup()
+    await screen.findByText('org.1.audit')
+    const action = screen.getByLabelText('动作') as HTMLInputElement
+    fireEvent.change(action, { target: { value: 'GET ' } })
+    await waitFor(() => expect(action.value).toBe('GET '))
+    expect(screen.getByTestId('loc').textContent).toContain('action=GET')
+  })
+
   it('keeps an unknown actor id visible in the filter', async () => {
     setup({ initial: '/orgs/1/audit?actorUserId=99' })
     await screen.findByText('org.1.audit')

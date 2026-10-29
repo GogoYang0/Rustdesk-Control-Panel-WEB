@@ -71,11 +71,11 @@ export function parseAuditFilters(params: URLSearchParams): AuditFilters {
     tab: isTab(tab) ? tab : DEFAULT_AUDIT_FILTERS.tab,
     range: isRange(range) ? range : DEFAULT_AUDIT_FILTERS.range,
     page: boundedPage(params.get('page') ?? ''),
-    action: (params.get('action') ?? '').trim().slice(0, 128),
+    action: (params.get('action') ?? '').slice(0, 128),
     actorUserId: actorId(params.get('actorUserId')),
-    targetType: (params.get('targetType') ?? '').trim().slice(0, 64),
-    targetId: (params.get('targetId') ?? '').trim().slice(0, 64),
-    rustdeskId: (params.get('rustdeskId') ?? '').trim().slice(0, 64),
+    targetType: (params.get('targetType') ?? '').slice(0, 64),
+    targetId: (params.get('targetId') ?? '').slice(0, 64),
+    rustdeskId: (params.get('rustdeskId') ?? '').slice(0, 64),
   }
 }
 
@@ -106,13 +106,17 @@ export function toAuditRequestQuery(
   pageSize = AUDIT_PAGE_SIZE,
 ): URLSearchParams {
   const query = new URLSearchParams()
+  const action = filters.action.trim()
+  const targetType = filters.targetType.trim()
+  const targetId = filters.targetId.trim()
+  const rustdeskId = filters.rustdeskId.trim()
   if (filters.tab === 'audit') {
-    if (filters.action) query.set('action', filters.action)
+    if (action) query.set('action', action)
     if (filters.actorUserId !== null) query.set('actorUserId', String(filters.actorUserId))
-    if (filters.targetType) query.set('targetType', filters.targetType)
-    if (filters.targetId) query.set('targetId', filters.targetId)
-  } else if (filters.rustdeskId) {
-    query.set('rustdeskId', filters.rustdeskId)
+    if (targetType) query.set('targetType', targetType)
+    if (targetId) query.set('targetId', targetId)
+  } else if (rustdeskId) {
+    query.set('rustdeskId', rustdeskId)
   }
   const { from, to } = auditRangeBounds(filters.range, now)
   if (from) query.set('from', from)
