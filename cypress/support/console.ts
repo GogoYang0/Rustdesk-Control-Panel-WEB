@@ -17,7 +17,7 @@ export function signIn() {
     cy.clearLocalStorage()
     cy.visit('/login')
     cy.get('.login-card input').eq(0).type(email)
-    cy.get('.login-card input').eq(1).type(password)
+    cy.get('.login-card input').eq(1).type(password, { log: false })
     cy.get('.login-card button[type="submit"]').click()
     cy.location('pathname', { timeout: 10000 }).should('match', /^\/orgs\/\d+\/members$/)
   })

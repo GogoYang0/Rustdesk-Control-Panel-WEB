@@ -240,6 +240,17 @@ describe('AuditPage', () => {
     expect(action.value).toBe('GET ')
   })
 
+  it('drops an uncommitted draft when the organization changes', async () => {
+    setup({ initial: '/orgs/1/audit' })
+    await screen.findByText('org.1.audit')
+    fireEvent.change(screen.getByLabelText('动作'), { target: { value: 'draft' } })
+
+    fireEvent.click(screen.getByRole('link', { name: '切组织' }))
+    expect(await screen.findByText('org.2.audit')).toBeTruthy()
+    expect(screen.getByTestId('loc').textContent).toBe('/orgs/2/audit')
+    expect((screen.getByLabelText('动作') as HTMLInputElement).value).toBe('')
+  })
+
   it('keeps an unknown actor id visible in the filter', async () => {
     setup({ initial: '/orgs/1/audit?actorUserId=99' })
     await screen.findByText('org.1.audit')

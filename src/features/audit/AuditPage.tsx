@@ -169,6 +169,7 @@ export default function AuditPage() {
         {tab === 'audit' ? (
           <>
             <AuditFilterInput
+              key={`${id}:action`}
               label="动作"
               value={effective.action}
               maxLength={128}
@@ -203,6 +204,7 @@ export default function AuditPage() {
               ) : null}
             </select>
             <AuditFilterInput
+              key={`${id}:targetType`}
               label="目标类型"
               value={effective.targetType}
               maxLength={64}
@@ -211,6 +213,7 @@ export default function AuditPage() {
               onCommit={(targetType) => change({ targetType })}
             />
             <AuditFilterInput
+              key={`${id}:targetId`}
               label="目标 ID"
               value={effective.targetId}
               maxLength={64}
@@ -221,6 +224,7 @@ export default function AuditPage() {
           </>
         ) : (
           <AuditFilterInput
+            key={`${id}:rustdeskId`}
             label="RustDesk ID"
             value={effective.rustdeskId}
             maxLength={64}
