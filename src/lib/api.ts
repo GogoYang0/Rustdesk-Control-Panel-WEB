@@ -11,6 +11,9 @@ import type {
   AlertPage,
   AuditLogPage,
   ClientBuildCapabilities,
+  ClientBuildCreateRequest,
+  ClientBuildDetail,
+  ClientBuildPage,
   ClientBuildProfile,
   ClientBuildProfileCreateRequest,
   ClientBuildProfilePage,
@@ -767,6 +770,52 @@ export async function fetchClientBuildProfileLogo(
     throw new ApiError(download.status, 'internal', '响应不是 PNG')
   }
   return download.blob
+}
+
+export function fetchClientBuildPage(
+  orgId: number,
+  query: URLSearchParams,
+): Promise<ClientBuildPage> {
+  return apiFetch<ClientBuildPage>(`/api/v1/orgs/${orgId}/client-builds?${query.toString()}`)
+}
+
+export function fetchClientBuild(orgId: number, buildId: number): Promise<ClientBuildDetail> {
+  return apiFetch<ClientBuildDetail>(`/api/v1/orgs/${orgId}/client-builds/${buildId}`)
+}
+
+export function createClientBuild(
+  orgId: number,
+  request: ClientBuildCreateRequest,
+): Promise<ClientBuildDetail> {
+  return apiFetch<ClientBuildDetail>(`/api/v1/orgs/${orgId}/client-builds`, {
+    method: 'POST',
+    body: JSON.stringify(request),
+  })
+}
+
+export function cancelClientBuild(orgId: number, buildId: number): Promise<ClientBuildDetail> {
+  return apiFetch<ClientBuildDetail>(`/api/v1/orgs/${orgId}/client-builds/${buildId}/cancel`, {
+    method: 'POST',
+  })
+}
+
+/** Artifact bytes with the same refresh/error contract as other downloads. */
+export async function fetchClientBuildArtifact(
+  orgId: number,
+  buildId: number,
+  artifactId: number,
+  fallbackName: string,
+): Promise<{ blob: Blob; filename: string }> {
+  const download = await apiBlob(
+    `/api/v1/orgs/${orgId}/client-builds/${buildId}/artifacts/${artifactId}`,
+  )
+  if (download.notModified) throw new ApiError(304, 'internal', '产物响应异常')
+  const type = download.contentType.toLowerCase()
+  if (!download.filename && !type.includes('application/octet-stream')) {
+    throw new ApiError(download.status, 'internal', '响应不是构建产物')
+  }
+  const fallback = fallbackName.replace(/[\\/:*?"<>|\r\n]/g, '_').trim()
+  return { blob: download.blob, filename: download.filename || fallback }
 }
 
 export function fetchAuditLogPage(orgId: number, query: URLSearchParams): Promise<AuditLogPage> {

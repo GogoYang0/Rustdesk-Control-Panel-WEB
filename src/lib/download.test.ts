@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { saveTextFile } from './download'
+import { saveBlobFile, saveTextFile } from './download'
 
-describe('saveTextFile', () => {
+describe('download layer', () => {
   let click: ReturnType<typeof vi.spyOn>
   let createObjectURL: ReturnType<typeof vi.fn>
   let revokeObjectURL: ReturnType<typeof vi.fn>
@@ -42,5 +42,13 @@ describe('saveTextFile', () => {
     expect(revokeObjectURL).not.toHaveBeenCalled()
     vi.runAllTimers()
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:test')
+  })
+
+  it('saves an arbitrary blob and sanitizes the fallback filename', () => {
+    saveBlobFile('../evil.zip', new Blob(['zip'], { type: 'application/octet-stream' }))
+    const clicked = click.mock.contexts[0] as HTMLAnchorElement
+    expect(clicked.download).toBe('.._evil.zip')
+    const blob = createObjectURL.mock.calls[0][0] as Blob
+    expect(blob.type).toBe('application/octet-stream')
   })
 })
