@@ -2,6 +2,7 @@ import { Banner, Spin, Typography } from '@douyinfe/semi-ui'
 import { createBrowserRouter, Navigate } from 'react-router'
 
 import LoginPage from './features/auth/LoginPage'
+import AccountPage from './features/account/AccountPage'
 import MembersPage from './features/members/MembersPage'
 import AddressBookPage from './features/addressbooks/AddressBookPage'
 import AddressBooksPage from './features/addressbooks/AddressBooksPage'
@@ -78,6 +79,7 @@ export const router = createBrowserRouter([
       { path: 'control-roles', element: <ControlRolesPage /> },
       { path: 'address-books', element: <AddressBooksPage /> },
       { path: 'address-books/:bookId', element: <AddressBookPage /> },
+      { path: 'account', element: <AccountPage /> },
       {
         path: '*',
         element: (

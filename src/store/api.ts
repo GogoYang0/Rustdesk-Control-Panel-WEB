@@ -10,6 +10,7 @@ import {
   fetchDevices,
   fetchMe,
   fetchMembers,
+  listPasskeys,
   fetchRoles,
   fetchSession,
   fetchSessionAlerts,
@@ -101,6 +102,7 @@ import {
   type ControlRole,
   type ControlPermissionStates,
   type ControlRoleUpdateRequest,
+  type PasskeyList,
   type Strategy,
   type StrategyCreateRequest,
   type StrategyUpdateRequest,
@@ -168,6 +170,7 @@ export const panelApi = createApi({
     'ClientBuild',
     'ControlRoles',
     'Strategies',
+    'Passkeys',
   ],
   endpoints: (build) => ({
     getMe: build.query<Me, void>({
@@ -534,6 +537,10 @@ export const panelApi = createApi({
       },
       invalidatesTags: (_result, _error, { orgId }) => [{ type: 'ClientBuildProfiles', id: orgId }],
     }),
+    getPasskeys: build.query<PasskeyList, void>({
+      queryFn: () => wrap(() => listPasskeys()),
+      providesTags: ['Passkeys'],
+    }),
     getStrategies: build.query<Strategy[], number>({
       queryFn: (orgId) => wrap(() => fetchStrategies(orgId)),
       providesTags: (_result, _error, orgId) => [{ type: 'Strategies', id: orgId }],
@@ -764,6 +771,7 @@ export const {
   usePutClientBuildProfileLogoMutation,
   useDeleteClientBuildProfileLogoMutation,
   useGetStrategiesQuery,
+  useGetPasskeysQuery,
   useCreateStrategyMutation,
   useUpdateStrategyMutation,
   useDeleteStrategyMutation,

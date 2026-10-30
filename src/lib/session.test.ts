@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
+  accessTokenExpiresSoon,
   clearSession,
   getAccessToken,
   getRefreshToken,
@@ -38,10 +39,13 @@ function installLocks(): Set<string> {
 }
 
 function pairResponse(access: string, refresh: string, status = 200): Response {
-  return new Response(JSON.stringify({ data: { access_token: access, refresh_token: refresh } }), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  })
+  return new Response(
+    JSON.stringify({ data: { access_token: access, refresh_token: refresh, expires_in: 900 } }),
+    {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    },
+  )
 }
 
 afterEach(() => {
@@ -54,6 +58,18 @@ describe('session refresh', () => {
     localStorage.clear()
     clearSession()
     installLocks()
+  })
+
+  it('tracks whether the access token is about to expire', () => {
+    expect(accessTokenExpiresSoon()).toBe(true)
+    setTokens({ access_token: 'a1', refresh_token: 'r1' })
+    expect(accessTokenExpiresSoon()).toBe(false)
+    setTokens({ access_token: 'a1', refresh_token: 'r1', expires_in: 900 })
+    expect(accessTokenExpiresSoon()).toBe(false)
+    setTokens({ access_token: 'a1', refresh_token: 'r1', expires_in: 1 })
+    expect(accessTokenExpiresSoon()).toBe(true)
+    clearSession()
+    expect(accessTokenExpiresSoon()).toBe(true)
   })
 
   it('stores the refresh token in localStorage and keeps access in memory', () => {
@@ -71,6 +87,16 @@ describe('session refresh', () => {
     expect(b.access).toBe('new')
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(getRefreshToken()).toBe('r2')
+    expect(accessTokenExpiresSoon()).toBe(false)
+  })
+
+  it('keeps the refreshed expiry date instead of an unknown one', async () => {
+    const now = vi.spyOn(Date, 'now').mockReturnValue(0)
+    setTokens({ access_token: 'old', refresh_token: 'r1', expires_in: 900 })
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(pairResponse('new', 'r2'))
+    await refreshAccessToken()
+    now.mockReturnValue(870_000)
+    expect(accessTokenExpiresSoon()).toBe(true)
   })
 
   it('clears the session only when the server rejects the refresh token', async () => {

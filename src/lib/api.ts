@@ -48,8 +48,22 @@ import type {
   Strategy,
   StrategyCreateRequest,
   StrategyUpdateRequest,
+  Passkey,
+  PasskeyCeremony,
+  PasskeyList,
+  TotpSetup,
+  TotpRecoveryCodes,
+  PasswordRemoveResult,
+  StepupToken,
 } from '../api/generated'
-import { getAccessToken, logout, refreshAccessToken, type TokenPair } from './session'
+import {
+  accessTokenExpiresSoon,
+  getAccessToken,
+  getRefreshToken,
+  logout,
+  refreshAccessToken,
+  type TokenPair,
+} from './session'
 
 export type { Member, Me, Role }
 export type RoleKind = Role['kind']
@@ -81,6 +95,12 @@ export class ApiError extends Error {
 interface RequestOptions extends RequestInit {
   /** Login and refresh must not attempt a token refresh themselves. */
   retryOn401?: boolean
+  /**
+   * Credential checks answer 401 for a wrong code/password, so they cannot
+   * refresh-and-replay. Refresh before sending when the access token is about
+   * to lapse instead, keeping a stale token from masquerading as a bad code.
+   */
+  refreshIfExpired?: boolean
 }
 
 async function request(path: string, init: RequestInit): Promise<Response> {
@@ -98,7 +118,17 @@ async function request(path: string, init: RequestInit): Promise<Response> {
  * opt out; network and 5xx failures keep the session and surface as errors.
  */
 async function authorizedFetch(path: string, options: RequestOptions): Promise<Response> {
-  const { retryOn401 = true, ...init } = options
+  const { retryOn401 = true, refreshIfExpired = false, ...init } = options
+  if (refreshIfExpired && getRefreshToken() && accessTokenExpiresSoon()) {
+    const refreshed = await refreshAccessToken()
+    if (!refreshed.access) {
+      if (refreshed.invalid) {
+        logout()
+        throw new ApiError(401, 'unauthorized', '登录已失效，请重新登录')
+      }
+      throw new ApiError(0, 'internal', '会话刷新失败，请稍后重试')
+    }
+  }
   const res = await request(path, init)
   if (res.status !== 401 || !retryOn401) return res
 
@@ -298,6 +328,151 @@ export function fetchCaptcha(): Promise<CaptchaInfo> {
 
 export function fetchMe(): Promise<Me> {
   return apiFetch<Me>('/api/v1/me')
+}
+
+// ── account security ───────────────────────────────────────────────────────
+
+export type {
+  Passkey,
+  PasskeyCeremony,
+  PasskeyList,
+  TotpSetup,
+  TotpRecoveryCodes,
+} from '../api/generated'
+
+export interface PasskeyCredentialPayload {
+  id: string
+  rawId: string
+  type: string
+  clientExtensionResults?: Record<string, unknown>
+  response: Record<string, unknown>
+}
+
+export function setupTotp(): Promise<TotpSetup> {
+  return apiFetch<TotpSetup>('/api/v1/auth/2fa/setup', { method: 'POST' })
+}
+
+export async function enableTotp(code: string): Promise<void> {
+  await apiFetch<unknown>('/api/v1/auth/2fa/enable', {
+    method: 'POST',
+    body: JSON.stringify({ code }),
+    retryOn401: false,
+    refreshIfExpired: true,
+  })
+}
+
+export async function disableTotp(password: string, code: string): Promise<void> {
+  await apiFetch<unknown>('/api/v1/auth/2fa/disable', {
+    method: 'POST',
+    body: JSON.stringify({ password, code }),
+    retryOn401: false,
+    refreshIfExpired: true,
+  })
+}
+
+export function regenerateRecoveryCodes(
+  password: string,
+  code: string,
+): Promise<TotpRecoveryCodes> {
+  return apiFetch<TotpRecoveryCodes>('/api/v1/auth/2fa/recovery-codes', {
+    method: 'POST',
+    body: JSON.stringify({ password, code }),
+    retryOn401: false,
+    refreshIfExpired: true,
+  })
+}
+
+export function listPasskeys(): Promise<PasskeyList> {
+  return apiFetch<PasskeyList>('/api/v1/auth/passkeys')
+}
+
+export function beginPasskeyRegistration(): Promise<PasskeyCeremony> {
+  return apiFetch<PasskeyCeremony>('/api/v1/auth/passkey/register/begin', { method: 'POST' })
+}
+
+export function finishPasskeyRegistration(input: {
+  ceremony_token: string
+  credential: PasskeyCredentialPayload
+  name?: string
+}): Promise<Passkey> {
+  return apiFetch<Passkey>('/api/v1/auth/passkey/register/finish', {
+    method: 'POST',
+    body: JSON.stringify(input),
+    retryOn401: false,
+    refreshIfExpired: true,
+  })
+}
+
+export function renamePasskey(passkeyId: number, name: string): Promise<Passkey> {
+  return apiFetch<Passkey>(`/api/v1/auth/passkeys/${passkeyId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name }),
+  })
+}
+
+export async function deletePasskey(passkeyId: number): Promise<void> {
+  await apiFetch<unknown>(`/api/v1/auth/passkeys/${passkeyId}`, {
+    method: 'DELETE',
+  })
+}
+
+export function beginPasskeyStepup(): Promise<PasskeyCeremony> {
+  return apiFetch<PasskeyCeremony>('/api/v1/auth/passkey/stepup/begin', { method: 'POST' })
+}
+
+export function finishPasskeyStepup(input: {
+  ceremony_token: string
+  credential: PasskeyCredentialPayload
+}): Promise<StepupToken> {
+  return apiFetch<StepupToken>('/api/v1/auth/passkey/stepup/finish', {
+    method: 'POST',
+    body: JSON.stringify(input),
+    retryOn401: false,
+    refreshIfExpired: true,
+  })
+}
+
+export function removePassword(
+  password: string,
+  stepupToken: string,
+): Promise<PasswordRemoveResult> {
+  return apiFetch<PasswordRemoveResult>('/api/v1/auth/password/remove', {
+    method: 'POST',
+    body: JSON.stringify({ password, stepup_token: stepupToken }),
+    retryOn401: false,
+    refreshIfExpired: true,
+  })
+}
+
+export async function setPassword(newPassword: string, stepupToken: string): Promise<void> {
+  await apiFetch<unknown>('/api/v1/auth/password/set', {
+    method: 'POST',
+    body: JSON.stringify({ new_password: newPassword, stepup_token: stepupToken }),
+    retryOn401: false,
+    refreshIfExpired: true,
+  })
+}
+
+export function beginPasskeyLogin(input: {
+  challenge_token?: string
+  email?: string
+}): Promise<PasskeyCeremony> {
+  return apiFetch<PasskeyCeremony>('/api/v1/auth/passkey/login/begin', {
+    method: 'POST',
+    body: JSON.stringify(input),
+    retryOn401: false,
+  })
+}
+
+export function finishPasskeyLogin(input: {
+  ceremony_token: string
+  credential: PasskeyCredentialPayload
+}): Promise<TokenPair> {
+  return apiFetch<TokenPair>('/api/v1/auth/passkey/login/finish', {
+    method: 'POST',
+    body: JSON.stringify(input),
+    retryOn401: false,
+  })
 }
 
 // ── organization ────────────────────────────────────────────────────────────

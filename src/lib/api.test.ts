@@ -2,14 +2,28 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const refreshAccessToken = vi.fn()
 const logout = vi.fn()
+const sessionMock = vi.hoisted(() => ({
+  expiresSoon: false,
+  refreshToken: 'refresh-1' as string | null,
+}))
 
 vi.mock('./session', () => ({
   getAccessToken: () => 'access-1',
+  getRefreshToken: () => sessionMock.refreshToken,
+  accessTokenExpiresSoon: () => sessionMock.expiresSoon,
   refreshAccessToken: (...args: unknown[]) => refreshAccessToken(...args),
   logout: () => logout(),
 }))
 
-const { ApiError, apiBlob, apiFetch, fetchClientBuildArtifact, fetchCsv } = await import('./api')
+const {
+  ApiError,
+  apiBlob,
+  apiFetch,
+  enableTotp,
+  fetchClientBuildArtifact,
+  fetchCsv,
+  renamePasskey,
+} = await import('./api')
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -24,6 +38,90 @@ function csvResponse(body: string, disposition = 'attachment; filename="audit-or
     headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': disposition },
   })
 }
+
+describe('credential endpoints and session refresh', () => {
+  beforeEach(() => {
+    refreshAccessToken.mockReset()
+    logout.mockReset()
+    sessionMock.expiresSoon = false
+    sessionMock.refreshToken = 'refresh-1'
+  })
+  afterEach(() => vi.restoreAllMocks())
+
+  it('does not refresh a 401 from a credential check', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(jsonResponse({ code: 'unauthorized', message: 'invalid code' }, 401))
+
+    await expect(enableTotp('123456')).rejects.toMatchObject({ status: 401 })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(refreshAccessToken).not.toHaveBeenCalled()
+  })
+
+  it('refreshes and replays a passkey rename 401', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(jsonResponse({ code: 'unauthorized', message: 'expired' }, 401))
+      .mockResolvedValueOnce(
+        jsonResponse({
+          code: 'ok',
+          message: 'ok',
+          data: { id: 1, name: 'Office key' },
+        }),
+      )
+    refreshAccessToken.mockResolvedValue({ access: 'access-2', invalid: false })
+
+    await expect(renamePasskey(1, 'Office key')).resolves.toMatchObject({
+      id: 1,
+      name: 'Office key',
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(refreshAccessToken).toHaveBeenCalledTimes(1)
+  })
+
+  it('refreshes proactively before a credential check when the access token is about to lapse', async () => {
+    sessionMock.expiresSoon = true
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(jsonResponse({ code: 'ok', message: 'ok', data: null }))
+    refreshAccessToken.mockResolvedValue({ access: 'access-2', invalid: false })
+
+    await expect(enableTotp('123456')).resolves.toBeUndefined()
+    expect(refreshAccessToken).toHaveBeenCalledTimes(1)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('aborts the credential check without logging out when the pre-refresh is transient', async () => {
+    sessionMock.expiresSoon = true
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+    refreshAccessToken.mockResolvedValue({ access: null, invalid: false })
+
+    await expect(enableTotp('123456')).rejects.toMatchObject({ status: 0 })
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(logout).not.toHaveBeenCalled()
+  })
+
+  it('logs out when the pre-refresh proves the refresh token invalid', async () => {
+    sessionMock.expiresSoon = true
+    vi.spyOn(globalThis, 'fetch')
+    refreshAccessToken.mockResolvedValue({ access: null, invalid: true })
+
+    await expect(enableTotp('123456')).rejects.toMatchObject({ status: 401 })
+    expect(logout).toHaveBeenCalledTimes(1)
+  })
+
+  it('skips the pre-refresh when there is no refresh token', async () => {
+    sessionMock.expiresSoon = true
+    sessionMock.refreshToken = null
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(jsonResponse({ code: 'unauthorized', message: 'invalid code' }, 401))
+
+    await expect(enableTotp('123456')).rejects.toMatchObject({ status: 401 })
+    expect(refreshAccessToken).not.toHaveBeenCalled()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+})
 
 describe('fetchCsv', () => {
   beforeEach(() => {

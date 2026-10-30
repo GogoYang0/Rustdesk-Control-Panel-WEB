@@ -8,7 +8,16 @@ export const store = configureStore({
     app: appReducer,
     [panelApi.reducerPath]: panelApi.reducer,
   },
-  middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(panelApi.middleware),
+  // Query errors intentionally carry ApiError so the UI can branch on status
+  // and code; the dev-only serializability check would otherwise flag every
+  // failed request.
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      serializableCheck: {
+        ignoredActions: ['panelApi/executeQuery/rejected', 'panelApi/executeMutation/rejected'],
+        ignoredPaths: [/^panelApi\.(queries|mutations)\..*\.error$/],
+      },
+    }).concat(panelApi.middleware),
 })
 
 export type RootState = ReturnType<typeof store.getState>

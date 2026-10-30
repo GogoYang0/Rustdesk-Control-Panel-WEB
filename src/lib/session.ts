@@ -15,6 +15,8 @@ function fingerprint(token: string): string {
 }
 
 let accessToken: string | null = null
+// Absolute expiry of the in-memory access token; 0 when the issuer did not say.
+let accessExpiresAt = 0
 let refreshing: Promise<RefreshResult> | null = null
 let logoutHandler: (() => void) | null = null
 // Bumped on logout: an in-flight refresh that started before the bump must not
@@ -40,11 +42,27 @@ export function getRefreshToken(): string | null {
 export function setTokens(pair: TokenPair, startedAt = epoch): void {
   if (startedAt !== epoch) return
   accessToken = pair.access_token
+  accessExpiresAt =
+    typeof pair.expires_in === 'number' && pair.expires_in > 0
+      ? Date.now() + pair.expires_in * 1000
+      : 0
   localStorage.setItem(REFRESH_KEY, pair.refresh_token)
+}
+
+/**
+ * Credential requests cannot treat a 401 as "session expired" — it may be the
+ * wrong code or password — so they refresh proactively when the access token is
+ * about to lapse. Unknown expiry is treated as still valid.
+ */
+export function accessTokenExpiresSoon(leewayMs = 30_000): boolean {
+  if (!accessToken) return true
+  if (accessExpiresAt === 0) return false
+  return accessExpiresAt - Date.now() <= leewayMs
 }
 
 export function clearSession(): void {
   accessToken = null
+  accessExpiresAt = 0
   localStorage.removeItem(REFRESH_KEY)
 }
 
@@ -165,10 +183,18 @@ function readPair(body: unknown): TokenPair | null {
   if (typeof body !== 'object' || body === null) return null
   const data = (body as { data?: unknown }).data
   if (typeof data !== 'object' || data === null) return null
-  const { access_token: access, refresh_token: refresh } = data as Record<string, unknown>
+  const {
+    access_token: access,
+    refresh_token: refresh,
+    expires_in: expiresIn,
+  } = data as Record<string, unknown>
   if (typeof access !== 'string' || access === '') return null
   if (typeof refresh !== 'string' || refresh === '') return null
-  return { access_token: access, refresh_token: refresh }
+  return {
+    access_token: access,
+    refresh_token: refresh,
+    expires_in: typeof expiresIn === 'number' ? expiresIn : undefined,
+  }
 }
 
 /** Exchanges the refresh token for a new pair; concurrent callers share one flight. */

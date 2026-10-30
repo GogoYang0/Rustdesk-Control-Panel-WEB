@@ -62,6 +62,21 @@ const ICONS: Record<string, ReactElement> = {
       <path d="M7 6.5h4M7 9.5h4" />
     </svg>
   ),
+  account: (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 18 18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="9" cy="6" r="3" />
+      <path d="M3.5 15c.6-2.7 2.7-4.2 5.5-4.2s4.9 1.5 5.5 4.2" />
+    </svg>
+  ),
   sessions: (
     <svg
       width="18"
@@ -192,6 +207,7 @@ const GROUPS: { title: string; items: NavEntry[] }[] = [
       { key: 'members', label: '组织与成员', ready: true, icon: ICONS.members },
       { key: 'roles', label: '角色与权限', ready: true, icon: ICONS.access },
       { key: 'address-books', label: '地址簿', ready: true, icon: ICONS.addressbook },
+      { key: 'account', label: '账户与安全', ready: true, icon: ICONS.account },
     ],
   },
   {
@@ -273,6 +289,7 @@ const TAB_LABELS: Record<string, string> = {
   access: '访问控制',
   'control-roles': '控制角色',
   'address-books': '地址簿',
+  account: '账户与安全',
 }
 const PAGE_KEYS = Object.keys(TAB_LABELS)
 

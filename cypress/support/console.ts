@@ -3,12 +3,32 @@
 // sensitive and go through cy.env so they stay out of the command log.
 export const consoleE2EEnabled = Cypress.expose('consoleE2E') === true
 
+const MEMBERS_PATH = /^\/orgs\/\d+\/members$/
+
 /**
- * Signs in once per spec. The config disables test isolation so the session
- * survives between tests; specs call signIn in `before` and visit `/` in
- * `beforeEach` to start from the first organization. Repeating a password
- * login per test trips the panel's login rate limit.
+ * Signs in once per spec. Test isolation stays off so a spec logs in only once.
+ * The panel allows 5 password attempts per minute per IP, which one login per
+ * spec can exceed as the suite grows; a 429 waits for the bucket to refill and
+ * retries instead of failing a functional spec for a rate limit.
  */
+function attemptLogin(email: string, password: string, retriesLeft: number) {
+  cy.get('.login-card input').eq(0).clear().type(email)
+  cy.get('.login-card input').eq(1).clear().type(password, { log: false })
+  cy.get('.login-card button[type="submit"]').click()
+  cy.wait('@loginAttempt', { timeout: 15000 }).then(({ response }) => {
+    if (response?.statusCode === 429 && retriesLeft > 0) {
+      cy.wait(15000)
+      cy.visit('/login')
+      attemptLogin(email, password, retriesLeft - 1)
+      return
+    }
+    if (response?.statusCode !== 200) {
+      throw new Error(`login failed with ${response?.statusCode}`)
+    }
+    cy.location('pathname', { timeout: 10000 }).should('match', MEMBERS_PATH)
+  })
+}
+
 export function signIn() {
   cy.env(['consoleEmail', 'consolePassword']).then(({ consoleEmail, consolePassword }) => {
     const email = String(consoleEmail ?? 'admin@acme.local')
@@ -16,15 +36,13 @@ export function signIn() {
 
     cy.clearLocalStorage()
     cy.visit('/login')
-    cy.get('.login-card input').eq(0).type(email)
-    cy.get('.login-card input').eq(1).type(password, { log: false })
-    cy.get('.login-card button[type="submit"]').click()
-    cy.location('pathname', { timeout: 10000 }).should('match', /^\/orgs\/\d+\/members$/)
+    cy.intercept('POST', '**/api/v1/auth/login').as('loginAttempt')
+    attemptLogin(email, password, 2)
   })
 }
 
 /** Loads the console entry, which redirects to the first organization. */
 export function openConsole() {
   cy.visit('/')
-  cy.location('pathname', { timeout: 10000 }).should('match', /^\/orgs\/\d+\/members$/)
+  cy.location('pathname', { timeout: 10000 }).should('match', MEMBERS_PATH)
 }
