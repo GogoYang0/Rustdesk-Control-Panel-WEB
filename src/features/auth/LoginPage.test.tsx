@@ -4,7 +4,7 @@ import { Provider } from 'react-redux'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { clearSession, getRefreshToken } from '../../lib/session'
+import { accessTokenExpiresSoon, clearSession, getRefreshToken } from '../../lib/session'
 import { panelApi } from '../../store/api'
 import LoginPage from './LoginPage'
 
@@ -135,6 +135,16 @@ describe('LoginPage passkey login', () => {
     const finish = requests.find((request) => request.url.endsWith('/auth/passkey/login/finish'))
     expect(JSON.parse(finish?.body ?? '{}').ceremony_token).toBe('login-ceremony')
     expect(getRefreshToken()).toBe('refresh-1')
+  })
+
+  it('records the access-token expiry from the login response', async () => {
+    const now = vi.spyOn(Date, 'now').mockReturnValue(0)
+    setup()
+    fireEvent.click(await screen.findByRole('button', { name: '使用 Passkey 登录' }))
+    await screen.findByText('控制台')
+    expect(accessTokenExpiresSoon()).toBe(false)
+    now.mockReturnValue(870_000)
+    expect(accessTokenExpiresSoon()).toBe(true)
   })
 
   it('uses the email as an optional credential hint', async () => {

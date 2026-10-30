@@ -90,6 +90,15 @@ describe('session refresh', () => {
     expect(accessTokenExpiresSoon()).toBe(false)
   })
 
+  it('keeps the refreshed expiry date instead of an unknown one', async () => {
+    const now = vi.spyOn(Date, 'now').mockReturnValue(0)
+    setTokens({ access_token: 'old', refresh_token: 'r1', expires_in: 900 })
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(pairResponse('new', 'r2'))
+    await refreshAccessToken()
+    now.mockReturnValue(870_000)
+    expect(accessTokenExpiresSoon()).toBe(true)
+  })
+
   it('clears the session only when the server rejects the refresh token', async () => {
     setTokens({ access_token: 'old', refresh_token: 'r1' })
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 401 }))
