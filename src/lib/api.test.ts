@@ -336,6 +336,19 @@ describe('onboarding endpoints', () => {
     })
   })
 
+  it('does not refresh a 401 from verify or resend', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async () =>
+        jsonResponse({ code: 'unauthorized', message: 'rejected' }, 401),
+      )
+
+    await expect(verifyEmail('verify-token-1')).rejects.toMatchObject({ status: 401 })
+    await expect(resendVerification('alice@example.com')).rejects.toMatchObject({ status: 401 })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(refreshAccessToken).not.toHaveBeenCalled()
+  })
+
   it('accepts an invitation without refreshing and returns the member', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       jsonResponse({
