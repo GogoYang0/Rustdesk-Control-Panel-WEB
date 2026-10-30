@@ -205,6 +205,13 @@ const GROUPS: { title: string; items: NavEntry[] }[] = [
         icon: ICONS.sessions,
       },
       { key: 'policies', label: '连接策略', ready: true, icon: ICONS.policies },
+      {
+        key: 'strategies',
+        label: '客户端策略',
+        ready: true,
+        permission: 'strategy.manage',
+        icon: ICONS.policies,
+      },
       { key: 'approvals', label: '审批中心', ready: true, icon: ICONS.approvals },
       { key: 'alerts', label: '告警中心', ready: true, icon: ICONS.alerts },
       {
@@ -257,6 +264,7 @@ const TAB_LABELS: Record<string, string> = {
   roles: '角色与权限',
   sessions: '会话记录',
   policies: '连接策略',
+  strategies: '客户端策略',
   approvals: '审批中心',
   alerts: '告警中心',
   logs: '日志采集',

@@ -11,6 +11,7 @@ import AccessPage from './features/access/AccessPage'
 import AuditPage from './features/audit/AuditPage'
 import BuildsPage from './features/builds/BuildsPage'
 import ControlRolesPage from './features/control-roles/ControlRolesPage'
+import StrategiesPage from './features/strategies/StrategiesPage'
 import LogsPage from './features/logs/LogsPage'
 import DevicesPage from './features/devices/DevicesPage'
 import PoliciesPage from './features/policies/PoliciesPage'
@@ -67,6 +68,7 @@ export const router = createBrowserRouter([
       { path: 'devices', element: <DevicesPage /> },
       { path: 'sessions', element: <SessionsPage /> },
       { path: 'policies', element: <PoliciesPage /> },
+      { path: 'strategies', element: <StrategiesPage /> },
       { path: 'approvals', element: <ApprovalsPage /> },
       { path: 'alerts', element: <AlertsPage /> },
       { path: 'audit', element: <AuditPage /> },
