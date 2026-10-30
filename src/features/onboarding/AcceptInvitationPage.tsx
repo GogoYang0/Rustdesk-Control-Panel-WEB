@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 
-import { acceptInvitation, ApiError, fetchCaptcha, type Member } from '../../lib/api'
+import { acceptInvitation, ApiError, type Member } from '../../lib/api'
 import { MIN_PASSWORD_LENGTH, passwordLength } from '../../lib/account-security'
-import {
-  acceptInvitationError,
-  clearTokenParam,
-  INVITATION_CAPTCHA_NOTICE,
-} from '../../lib/onboarding'
+import { captchaProviderSupported, captchaSubmitMessage } from '../../lib/captcha'
+import { acceptInvitationError, clearTokenParam } from '../../lib/onboarding'
+import CaptchaField from '../auth/captcha/CaptchaField'
+import { useCaptchaChallenge } from '../auth/captcha/useCaptchaChallenge'
 
 export default function AcceptInvitationPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -17,12 +16,9 @@ export default function AcceptInvitationPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [accepted, setAccepted] = useState<Member | null>(null)
-  const [captchaEnabled, setCaptchaEnabled] = useState<boolean | null>(null)
-  const [captchaProbeFailed, setCaptchaProbeFailed] = useState(false)
-  const captchaBlocked = captchaEnabled === true
-  // Unknown while the probe is in flight; a failed probe may still try because
-  // the server answers captcha_required without consuming the invitation.
-  const captchaPending = captchaEnabled === null && !captchaProbeFailed
+  const captcha = useCaptchaChallenge(Boolean(token))
+  const captchaUnsupported =
+    captcha.state.kind === 'ready' && !captchaProviderSupported(captcha.state.provider)
 
   // The invitation token is a one-shot credential: keep it in memory only and
   // drop it from the address bar before the user starts typing.
@@ -30,19 +26,9 @@ export default function AcceptInvitationPage() {
     clearTokenParam(searchParams, setSearchParams)
   }, [])
 
-  useEffect(() => {
-    if (!token) return
-    fetchCaptcha()
-      .then((info) => setCaptchaEnabled(info.enabled))
-      .catch(() => {
-        setCaptchaEnabled(null)
-        setCaptchaProbeFailed(true)
-      })
-  }, [])
-
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault()
-    if (submitting || !token || captchaBlocked || captchaPending) return
+    if (submitting || !token) return
     if (passwordLength(password) < MIN_PASSWORD_LENGTH) {
       setError(`密码至少需要 ${MIN_PASSWORD_LENGTH} 个字符`)
       return
@@ -51,31 +37,37 @@ export default function AcceptInvitationPage() {
       setError('两次输入的密码不一致')
       return
     }
+    if (captcha.state.kind === 'loading' || captchaUnsupported) return
+    if (captcha.state.kind === 'ready' && !captcha.proof) {
+      setError('请先完成安全验证')
+      return
+    }
     setSubmitting(true)
     setError('')
     try {
-      const member = await acceptInvitation(token, password)
+      const member = await acceptInvitation(token, password, captcha.proof ?? undefined)
       setAccepted(member)
       setPassword('')
       setConfirm('')
       setToken(null)
     } catch (err) {
-      if (
-        err instanceof ApiError &&
-        (err.code === 'captcha_required' || err.code === 'captcha_invalid')
-      ) {
-        // The deployment needs a proof this wave cannot produce: stop
-        // resubmitting and show the same 17c limit as the probe path.
-        setCaptchaEnabled(true)
-        setError('')
-      } else {
-        setError(acceptInvitationError(err))
-      }
+      setError(captchaSubmitMessage(err) ?? acceptInvitationError(err))
       if (err instanceof ApiError && (err.status === 401 || err.status === 409)) {
         setPassword('')
         setConfirm('')
       }
       if (err instanceof ApiError && err.status === 409) setToken(null)
+      // 429 happens before requireCaptcha, and an outage must keep the proof;
+      // every other failure may have consumed it.
+      if (
+        captcha.state.kind !== 'disabled' &&
+        !(
+          err instanceof ApiError &&
+          (err.status === 429 || err.status === 409 || err.code === 'captcha_unavailable')
+        )
+      ) {
+        void captcha.refresh()
+      }
     } finally {
       setSubmitting(false)
     }
@@ -138,18 +130,6 @@ export default function AcceptInvitationPage() {
                   </div>
                 </div>
 
-                {captchaEnabled === true ? (
-                  <div className="banner warning mb-14">
-                    <div>{INVITATION_CAPTCHA_NOTICE}</div>
-                  </div>
-                ) : captchaEnabled === null ? (
-                  <div className="help mb-14">
-                    {captchaProbeFailed
-                      ? '无法确认验证码状态；提交时如要求验证码会给出提示。'
-                      : '正在确认验证码状态…'}
-                  </div>
-                ) : null}
-
                 {error ? (
                   <div className="banner danger mb-14" role="alert">
                     <div>{error}</div>
@@ -168,7 +148,7 @@ export default function AcceptInvitationPage() {
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder={`至少 ${MIN_PASSWORD_LENGTH} 位`}
                       autoComplete="new-password"
-                      disabled={submitting || captchaBlocked || captchaPending}
+                      disabled={submitting}
                       required
                     />
                   </div>
@@ -185,16 +165,24 @@ export default function AcceptInvitationPage() {
                       value={confirm}
                       onChange={(e) => setConfirm(e.target.value)}
                       autoComplete="new-password"
-                      disabled={submitting || captchaBlocked || captchaPending}
+                      disabled={submitting}
                       required
                     />
                   </div>
                 </div>
 
+                <CaptchaField
+                  state={captcha.state}
+                  proof={captcha.proof}
+                  onProof={captcha.acceptProof}
+                  onExpired={() => void captcha.refresh()}
+                  onRetry={() => void captcha.refresh()}
+                />
+
                 <button
                   className="btn primary lg block"
                   type="submit"
-                  disabled={submitting || captchaBlocked || captchaPending}
+                  disabled={submitting || captcha.state.kind === 'loading' || captchaUnsupported}
                 >
                   {submitting ? '提交中…' : '接受邀请'}
                 </button>

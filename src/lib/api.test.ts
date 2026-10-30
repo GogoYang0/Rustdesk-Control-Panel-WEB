@@ -24,9 +24,12 @@ const {
   enableTotp,
   resendVerification,
   verifyEmail,
+  fetchCaptchaChallenge,
   fetchClientBuildArtifact,
   fetchCsv,
   fetchAuditRetention,
+  login,
+  verifyTwoFactor,
   fetchIdentities,
   fetchProvisioning,
   fetchProviders,
@@ -300,6 +303,88 @@ describe('external login endpoints', () => {
     expect(JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body))).toEqual({
       username: 'alice',
       password: 'wrong',
+    })
+  })
+})
+
+describe('captcha endpoints', () => {
+  const proof = { response: { payload: 'solved-payload' } }
+
+  beforeEach(() => {
+    refreshAccessToken.mockReset()
+    logout.mockReset()
+    sessionMock.refreshToken = 'refresh-1'
+  })
+  afterEach(() => vi.restoreAllMocks())
+
+  it('fetches the full challenge, including provider params, without refreshing', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        code: 'ok',
+        message: 'ok',
+        data: {
+          enabled: true,
+          provider: 'altcha',
+          challenge: { params: { challenge: 'c1', salt: 's1', signature: 'sig1' } },
+        },
+      }),
+    )
+    await expect(fetchCaptchaChallenge()).resolves.toMatchObject({
+      provider: 'altcha',
+      challenge: { params: { challenge: 'c1' } },
+    })
+    expect(String(fetchMock.mock.calls[0][0])).toBe('/api/v1/auth/captcha')
+    const init = fetchMock.mock.calls[0][1] as RequestInit
+    expect(init.referrerPolicy).toBe('no-referrer')
+    expect(init.signal).toBeInstanceOf(AbortSignal)
+
+    fetchMock.mockResolvedValueOnce(jsonResponse({ code: 'unauthorized', message: 'no' }, 401))
+    await expect(fetchCaptchaChallenge()).rejects.toMatchObject({ status: 401 })
+    expect(refreshAccessToken).not.toHaveBeenCalled()
+  })
+
+  it('omits captcha when no proof was solved and includes it otherwise', async () => {
+    const pair = {
+      code: 'ok',
+      message: 'ok',
+      data: { access_token: 'a', refresh_token: 'r', expires_in: 900 },
+    }
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async () => jsonResponse(pair))
+
+    await login('alice@example.com', 'password-1')
+    expect(JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body))).toEqual({
+      email: 'alice@example.com',
+      password: 'password-1',
+    })
+
+    await login('alice@example.com', 'password-1', proof)
+    expect(JSON.parse(String((fetchMock.mock.calls[1][1] as RequestInit).body))).toEqual({
+      email: 'alice@example.com',
+      password: 'password-1',
+      captcha: proof,
+    })
+
+    await verifyTwoFactor('challenge-1', '123456', proof)
+    expect(JSON.parse(String((fetchMock.mock.calls[2][1] as RequestInit).body))).toEqual({
+      challenge_token: 'challenge-1',
+      code: '123456',
+      captcha: proof,
+    })
+
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        code: 'ok',
+        message: 'ok',
+        data: { id: 1, user_id: 2, email: 'new@example.com', role: 'member' },
+      }),
+    )
+    await acceptInvitation('invite-1', 'password-1', proof)
+    expect(JSON.parse(String((fetchMock.mock.calls[3][1] as RequestInit).body))).toEqual({
+      token: 'invite-1',
+      password: 'password-1',
+      captcha: proof,
     })
   })
 })

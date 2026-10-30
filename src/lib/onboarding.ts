@@ -13,9 +13,6 @@ export function clearTokenParam(params: URLSearchParams, setParams: SetURLSearch
 export const RESEND_VERIFICATION_NOTICE =
   '如果该邮箱尚未验证，验证邮件已发送。请查收（包括垃圾邮件）。'
 
-export const INVITATION_CAPTCHA_NOTICE =
-  '该部署启用了交互式验证码，邀请接受暂不支持；请联系管理员改用其他方式加入。'
-
 // apiFetch does not wrap fetch rejections: an offline browser throws TypeError,
 // so every helper treats a non-ApiError as a network failure.
 export function verifyEmailError(err: unknown): string {
@@ -46,7 +43,7 @@ export function acceptInvitationError(err: unknown): string {
   if (err.code === 'captcha_unavailable') return '验证码服务不可用，请稍后再试。'
   if (err.status === 400) {
     if (err.code === 'captcha_required' || err.code === 'captcha_invalid') {
-      return INVITATION_CAPTCHA_NOTICE
+      return '验证码已失效，请重新完成验证。'
     }
     return '邀请链接或密码不符合要求，请检查后重试。'
   }

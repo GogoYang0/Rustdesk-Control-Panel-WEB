@@ -4,7 +4,6 @@ import { ApiError } from './api'
 import {
   acceptInvitationError,
   clearTokenParam,
-  INVITATION_CAPTCHA_NOTICE,
   isRetryableVerifyError,
   resendVerificationError,
   verifyEmailError,
@@ -69,8 +68,8 @@ describe('acceptInvitationError', () => {
   })
 
   it('separates captcha limits from malformed payloads', () => {
-    expect(acceptInvitationError(api(400, 'captcha_required'))).toBe(INVITATION_CAPTCHA_NOTICE)
-    expect(acceptInvitationError(api(400, 'captcha_invalid'))).toBe(INVITATION_CAPTCHA_NOTICE)
+    expect(acceptInvitationError(api(400, 'captcha_required'))).toContain('重新完成验证')
+    expect(acceptInvitationError(api(400, 'captcha_invalid'))).toContain('重新完成验证')
     expect(acceptInvitationError(api(503, 'captcha_unavailable'))).toContain('验证码服务')
     expect(acceptInvitationError(api(400))).toContain('不符合要求')
     expect(acceptInvitationError(api(503))).toContain('服务暂时不可用')

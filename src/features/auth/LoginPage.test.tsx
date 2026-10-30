@@ -27,6 +27,28 @@ vi.mock('../../lib/webauthn', async (importOriginal) => {
   }
 })
 
+vi.mock('./captcha/CaptchaField', () => ({
+  default: ({
+    state,
+    onProof,
+  }: {
+    state: { kind: string; generation?: number; message?: string }
+    onProof: (generation: number, proof: unknown) => void
+  }) => {
+    if (state.kind === 'disabled') return null
+    if (state.kind === 'loading') return <div>验证码加载中…</div>
+    if (state.kind === 'unavailable') return <div>{state.message}</div>
+    return (
+      <button
+        type="button"
+        onClick={() => onProof(state.generation ?? 0, { response: { payload: 'test-payload' } })}
+      >
+        完成验证
+      </button>
+    )
+  },
+}))
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -85,7 +107,15 @@ function setup(
       return json({
         code: 'ok',
         message: 'ok',
-        data: { enabled: options.captchaEnabled ?? false },
+        data: options.captchaEnabled
+          ? {
+              enabled: true,
+              provider: 'altcha',
+              challenge: {
+                params: { challenge: 'c1', salt: 's1', signature: 'sig1', maxNumber: 100000 },
+              },
+            }
+          : { enabled: false },
       })
     }
     if (url.endsWith('/auth/providers')) {
@@ -439,8 +469,8 @@ describe('LoginPage passkey login', () => {
     expect(await screen.findByText('动态码或恢复码不正确')).toBeTruthy()
   })
 
-  it('warns that TOTP cannot finish while captcha is enabled', async () => {
-    setup({
+  it('requires a fresh captcha proof for the TOTP step after OIDC', async () => {
+    const { requests } = setup({
       captchaEnabled: true,
       initialPath: '/login?ticket=ticket-1',
       exchangeStatus: 401,
@@ -451,25 +481,40 @@ describe('LoginPage passkey login', () => {
       },
     })
     expect(await screen.findByRole('heading', { name: '两步验证' })).toBeTruthy()
-    expect(screen.getByText(/TOTP 第二步需要验证码 proof/)).toBeTruthy()
+    await waitFor(() =>
+      expect(requests.filter((request) => request.url.endsWith('/auth/captcha'))).toHaveLength(2),
+    )
+
+    fireEvent.change(screen.getByLabelText(/动态码/), { target: { value: '654321' } })
+    fireEvent.click(screen.getByRole('button', { name: '验证并登录' }))
+    expect(await screen.findByText('请先完成安全验证')).toBeTruthy()
+    expect(requests.some((request) => request.url.endsWith('/auth/2fa/verify'))).toBe(false)
+
+    fireEvent.click(screen.getByRole('button', { name: '完成验证' }))
+    fireEvent.click(screen.getByRole('button', { name: '验证并登录' }))
+    await screen.findByText('控制台')
+    const verify = requests.find((request) => request.url.endsWith('/auth/2fa/verify'))
+    expect(JSON.parse(verify?.body ?? '{}')).toEqual({
+      challenge_token: 'challenge-oidc',
+      code: '654321',
+      captcha: { response: { payload: 'test-payload' } },
+    })
   })
 
-  it('shows an unknown captcha state on the TOTP step when the probe fails', async () => {
-    setup({
-      captchaStatus: 500,
-      initialPath: '/login?ticket=ticket-1',
-      exchangeStatus: 401,
-      exchangeBody: {
-        code: 'two_factor_required',
-        message: 'two factor required',
-        data: { challenge_token: 'challenge-oidc', methods: ['totp'] },
-      },
+  it('keeps the login form usable when the captcha challenge is unavailable', async () => {
+    const { requests } = setup({ captchaStatus: 503 })
+    expect(await screen.findByText(/验证码服务不可用/)).toBeTruthy()
+
+    fireEvent.change(screen.getByLabelText(/邮箱/), { target: { value: 'alice@acme.local' } })
+    fireEvent.change(screen.getByLabelText(/密码/), { target: { value: 'wrong-pass' } })
+    fireEvent.click(screen.getByRole('button', { name: '登录' }))
+
+    expect(await screen.findByText('邮箱或密码不正确')).toBeTruthy()
+    const loginRequest = requests.find((request) => request.url.endsWith('/auth/login'))
+    expect(JSON.parse(loginRequest?.body ?? '{}')).toEqual({
+      email: 'alice@acme.local',
+      password: 'wrong-pass',
     })
-    expect(await screen.findByRole('heading', { name: '两步验证' })).toBeTruthy()
-    expect(screen.getByText(/正在确认验证码状态/)).toBeTruthy()
-    expect(screen.getByLabelText(/动态码/).getAttribute('aria-describedby')).toBe(
-      'totp-captcha-hint',
-    )
   })
 
   it('continues an LDAP login through the local TOTP step', async () => {
@@ -504,28 +549,68 @@ describe('LoginPage passkey login', () => {
     expect(screen.getByRole('button', { name: '登录' })).toBeTruthy()
   })
 
-  it('keeps LDAP disabled until the captcha probe resolves', async () => {
-    setup({
-      providers: { oidc: { enabled: false }, ldap: { enabled: true } },
-      captchaStatus: 500,
-    })
-    fireEvent.click(await screen.findByRole('button', { name: '目录账号' }))
-    expect(await screen.findByText(/无法确认验证码状态/)).toBeTruthy()
-    expect((screen.getByRole('button', { name: '目录登录' }) as HTMLButtonElement).disabled).toBe(
-      true,
-    )
-  })
-
-  it('blocks LDAP submission when interactive captcha is enabled', async () => {
-    setup({
+  it('requires and sends a captcha proof for LDAP', async () => {
+    const { requests } = setup({
       providers: { oidc: { enabled: false }, ldap: { enabled: true } },
       captchaEnabled: true,
     })
     fireEvent.click(await screen.findByRole('button', { name: '目录账号' }))
-    expect((screen.getByRole('button', { name: '目录登录' }) as HTMLButtonElement).disabled).toBe(
-      true,
+    fireEvent.change(screen.getByLabelText(/目录用户名/), { target: { value: 'alice' } })
+    fireEvent.change(screen.getByLabelText(/目录密码/), { target: { value: 'directory-pass' } })
+    await screen.findByRole('button', { name: '完成验证' })
+
+    fireEvent.click(screen.getByRole('button', { name: '目录登录' }))
+    expect(await screen.findByText('请先完成安全验证')).toBeTruthy()
+    expect(requests.some((request) => request.url.endsWith('/auth/ldap/login'))).toBe(false)
+
+    fireEvent.click(screen.getByRole('button', { name: '完成验证' }))
+    fireEvent.click(screen.getByRole('button', { name: '目录登录' }))
+    await screen.findByText('控制台')
+    const ldap = requests.find((request) => request.url.endsWith('/auth/ldap/login'))
+    expect(JSON.parse(ldap?.body ?? '{}')).toEqual({
+      username: 'alice',
+      password: 'directory-pass',
+      captcha: { response: { payload: 'test-payload' } },
+    })
+  })
+
+  it('sends a proof and refreshes the challenge after a rejected password', async () => {
+    const { requests } = setup({ captchaEnabled: true })
+    fireEvent.change(screen.getByLabelText(/邮箱/), { target: { value: 'alice@acme.local' } })
+    fireEvent.change(screen.getByLabelText(/密码/), { target: { value: 'wrong-pass' } })
+    await screen.findByRole('button', { name: '完成验证' })
+
+    fireEvent.click(screen.getByRole('button', { name: '登录' }))
+    expect(await screen.findByText('请先完成安全验证')).toBeTruthy()
+    expect(requests.some((request) => request.url.endsWith('/auth/login'))).toBe(false)
+
+    fireEvent.click(screen.getByRole('button', { name: '完成验证' }))
+    fireEvent.click(screen.getByRole('button', { name: '登录' }))
+    expect(await screen.findByText('邮箱或密码不正确')).toBeTruthy()
+    await waitFor(() =>
+      expect(requests.filter((request) => request.url.endsWith('/auth/captcha'))).toHaveLength(2),
     )
-    expect(screen.getByText(/交互式验证码/)).toBeTruthy()
+    const loginRequest = requests.find((request) => request.url.endsWith('/auth/login'))
+    expect(JSON.parse(loginRequest?.body ?? '{}')).toEqual({
+      email: 'alice@acme.local',
+      password: 'wrong-pass',
+      captcha: { response: { payload: 'test-payload' } },
+    })
+  })
+
+  it('keeps the proof when the login attempt is rate limited', async () => {
+    const { requests } = setup({
+      captchaEnabled: true,
+      loginStatus: 429,
+      loginBody: { code: 'rate_limited', message: 'too many attempts' },
+    })
+    fireEvent.change(screen.getByLabelText(/邮箱/), { target: { value: 'alice@acme.local' } })
+    fireEvent.change(screen.getByLabelText(/密码/), { target: { value: 'secret-pass' } })
+    fireEvent.click(await screen.findByRole('button', { name: '完成验证' }))
+    fireEvent.click(screen.getByRole('button', { name: '登录' }))
+
+    expect(await screen.findByText('尝试过于频繁，请稍后再试')).toBeTruthy()
+    expect(requests.filter((request) => request.url.endsWith('/auth/captcha'))).toHaveLength(1)
   })
 
   it('clears cached account data when signing in from the login page', async () => {
