@@ -177,8 +177,94 @@ export function shortSha(sha: string): string {
   return sha.length > 12 ? `${sha.slice(0, 12)}…` : sha
 }
 
+export const BUILD_PAGE_SIZES = [20, 50, 100] as const
+export type BuildPageSize = (typeof BUILD_PAGE_SIZES)[number]
+export const MAX_BUILD_PAGE = 100_000
+
+export interface BuildFilters {
+  status: string
+  profileId: number | null
+  page: number
+  pageSize: BuildPageSize
+}
+
+export const DEFAULT_BUILD_FILTERS: BuildFilters = {
+  status: '',
+  profileId: null,
+  page: 1,
+  pageSize: 20,
+}
+
+function knownStatus(value: string): boolean {
+  return (CLIENT_BUILD_STATUSES as readonly string[]).includes(value)
+}
+
+export function parseBuildFilters(params: URLSearchParams): BuildFilters {
+  const status = params.get('status') ?? ''
+  const profile = params.get('profileId') ?? ''
+  const page = params.get('page') ?? ''
+  const pageSize = params.get('pageSize') ?? ''
+  const profileId = /^\d+$/.test(profile) ? Number(profile) : 0
+  const parsedPage = /^\d+$/.test(page) ? Number(page) : 1
+  const parsedSize = /^\d+$/.test(pageSize) ? Number(pageSize) : 20
+  return {
+    status: knownStatus(status) ? status : '',
+    profileId: Number.isSafeInteger(profileId) && profileId > 0 ? profileId : null,
+    page:
+      Number.isSafeInteger(parsedPage) && parsedPage > 0 ? Math.min(parsedPage, MAX_BUILD_PAGE) : 1,
+    pageSize: (BUILD_PAGE_SIZES as readonly number[]).includes(parsedSize)
+      ? (parsedSize as BuildPageSize)
+      : DEFAULT_BUILD_FILTERS.pageSize,
+  }
+}
+
+export function toBuildSearchParams(filters: BuildFilters): URLSearchParams {
+  const params = new URLSearchParams()
+  if (filters.status) params.set('status', filters.status)
+  if (filters.profileId !== null) params.set('profileId', String(filters.profileId))
+  if (filters.page > 1) params.set('page', String(filters.page))
+  if (filters.pageSize !== DEFAULT_BUILD_FILTERS.pageSize) {
+    params.set('pageSize', String(filters.pageSize))
+  }
+  return params
+}
+
+export function toBuildRequestQuery(filters: BuildFilters): URLSearchParams {
+  const query = new URLSearchParams()
+  if (filters.status) query.set('status', filters.status)
+  if (filters.profileId !== null) query.set('profileId', String(filters.profileId))
+  query.set('page', String(filters.page))
+  query.set('pageSize', String(filters.pageSize))
+  return query
+}
+
+const CANCELABLE_STATUSES = new Set(['pending', 'dispatching', 'dispatched', 'running'])
+
+export function canCancelBuild(status: string): boolean {
+  return CANCELABLE_STATUSES.has(status)
+}
+
+export function buildArtifactLabel(count: number, purged: boolean): string {
+  if (purged) return '已清理'
+  return count > 0 ? String(count) : '—'
+}
+
+export function buildPlatformsLabel(platforms: string[]): string {
+  return platforms.length === 0 ? '—' : platforms.map(platformLabel).join(', ')
+}
+
 export type ClientBuildOperation =
-  'profile-create' | 'profile-update' | 'profile-delete' | 'logo' | 'capabilities' | 'profiles'
+  | 'profile-create'
+  | 'profile-update'
+  | 'profile-delete'
+  | 'logo'
+  | 'capabilities'
+  | 'profiles'
+  | 'builds'
+  | 'build'
+  | 'build-create'
+  | 'build-cancel'
+  | 'artifact'
 
 export function clientBuildError(err: unknown, operation: ClientBuildOperation): string {
   if (!(err instanceof ApiError)) return '网络异常，请稍后重试'
@@ -186,14 +272,18 @@ export function clientBuildError(err: unknown, operation: ClientBuildOperation):
   if (err.status === 401) return '登录已失效，请重新登录'
   if (err.status === 403) return '当前角色没有客户端生成器权限'
   if (err.status === 404) {
-    return operation === 'capabilities' || operation === 'profiles'
-      ? '组织不存在或服务不可用'
-      : 'Profile 不存在'
+    if (operation === 'capabilities' || operation === 'profiles') return '组织不存在或服务不可用'
+    if (operation === 'builds') return '组织不存在或服务不可用'
+    if (operation === 'build') return '构建不存在'
+    if (operation === 'artifact') return '产物已不可下载'
+    return 'Profile 不存在'
   }
   if (err.status === 409) {
     if (operation === 'profile-create') return '名称已被使用或 Profile 数量已达上限'
     if (operation === 'profile-update') return '名称已被使用'
     if (operation === 'profile-delete') return '该 Profile 仍有进行中的构建，暂不能删除'
+    if (operation === 'build-create') return '无法发起构建：服务器未就绪或配额已满'
+    if (operation === 'build-cancel') return '构建状态已变化，无法取消'
     return '操作冲突，请刷新后重试'
   }
   if (err.status === 400) {
@@ -201,6 +291,7 @@ export function clientBuildError(err: unknown, operation: ClientBuildOperation):
     if (operation === 'profile-create' || operation === 'profile-update') {
       return 'Profile 名称或应用名不合法'
     }
+    if (operation === 'build-create') return '平台或 Profile 不合法'
     return '请求参数不合法'
   }
   if (err.status === 503) return '构建能力不可用'

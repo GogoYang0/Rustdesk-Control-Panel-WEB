@@ -45,10 +45,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: GogoYang0/Rustdesk-Control-Panel-API
-          # Pinned to the API develop commit that scopes log-events by
-          # audit.read/audit_scope and seeds sample events; bump it deliberately
-          # when the panel API changes so e2e stays reproducible.
-          ref: 1d85f975f08156358da635597cf66d21a38752e2
+          # Pinned to the API develop commit that seeds sample client builds
+          # as well as log events; bump it deliberately when the panel API
+          # changes so e2e stays reproducible.
+          ref: 6696c707624ac8415eebcf61b5d63259b42aea8b
           path: rustdesk-control-panel-api
           token: ${{ secrets.API_REPO_TOKEN }}
           persist-credentials: false

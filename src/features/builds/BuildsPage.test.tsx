@@ -164,7 +164,7 @@ describe('BuildsPage', () => {
       }),
       profiles: [profile(1)],
     })
-    expect(await screen.findByText('Profile 1')).toBeTruthy()
+    expect((await screen.findAllByText('Profile 1')).length).toBeGreaterThan(0)
     expect(screen.getByText(/最多 1 个 Profile/)).toBeTruthy()
     expect(screen.getByText(/同时 3 个活跃构建/)).toBeTruthy()
     expect(screen.getByText(/保留 7 天/)).toBeTruthy()

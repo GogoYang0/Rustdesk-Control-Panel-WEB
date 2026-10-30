@@ -9,7 +9,7 @@ vi.mock('./session', () => ({
   logout: () => logout(),
 }))
 
-const { ApiError, apiBlob, apiFetch, fetchCsv } = await import('./api')
+const { ApiError, apiBlob, apiFetch, fetchClientBuildArtifact, fetchCsv } = await import('./api')
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -87,6 +87,44 @@ describe('fetchCsv', () => {
   it('turns a network failure into ApiError(0)', async () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('fetch failed'))
     await expect(fetchCsv('/export')).rejects.toMatchObject({ status: 0 })
+  })
+})
+
+describe('fetchClientBuildArtifact', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it('returns the artifact blob and disposition filename', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('zip-bytes', {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'Content-Disposition': 'attachment; filename="panel-client-1.zip"',
+        },
+      }),
+    )
+    const result = await fetchClientBuildArtifact(1, 2, 3, 'fallback.zip')
+    expect(result.filename).toBe('panel-client-1.zip')
+    await expect(result.blob.text()).resolves.toBe('zip-bytes')
+  })
+
+  it('sanitizes the metadata fallback and rejects an HTML 200', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('<html>proxy</html>', { status: 200, headers: { 'Content-Type': 'text/html' } }),
+    )
+    await expect(fetchClientBuildArtifact(1, 2, 3, '../evil.zip')).rejects.toMatchObject({
+      status: 200,
+    })
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('zip', {
+        status: 200,
+        headers: { 'Content-Type': 'application/octet-stream' },
+      }),
+    )
+    await expect(fetchClientBuildArtifact(1, 2, 3, '../evil.zip')).resolves.toMatchObject({
+      filename: '.._evil.zip',
+    })
   })
 })
 

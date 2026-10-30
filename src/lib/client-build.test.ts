@@ -9,7 +9,14 @@ import {
   capabilityBlockReason,
   clientBuildError,
   formatBytes,
+  buildArtifactLabel,
+  buildPlatformsLabel,
+  canCancelBuild,
+  DEFAULT_BUILD_FILTERS,
   isActiveBuildStatus,
+  parseBuildFilters,
+  toBuildRequestQuery,
+  toBuildSearchParams,
   logoUploadProblem,
   platformLabel,
   profileNameProblem,
@@ -99,6 +106,22 @@ describe('labels', () => {
     expect(buildStatusTone('succeeded')).toBe('green')
   })
 
+  it('has a label and tone for every build status', () => {
+    for (const status of [
+      'pending',
+      'dispatching',
+      'dispatched',
+      'running',
+      'ingesting',
+      'succeeded',
+      'failed',
+      'cancelled',
+    ]) {
+      expect(buildStatusLabel(status)).not.toBe(status)
+      expect(buildStatusTone(status)).toMatch(/^(grey|blue|orange|green|red)$/)
+    }
+  })
+
   it('classifies active versus terminal statuses', () => {
     expect(isActiveBuildStatus('pending')).toBe(true)
     expect(isActiveBuildStatus('ingesting')).toBe(true)
@@ -170,6 +193,13 @@ describe('clientBuildError', () => {
     expect(clientBuildError(new ApiError(400, 'invalid_request', 'x'), 'logo')).toContain(
       '256–1024',
     )
+    expect(clientBuildError(new ApiError(409, 'conflict', 'x'), 'build-create')).toContain(
+      '服务器未就绪或配额已满',
+    )
+    expect(clientBuildError(new ApiError(409, 'conflict', 'x'), 'build-cancel')).toContain(
+      '状态已变化',
+    )
+    expect(clientBuildError(new ApiError(404, 'not_found', 'x'), 'artifact')).toBe('产物已不可下载')
   })
 
   it('never exposes the backend message', () => {
@@ -179,5 +209,56 @@ describe('clientBuildError', () => {
     )
     expect(message).not.toContain('sql')
     expect(clientBuildError(new Error('boom'), 'profiles')).toBe('网络异常，请稍后重试')
+  })
+})
+
+describe('build filters', () => {
+  it('defaults to no filters, page 1 and 20 rows', () => {
+    expect(parseBuildFilters(new URLSearchParams())).toEqual(DEFAULT_BUILD_FILTERS)
+  })
+
+  it('keeps known status/profile/page values and drops invalid ones', () => {
+    expect(
+      parseBuildFilters(new URLSearchParams('status=running&profileId=7&page=3&pageSize=100')),
+    ).toEqual({ status: 'running', profileId: 7, page: 3, pageSize: 100 })
+    expect(
+      parseBuildFilters(new URLSearchParams('status=nope&profileId=0&page=0&pageSize=999')),
+    ).toEqual(DEFAULT_BUILD_FILTERS)
+    expect(parseBuildFilters(new URLSearchParams('page=999999')).page).toBe(100000)
+  })
+
+  it('omits defaults in the URL but always sends them to the API', () => {
+    expect(toBuildSearchParams(DEFAULT_BUILD_FILTERS).toString()).toBe('')
+    const filters = { status: 'failed', profileId: 2, page: 2, pageSize: 50 as const }
+    const search = toBuildSearchParams(filters)
+    expect(search.get('status')).toBe('failed')
+    expect(search.get('profileId')).toBe('2')
+    expect(search.get('page')).toBe('2')
+    expect(search.get('pageSize')).toBe('50')
+
+    const query = toBuildRequestQuery(DEFAULT_BUILD_FILTERS)
+    expect(query.get('page')).toBe('1')
+    expect(query.get('pageSize')).toBe('20')
+    expect(query.get('status')).toBeNull()
+  })
+})
+
+describe('build status actions', () => {
+  it('allows cancelling only pre-ingest active states', () => {
+    expect(canCancelBuild('pending')).toBe(true)
+    expect(canCancelBuild('running')).toBe(true)
+    expect(canCancelBuild('ingesting')).toBe(false)
+    expect(canCancelBuild('succeeded')).toBe(false)
+  })
+
+  it('labels artifact counts and purged builds', () => {
+    expect(buildArtifactLabel(0, false)).toBe('—')
+    expect(buildArtifactLabel(2, false)).toBe('2')
+    expect(buildArtifactLabel(2, true)).toBe('已清理')
+  })
+
+  it('joins known and unknown platform labels', () => {
+    expect(buildPlatformsLabel(['windows-x64', 'custom'])).toBe('Windows x64, custom')
+    expect(buildPlatformsLabel([])).toBe('—')
   })
 })
