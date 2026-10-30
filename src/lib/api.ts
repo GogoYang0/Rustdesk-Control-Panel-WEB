@@ -18,6 +18,9 @@ import type {
   ClientBuildProfileCreateRequest,
   ClientBuildProfilePage,
   ClientBuildProfileUpdateRequest,
+  ControlRole,
+  ControlRoleCreateRequest,
+  ControlRoleUpdateRequest,
   ConnectionLogPage,
   FileLogPage,
   LogEvent,
@@ -676,6 +679,11 @@ export type {
 // ── custom client builds ────────────────────────────────────────────────────
 
 export type {
+  ControlPermissionState,
+  ControlPermissionStates,
+  ControlRole,
+  ControlRoleCreateRequest,
+  ControlRoleUpdateRequest,
   ClientBuildArtifact,
   ClientBuildCapabilities,
   ClientBuildCreateRequest,
@@ -691,6 +699,50 @@ export type {
   ClientBuildProfileUpdateRequest,
   ClientBuildSummary,
 } from '../api/generated'
+
+// ── control roles ───────────────────────────────────────────────────────────
+
+export function fetchControlRoles(orgId: number): Promise<ControlRole[]> {
+  return apiFetch<ControlRole[]>(`/api/v1/orgs/${orgId}/control-roles`)
+}
+
+export function createControlRole(
+  orgId: number,
+  request: ControlRoleCreateRequest,
+): Promise<ControlRole> {
+  return apiFetch<ControlRole>(`/api/v1/orgs/${orgId}/control-roles`, {
+    method: 'POST',
+    body: JSON.stringify(request),
+  })
+}
+
+export function updateControlRole(
+  orgId: number,
+  roleId: number,
+  request: ControlRoleUpdateRequest,
+): Promise<ControlRole> {
+  return apiFetch<ControlRole>(`/api/v1/orgs/${orgId}/control-roles/${roleId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(request),
+  })
+}
+
+export async function deleteControlRole(orgId: number, roleId: number): Promise<void> {
+  await apiFetch<unknown>(`/api/v1/orgs/${orgId}/control-roles/${roleId}`, {
+    method: 'DELETE',
+  })
+}
+
+export async function assignMemberControlRole(
+  orgId: number,
+  userId: number,
+  controlRoleId: number | null,
+): Promise<void> {
+  await apiFetch<unknown>(`/api/v1/orgs/${orgId}/members/${userId}/control-role`, {
+    method: 'PUT',
+    body: JSON.stringify({ control_role_id: controlRoleId }),
+  })
+}
 
 export function fetchClientBuildCapabilities(orgId: number): Promise<ClientBuildCapabilities> {
   return apiFetch<ClientBuildCapabilities>(`/api/v1/orgs/${orgId}/client-build/capabilities`)

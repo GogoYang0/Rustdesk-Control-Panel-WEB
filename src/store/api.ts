@@ -2,6 +2,7 @@ import { createApi, fakeBaseQuery } from '@reduxjs/toolkit/query/react'
 
 import {
   ApiError,
+  assignMemberControlRole as assignMemberControlRoleRequest,
   fetchDevicePage,
   fetchDevices,
   fetchMe,
@@ -16,6 +17,7 @@ import {
   cancelClientBuild,
   createClientBuild,
   createClientBuildProfile,
+  createControlRole,
   createDeviceGroup,
   createPolicy,
   createUserGroup,
@@ -25,6 +27,7 @@ import {
   deleteAddressBookPeer,
   deleteClientBuildProfile,
   deleteClientBuildProfileLogo,
+  deleteControlRole,
   deleteDeviceGroup,
   deletePolicy,
   deleteUserGroup,
@@ -38,6 +41,7 @@ import {
   fetchClientBuildCapabilities,
   fetchClientBuildPage,
   fetchClientBuildProfiles,
+  fetchControlRoles,
   fetchDeviceGroups,
   fetchApproval,
   fetchApprovalPage,
@@ -61,6 +65,7 @@ import {
   submitApprovalDecision,
   updateAddressBook,
   updateClientBuildProfile,
+  updateControlRole,
   updateDevice,
   updateMember,
   updatePolicy,
@@ -86,6 +91,9 @@ import {
   type ClientBuildProfile,
   type ClientBuildProfilePage,
   type ClientBuildProfileUpdateRequest,
+  type ControlRole,
+  type ControlPermissionStates,
+  type ControlRoleUpdateRequest,
   type ConnectionLogPage,
   type FileLogPage,
   type LogEvent,
@@ -148,6 +156,7 @@ export const panelApi = createApi({
     'ClientBuildProfiles',
     'ClientBuilds',
     'ClientBuild',
+    'ControlRoles',
   ],
   endpoints: (build) => ({
     getMe: build.query<Me, void>({
@@ -514,6 +523,51 @@ export const panelApi = createApi({
       },
       invalidatesTags: (_result, _error, { orgId }) => [{ type: 'ClientBuildProfiles', id: orgId }],
     }),
+    getControlRoles: build.query<ControlRole[], number>({
+      queryFn: (orgId) => wrap(() => fetchControlRoles(orgId)),
+      providesTags: (_result, _error, orgId) => [{ type: 'ControlRoles', id: orgId }],
+    }),
+    createControlRole: build.mutation<
+      ControlRole,
+      { orgId: number; name: string; permissions: ControlPermissionStates }
+    >({
+      queryFn: ({ orgId, name, permissions }) =>
+        wrap(() => createControlRole(orgId, { name, permissions })),
+      invalidatesTags: (_result, _error, { orgId }) => [{ type: 'ControlRoles', id: orgId }],
+    }),
+    updateControlRole: build.mutation<
+      ControlRole,
+      { orgId: number; roleId: number; request: ControlRoleUpdateRequest }
+    >({
+      queryFn: ({ orgId, roleId, request }) =>
+        wrap(() => updateControlRole(orgId, roleId, request)),
+      invalidatesTags: (_result, _error, { orgId }) => [{ type: 'ControlRoles', id: orgId }],
+    }),
+    deleteControlRole: build.mutation<void, { orgId: number; roleId: number }>({
+      queryFn: async ({ orgId, roleId }) => {
+        const result = await wrap(() => deleteControlRole(orgId, roleId))
+        return 'data' in result ? { data: undefined } : result
+      },
+      invalidatesTags: (_result, _error, { orgId }) => [
+        { type: 'ControlRoles', id: orgId },
+        { type: 'Members', id: orgId },
+      ],
+    }),
+    assignMemberControlRole: build.mutation<
+      void,
+      { orgId: number; userId: number; controlRoleId: number | null }
+    >({
+      queryFn: async ({ orgId, userId, controlRoleId }) => {
+        const result = await wrap(() =>
+          assignMemberControlRoleRequest(orgId, userId, controlRoleId),
+        )
+        return 'data' in result ? { data: undefined } : result
+      },
+      invalidatesTags: (_result, _error, { orgId }) => [
+        { type: 'ControlRoles', id: orgId },
+        { type: 'Members', id: orgId },
+      ],
+    }),
     getClientBuildPage: build.query<ClientBuildPage, { orgId: number; queryString: string }>({
       queryFn: ({ orgId, queryString }) =>
         wrap(() => fetchClientBuildPage(orgId, new URLSearchParams(queryString))),
@@ -634,6 +688,11 @@ export const {
   useDeleteClientBuildProfileMutation,
   usePutClientBuildProfileLogoMutation,
   useDeleteClientBuildProfileLogoMutation,
+  useGetControlRolesQuery,
+  useCreateControlRoleMutation,
+  useUpdateControlRoleMutation,
+  useDeleteControlRoleMutation,
+  useAssignMemberControlRoleMutation,
   useGetClientBuildPageQuery,
   useGetClientBuildQuery,
   useCreateClientBuildMutation,
