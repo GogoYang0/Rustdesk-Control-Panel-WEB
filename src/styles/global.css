@@ -118,6 +118,17 @@
   width: min(460px, 100%);
   min-height: 0;
 }
+.captcha-field {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  background: var(--bg-card);
+}
+.captcha-field altcha-widget {
+  display: block;
+  margin-top: 4px;
+}
 
 /* 会话详情侧滑：原型 #sheet 的组件化版本（遮罩 + 432px 面板）。
    面板内的 .sheet-head/.sheet-title/.sheet-body 沿用 prototype.css。 */

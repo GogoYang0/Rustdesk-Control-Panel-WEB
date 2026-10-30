@@ -9,7 +9,6 @@ import {
   ApiError,
   beginPasskeyLogin,
   exchangeOidcLogin,
-  fetchCaptcha,
   fetchProviders,
   finishPasskeyLogin,
   ldapLogin,
@@ -20,6 +19,7 @@ import {
   type AuthProviders,
   type TwoFactorChallenge,
 } from '../../lib/api'
+import { captchaProviderSupported, captchaSubmitMessage } from '../../lib/captcha'
 import {
   assertPasskeyCredential,
   webAuthnErrorMessage,
@@ -35,6 +35,8 @@ import {
 import { RESEND_VERIFICATION_NOTICE, resendVerificationError } from '../../lib/onboarding'
 import { setTokens, type TokenPair } from '../../lib/session'
 import { panelApi } from '../../store/api'
+import CaptchaField from './captcha/CaptchaField'
+import { useCaptchaChallenge } from './captcha/useCaptchaChallenge'
 
 type Step = 'credentials' | 'totp'
 type LoginMode = 'local' | 'ldap'
@@ -51,10 +53,8 @@ export default function LoginPage() {
   const [methods, setMethods] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [captchaEnabled, setCaptchaEnabled] = useState<boolean | null>(null)
   const [providers, setProviders] = useState<AuthProviders | null>(null)
   const [providersError, setProvidersError] = useState(false)
-  const [captchaProbeFailed, setCaptchaProbeFailed] = useState(false)
   const [mode, setMode] = useState<LoginMode>('local')
   const [ldapUsername, setLdapUsername] = useState('')
   const [ldapPassword, setLdapPassword] = useState('')
@@ -64,6 +64,7 @@ export default function LoginPage() {
   const [resendError, setResendError] = useState('')
   const handledCallbackRef = useRef(false)
   const resendSeqRef = useRef(0)
+  const captcha = useCaptchaChallenge(true)
 
   // OIDC callback: the ticket is a one-shot 60s credential. Strip it from the
   // URL and exchange it exactly once (StrictMode re-runs this effect).
@@ -85,13 +86,7 @@ export default function LoginPage() {
   }, [])
 
   useEffect(() => {
-    // Both probes are best-effort: a slow panel must not block the form.
-    fetchCaptcha()
-      .then((info) => setCaptchaEnabled(info.enabled))
-      .catch(() => {
-        setCaptchaEnabled(null)
-        setCaptchaProbeFailed(true)
-      })
+    // Best-effort: a slow provider probe must not block password login.
     fetchProviders()
       .then((info) => setProviders(info))
       .catch(() => setProvidersError(true))
@@ -114,7 +109,30 @@ export default function LoginPage() {
     setStep('totp')
     setCode('')
     setError(null)
+    // The password proof was consumed; the TOTP endpoint needs a fresh one.
+    if (captcha.state.kind !== 'disabled') void captcha.refresh()
     return true
+  }
+
+  const captchaUnsupported =
+    captcha.state.kind === 'ready' && !captchaProviderSupported(captcha.state.provider)
+
+  function captchaReadyToSubmit(): boolean {
+    if (captcha.state.kind === 'loading' || captchaUnsupported) return false
+    if (captcha.state.kind === 'ready' && !captcha.proof) {
+      setError('请先完成安全验证')
+      return false
+    }
+    return true
+  }
+
+  function refreshCaptchaAfterFailure(err: unknown) {
+    if (captcha.state.kind === 'disabled') return
+    // 429 happens before requireCaptcha (IP bucket/account lock); the proof was
+    // not consumed. Provider outages keep the current challenge too.
+    if (err instanceof ApiError && err.status === 429) return
+    if (err instanceof ApiError && err.code === 'captcha_unavailable') return
+    void captcha.refresh()
   }
 
   async function completeOidcLogin(ticket: string) {
@@ -143,18 +161,20 @@ export default function LoginPage() {
   async function onSubmitCredentials(event: React.FormEvent) {
     event.preventDefault()
     if (submitting || mode !== 'local') return
+    if (!captchaReadyToSubmit()) return
     setSubmitting(true)
     setError(null)
     resetVerificationResend()
     try {
-      const pair = await login(email.trim(), password)
+      const pair = await login(email.trim(), password, captcha.proof ?? undefined)
       finish(pair)
     } catch (err) {
       if (beginSecondFactor(err)) return
       if (err instanceof ApiError && err.status === 403 && err.code === 'email_not_verified') {
         setVerifyEmailBlocked(true)
       }
-      const message = loginMessage(err as ApiError)
+      refreshCaptchaAfterFailure(err)
+      const message = captchaSubmitMessage(err) ?? loginMessage(err as ApiError)
       setError(message)
       Toast.error(message)
     } finally {
@@ -184,23 +204,25 @@ export default function LoginPage() {
   async function onSubmitLdap(event: React.FormEvent) {
     event.preventDefault()
     if (submitting || mode !== 'ldap') return
-    if (captchaEnabled !== false) return
     if (!ldapUsername.trim() || !ldapPassword) {
       setError('请输入目录用户名和密码')
       return
     }
+    if (!captchaReadyToSubmit()) return
     setSubmitting(true)
     setError(null)
     try {
       const pair = await ldapLogin({
         username: ldapUsername.trim(),
         password: ldapPassword,
+        captcha: captcha.proof ?? undefined,
       })
       finish(pair)
     } catch (err) {
       setLdapPassword('')
       if (beginSecondFactor(err)) return
-      const message = ldapLoginError(err)
+      refreshCaptchaAfterFailure(err)
+      const message = captchaSubmitMessage(err) ?? ldapLoginError(err)
       setError(message)
       Toast.error(message)
     } finally {
@@ -266,13 +288,15 @@ export default function LoginPage() {
   async function onSubmitCode(event: React.FormEvent) {
     event.preventDefault()
     if (submitting || !challenge) return
+    if (!captchaReadyToSubmit()) return
     setSubmitting(true)
     setError(null)
     try {
-      const pair = await verifyTwoFactor(challenge, code.trim())
+      const pair = await verifyTwoFactor(challenge, code.trim(), captcha.proof ?? undefined)
       finish(pair)
     } catch (err) {
-      const message = twoFactorMessage(err)
+      refreshCaptchaAfterFailure(err)
+      const message = captchaSubmitMessage(err) ?? twoFactorMessage(err)
       setError(message)
       Toast.error(message)
     } finally {
@@ -428,31 +452,8 @@ export default function LoginPage() {
                 </div>
               ) : null}
 
-              {captchaEnabled === true ? (
-                <div className="banner warning mb-14" style={{ padding: '9px 11px' }}>
-                  <div>
-                    该部署启用了交互式验证码，密码与目录登录暂不支持。
-                    {providers?.oidc?.enabled
-                      ? ' OIDC 登录（账户无本地 TOTP 时）仍可用。'
-                      : ' 请暂时使用 API 或等待更新。'}
-                  </div>
-                </div>
-              ) : null}
-
-              {mode === 'ldap' && captchaEnabled === null ? (
-                <div className="help mb-14">
-                  {captchaProbeFailed
-                    ? '无法确认验证码状态，目录登录暂不可用；密码登录仍可用。'
-                    : '正在确认验证码状态，目录登录暂不可用。'}
-                </div>
-              ) : null}
-
               {providersError ? (
-                <div className="help mb-14">
-                  {captchaEnabled === true
-                    ? '无法读取外部身份状态。'
-                    : '无法读取外部身份状态；密码登录仍可用。'}
-                </div>
+                <div className="help mb-14">无法读取外部身份状态；密码登录仍可用。</div>
               ) : null}
 
               {mode === 'local' ? (
@@ -528,13 +529,18 @@ export default function LoginPage() {
                 </>
               )}
 
+              <CaptchaField
+                state={captcha.state}
+                proof={captcha.proof}
+                onProof={captcha.acceptProof}
+                onExpired={() => void captcha.refresh()}
+                onRetry={() => void captcha.refresh()}
+              />
+
               <button
                 className="btn primary lg block"
                 type="submit"
-                disabled={
-                  submitting ||
-                  (mode === 'ldap' ? captchaEnabled !== false : captchaEnabled === true)
-                }
+                disabled={submitting || captcha.state.kind === 'loading' || captchaUnsupported}
               >
                 {submitting ? '登录中…' : mode === 'ldap' ? '目录登录' : '登录'}
               </button>
@@ -586,20 +592,6 @@ export default function LoginPage() {
                 </div>
               ) : null}
 
-              <div
-                id="totp-captcha-hint"
-                role="status"
-                aria-live="polite"
-                className={captchaEnabled === true ? 'banner warning mb-14' : 'help mb-14'}
-                style={captchaEnabled === true ? { padding: '9px 11px' } : undefined}
-              >
-                {captchaEnabled === true
-                  ? '该部署启用了交互式验证码；TOTP 第二步需要验证码 proof，控制台将在 17c 接入，当前无法完成。'
-                  : captchaEnabled === null
-                    ? '正在确认验证码状态；若部署启用了验证码，TOTP 第二步将无法完成。'
-                    : ''}
-              </div>
-
               <div className="field mb-14">
                 <label className="form-label" htmlFor="login-code">
                   <span className="req">*</span>动态码
@@ -607,7 +599,6 @@ export default function LoginPage() {
                 <div className="input lg" style={{ height: 40 }}>
                   <input
                     id="login-code"
-                    aria-describedby="totp-captcha-hint"
                     value={code}
                     onChange={(e) => setCode(e.target.value)}
                     placeholder="123456"
@@ -620,7 +611,19 @@ export default function LoginPage() {
                 <div className="help">挑战令牌 5 分钟内有效；每个动态码仅在其时间步内可用。</div>
               </div>
 
-              <button className="btn primary lg block" type="submit" disabled={submitting}>
+              <CaptchaField
+                state={captcha.state}
+                proof={captcha.proof}
+                onProof={captcha.acceptProof}
+                onExpired={() => void captcha.refresh()}
+                onRetry={() => void captcha.refresh()}
+              />
+
+              <button
+                className="btn primary lg block"
+                type="submit"
+                disabled={submitting || captcha.state.kind === 'loading' || captchaUnsupported}
+              >
                 {submitting ? '校验中…' : '验证并登录'}
               </button>
               {webAuthnSupported() && methods.includes('passkey') ? (

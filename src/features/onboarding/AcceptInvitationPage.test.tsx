@@ -5,6 +5,28 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import AcceptInvitationPage from './AcceptInvitationPage'
 
+vi.mock('../auth/captcha/CaptchaField', () => ({
+  default: ({
+    state,
+    onProof,
+  }: {
+    state: { kind: string; generation?: number; message?: string }
+    onProof: (generation: number, proof: unknown) => void
+  }) => {
+    if (state.kind === 'disabled') return null
+    if (state.kind === 'loading') return <div>验证码加载中…</div>
+    if (state.kind === 'unavailable') return <div>{state.message}</div>
+    return (
+      <button
+        type="button"
+        onClick={() => onProof(state.generation ?? 0, { response: { payload: 'test-payload' } })}
+      >
+        完成验证
+      </button>
+    )
+  },
+}))
+
 const TOKEN = 'invite-token-0123456789'
 
 function json(body: unknown, status = 200) {
@@ -58,7 +80,15 @@ function setup(
       return json({
         code: 'ok',
         message: 'ok',
-        data: { enabled: options.captchaEnabled ?? false },
+        data: options.captchaEnabled
+          ? {
+              enabled: true,
+              provider: 'altcha',
+              challenge: {
+                params: { challenge: 'c1', salt: 's1', signature: 'sig1', maxNumber: 100000 },
+              },
+            }
+          : { enabled: false },
       })
     }
     if (url.endsWith('/invitations/accept')) {
@@ -188,57 +218,99 @@ describe('AcceptInvitationPage', () => {
     expect(screen.queryByPlaceholderText('至少 8 位')).toBeNull()
   })
 
-  it('disables the form when the deployment requires interactive captcha', async () => {
+  it('requires and sends a captcha proof when the deployment enables it', async () => {
     const { requests } = setup(`/accept-invitation?token=${TOKEN}`, { captchaEnabled: true })
+    await ready()
 
-    expect(await screen.findByText(/邀请接受暂不支持/)).toBeTruthy()
-    expect((screen.getByPlaceholderText('至少 8 位') as HTMLInputElement).disabled).toBe(true)
-    expect((screen.getByLabelText(/确认密码/) as HTMLInputElement).disabled).toBe(true)
-    expect((screen.getByRole('button', { name: '接受邀请' }) as HTMLButtonElement).disabled).toBe(
-      true,
-    )
+    expect((screen.getByPlaceholderText('至少 8 位') as HTMLInputElement).disabled).toBe(false)
+    fill('password-1')
+    fireEvent.click(screen.getByRole('button', { name: '接受邀请' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('请先完成安全验证')
     expect(requests.some((request) => request.url.endsWith('/invitations/accept'))).toBe(false)
+
+    fireEvent.click(screen.getByRole('button', { name: '完成验证' }))
+    fireEvent.click(screen.getByRole('button', { name: '接受邀请' }))
+    expect(await screen.findByText(/已加入组织/)).toBeTruthy()
+    const accept = requests.find((request) => request.url.endsWith('/invitations/accept'))
+    expect(JSON.parse(accept?.body ?? '{}')).toEqual({
+      token: TOKEN,
+      password: 'password-1',
+      captcha: { response: { payload: 'test-payload' } },
+    })
   })
 
-  it('still submits when the captcha probe fails and maps the server captcha answer', async () => {
+  it('refreshes the challenge after a rejected existing-account password', async () => {
+    const { requests } = setup(`/accept-invitation?token=${TOKEN}`, {
+      captchaEnabled: true,
+      acceptStatus: 401,
+    })
+    await ready()
+    fireEvent.click(screen.getByRole('button', { name: '完成验证' }))
+    fill('password-1')
+    fireEvent.click(screen.getByRole('button', { name: '接受邀请' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('密码不正确')
+    await waitFor(() =>
+      expect(requests.filter((request) => request.url.endsWith('/auth/captcha'))).toHaveLength(2),
+    )
+  })
+
+  it('drops a dead token without refreshing the challenge', async () => {
+    const { requests } = setup(`/accept-invitation?token=${TOKEN}`, {
+      captchaEnabled: true,
+      acceptStatus: 409,
+    })
+    await ready()
+    fireEvent.click(screen.getByRole('button', { name: '完成验证' }))
+    fill('password-1')
+    fireEvent.click(screen.getByRole('button', { name: '接受邀请' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('无效、已过期或已被使用')
+    expect(requests.filter((request) => request.url.endsWith('/auth/captcha'))).toHaveLength(1)
+  })
+
+  it('maps a server captcha answer when the challenge probe failed', async () => {
     setup(`/accept-invitation?token=${TOKEN}`, {
-      captchaStatus: 500,
+      captchaStatus: 503,
       acceptStatus: 400,
       acceptBody: { code: 'captcha_required', message: 'captcha is required' },
     })
 
-    expect(await screen.findByText(/无法确认验证码状态/)).toBeTruthy()
+    expect(await screen.findByText(/验证码服务不可用/)).toBeTruthy()
     await ready()
     fill('password-1')
     fireEvent.click(screen.getByRole('button', { name: '接受邀请' }))
 
-    expect(await screen.findByText(/邀请接受暂不支持/)).toBeTruthy()
+    expect(await screen.findByRole('alert')).toHaveTextContent('验证码已失效')
     expect((screen.getByRole('button', { name: '接受邀请' }) as HTMLButtonElement).disabled).toBe(
-      true,
+      false,
     )
   })
 
-  it('keeps submit disabled while the captcha probe is still pending', async () => {
+  it('keeps submit disabled while the challenge is still loading', async () => {
     const { requests } = setup(`/accept-invitation?token=${TOKEN}`, { captchaPending: true })
 
-    expect(await screen.findByText('正在确认验证码状态…')).toBeTruthy()
+    expect(await screen.findByText('验证码加载中…')).toBeTruthy()
     expect((screen.getByRole('button', { name: '接受邀请' }) as HTMLButtonElement).disabled).toBe(
       true,
     )
     expect(requests.some((request) => request.url.endsWith('/invitations/accept'))).toBe(false)
   })
 
-  it('keeps the invitation retryable after throttling', async () => {
-    setup(`/accept-invitation?token=${TOKEN}`, {
+  it('keeps the proof on throttling so the invitation stays retryable', async () => {
+    const { requests } = setup(`/accept-invitation?token=${TOKEN}`, {
+      captchaEnabled: true,
       acceptStatus: 429,
       acceptBody: { code: 'rate_limited', message: 'too many attempts' },
     })
     await ready()
+    fireEvent.click(screen.getByRole('button', { name: '完成验证' }))
     fill('password-1')
     fireEvent.click(screen.getByRole('button', { name: '接受邀请' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('频繁')
     expect((screen.getByPlaceholderText('至少 8 位') as HTMLInputElement).value).toBe('password-1')
+    expect(requests.filter((request) => request.url.endsWith('/auth/captcha'))).toHaveLength(1)
     expect((screen.getByRole('button', { name: '接受邀请' }) as HTMLButtonElement).disabled).toBe(
       false,
     )

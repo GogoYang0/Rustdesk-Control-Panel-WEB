@@ -61,6 +61,8 @@ import type {
   IdentityList,
   IdentityUnlinkRequest,
   AuthProviders,
+  CaptchaChallenge,
+  CaptchaProof,
   ProvisioningStatus,
   AuditRetention,
   OidcStartRequest,
@@ -305,24 +307,25 @@ export interface TwoFactorChallenge {
   methods?: string[]
 }
 
-export interface CaptchaInfo {
-  enabled: boolean
-  provider?: string
-}
+export type { CaptchaChallenge, CaptchaProof }
 
-export function login(email: string, password: string): Promise<TokenPair> {
+export function login(email: string, password: string, captcha?: CaptchaProof): Promise<TokenPair> {
   return apiFetch<TokenPair>('/api/v1/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, captcha }),
     retryOn401: false,
   })
 }
 
 /** Second login step for accounts with TOTP enabled. */
-export function verifyTwoFactor(challengeToken: string, code: string): Promise<TokenPair> {
+export function verifyTwoFactor(
+  challengeToken: string,
+  code: string,
+  captcha?: CaptchaProof,
+): Promise<TokenPair> {
   return apiFetch<TokenPair>('/api/v1/auth/2fa/verify', {
     method: 'POST',
-    body: JSON.stringify({ challenge_token: challengeToken, code }),
+    body: JSON.stringify({ challenge_token: challengeToken, code, captcha }),
     retryOn401: false,
   })
 }
@@ -331,8 +334,13 @@ export function fetchProviders(): Promise<AuthProviders> {
   return apiFetch<AuthProviders>('/api/v1/auth/providers')
 }
 
-export function fetchCaptcha(): Promise<CaptchaInfo> {
-  return apiFetch('/api/v1/auth/captcha')
+export function fetchCaptchaChallenge(): Promise<CaptchaChallenge> {
+  return apiFetch<CaptchaChallenge>('/api/v1/auth/captcha', {
+    retryOn401: false,
+    // The page may still carry an OIDC ticket or invitation token when this
+    // runs; a default Referer would copy it into proxy/API access logs.
+    referrerPolicy: 'no-referrer',
+  })
 }
 
 export function startOidcLogin(input: OidcStartRequest): Promise<OidcStart> {
@@ -380,10 +388,14 @@ export async function resendVerification(email: string): Promise<void> {
   })
 }
 
-export function acceptInvitation(token: string, password: string): Promise<Member> {
+export function acceptInvitation(
+  token: string,
+  password: string,
+  captcha?: CaptchaProof,
+): Promise<Member> {
   return apiFetch<Member>('/api/v1/invitations/accept', {
     method: 'POST',
-    body: JSON.stringify({ token, password }),
+    body: JSON.stringify({ token, password, captcha }),
     retryOn401: false,
     referrerPolicy: 'no-referrer',
   })
