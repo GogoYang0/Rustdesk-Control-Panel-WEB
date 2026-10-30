@@ -125,7 +125,8 @@
   border-radius: var(--radius-m);
   background: var(--bg-card);
 }
-.captcha-field altcha-widget {
+.captcha-field altcha-widget,
+.captcha-field cap-widget {
   display: block;
   margin-top: 4px;
 }
