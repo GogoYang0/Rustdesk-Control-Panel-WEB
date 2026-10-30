@@ -159,6 +159,11 @@ describe('TokenCard', () => {
       expires_in_days: 30,
     })
 
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.getByTestId('token-plaintext')).toBeTruthy()
+    fireEvent.click(document.querySelector('.mask') as Element)
+    expect(screen.getByTestId('token-plaintext')).toBeTruthy()
+
     fireEvent.click(screen.getByRole('button', { name: '我已保存' }))
     await waitFor(() => expect(screen.queryByTestId('token-plaintext')).toBeNull())
     expect(document.body.textContent).not.toContain('rdt_plaintext_ONLY_ONCE')

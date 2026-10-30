@@ -321,7 +321,9 @@ export default function TokenCard({
       {issued ? (
         <Modal
           title="令牌已创建"
-          onClose={() => setIssued(null)}
+          // A mask click or Escape must not discard the only copy of the
+          // plaintext; only the explicit save button closes this dialog.
+          onClose={() => undefined}
           footer={
             <>
               <button className="btn tertiary" type="button" onClick={() => void copyPlaintext()}>
@@ -336,7 +338,8 @@ export default function TokenCard({
           <div className="banner warning mb-14" style={{ padding: '9px 11px' }}>
             <div>
               <b>明文只显示这一次。</b>
-              关闭后无法再次查看，列表只能看到前缀；遗失请撤销后重新创建。
+              关闭后无法再次查看，列表只能看到前缀；点击遮罩或 Escape
+              不会关闭，请先复制或点「我已保存」。
             </div>
           </div>
           <pre
