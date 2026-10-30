@@ -135,7 +135,7 @@ export default function MemberAssignments({
                           className="select-native"
                           aria-label={`控制角色 ${member.email}`}
                           value={currentValue(member)}
-                          disabled={busyUserId !== null || !rolesReady}
+                          disabled={busyUserId !== null || !rolesReady || !!membersError}
                           onChange={(event) => void change(member, event.target.value)}
                         >
                           <option value="">未分配 → Default</option>
