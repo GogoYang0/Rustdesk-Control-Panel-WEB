@@ -3,6 +3,9 @@ import { createApi, fakeBaseQuery } from '@reduxjs/toolkit/query/react'
 import {
   ApiError,
   assignMemberControlRole as assignMemberControlRoleRequest,
+  assignMemberStrategy as assignMemberStrategyRequest,
+  assignDeviceGroupStrategy as assignDeviceGroupStrategyRequest,
+  assignDeviceStrategy as assignDeviceStrategyRequest,
   fetchDevicePage,
   fetchDevices,
   fetchMe,
@@ -18,6 +21,9 @@ import {
   createClientBuild,
   createClientBuildProfile,
   createControlRole,
+  createStrategy,
+  deleteStrategy,
+  fetchStrategies,
   createDeviceGroup,
   createPolicy,
   createUserGroup,
@@ -66,6 +72,7 @@ import {
   updateAddressBook,
   updateClientBuildProfile,
   updateControlRole,
+  updateStrategy,
   updateDevice,
   updateMember,
   updatePolicy,
@@ -94,6 +101,9 @@ import {
   type ControlRole,
   type ControlPermissionStates,
   type ControlRoleUpdateRequest,
+  type Strategy,
+  type StrategyCreateRequest,
+  type StrategyUpdateRequest,
   type ConnectionLogPage,
   type FileLogPage,
   type LogEvent,
@@ -157,6 +167,7 @@ export const panelApi = createApi({
     'ClientBuilds',
     'ClientBuild',
     'ControlRoles',
+    'Strategies',
   ],
   endpoints: (build) => ({
     getMe: build.query<Me, void>({
@@ -523,6 +534,67 @@ export const panelApi = createApi({
       },
       invalidatesTags: (_result, _error, { orgId }) => [{ type: 'ClientBuildProfiles', id: orgId }],
     }),
+    getStrategies: build.query<Strategy[], number>({
+      queryFn: (orgId) => wrap(() => fetchStrategies(orgId)),
+      providesTags: (_result, _error, orgId) => [{ type: 'Strategies', id: orgId }],
+    }),
+    createStrategy: build.mutation<Strategy, { orgId: number; request: StrategyCreateRequest }>({
+      queryFn: ({ orgId, request }) => wrap(() => createStrategy(orgId, request)),
+      invalidatesTags: (_result, _error, { orgId }) => [{ type: 'Strategies', id: orgId }],
+    }),
+    updateStrategy: build.mutation<
+      Strategy,
+      { orgId: number; strategyId: number; request: StrategyUpdateRequest }
+    >({
+      queryFn: ({ orgId, strategyId, request }) =>
+        wrap(() => updateStrategy(orgId, strategyId, request)),
+      invalidatesTags: (_result, _error, { orgId }) => [{ type: 'Strategies', id: orgId }],
+    }),
+    deleteStrategy: build.mutation<void, { orgId: number; strategyId: number }>({
+      queryFn: async ({ orgId, strategyId }) => {
+        const result = await wrap(() => deleteStrategy(orgId, strategyId))
+        return 'data' in result ? { data: undefined } : result
+      },
+      invalidatesTags: (_result, _error, { orgId }) => [
+        { type: 'Strategies', id: orgId },
+        { type: 'Members', id: orgId },
+        { type: 'DeviceGroups', id: orgId },
+        { type: 'Devices', id: orgId },
+        { type: 'AccessDevices', id: orgId },
+      ],
+    }),
+    assignMemberStrategy: build.mutation<
+      void,
+      { orgId: number; userId: number; strategyId: number | null }
+    >({
+      queryFn: async ({ orgId, userId, strategyId }) => {
+        const result = await wrap(() => assignMemberStrategyRequest(orgId, userId, strategyId))
+        return 'data' in result ? { data: undefined } : result
+      },
+      invalidatesTags: (_result, _error, { orgId }) => [{ type: 'Members', id: orgId }],
+    }),
+    assignDeviceGroupStrategy: build.mutation<
+      void,
+      { orgId: number; groupId: number; strategyId: number | null }
+    >({
+      queryFn: async ({ orgId, groupId, strategyId }) => {
+        const result = await wrap(() =>
+          assignDeviceGroupStrategyRequest(orgId, groupId, strategyId),
+        )
+        return 'data' in result ? { data: undefined } : result
+      },
+      invalidatesTags: (_result, _error, { orgId }) => [{ type: 'DeviceGroups', id: orgId }],
+    }),
+    assignDeviceStrategy: build.mutation<
+      void,
+      { orgId: number; deviceId: number; strategyId: number | null }
+    >({
+      queryFn: async ({ orgId, deviceId, strategyId }) => {
+        const result = await wrap(() => assignDeviceStrategyRequest(orgId, deviceId, strategyId))
+        return 'data' in result ? { data: undefined } : result
+      },
+      invalidatesTags: (_result, _error, { orgId }) => [{ type: 'Devices', id: orgId }],
+    }),
     getControlRoles: build.query<ControlRole[], number>({
       queryFn: (orgId) => wrap(() => fetchControlRoles(orgId)),
       providesTags: (_result, _error, orgId) => [{ type: 'ControlRoles', id: orgId }],
@@ -688,6 +760,13 @@ export const {
   useDeleteClientBuildProfileMutation,
   usePutClientBuildProfileLogoMutation,
   useDeleteClientBuildProfileLogoMutation,
+  useGetStrategiesQuery,
+  useCreateStrategyMutation,
+  useUpdateStrategyMutation,
+  useDeleteStrategyMutation,
+  useAssignMemberStrategyMutation,
+  useAssignDeviceGroupStrategyMutation,
+  useAssignDeviceStrategyMutation,
   useGetControlRolesQuery,
   useCreateControlRoleMutation,
   useUpdateControlRoleMutation,

@@ -45,6 +45,9 @@ import type {
   Role,
   SessionDetail as SessionDetailPayload,
   SessionPage,
+  Strategy,
+  StrategyCreateRequest,
+  StrategyUpdateRequest,
 } from '../api/generated'
 import { getAccessToken, logout, refreshAccessToken, type TokenPair } from './session'
 
@@ -356,6 +359,9 @@ export type {
   SessionDetail,
   SessionEvent,
   SessionPage,
+  Strategy,
+  StrategyCreateRequest,
+  StrategyUpdateRequest,
 } from '../api/generated'
 
 export function fetchSessions(orgId: number, query: URLSearchParams): Promise<SessionPage> {
@@ -701,6 +707,70 @@ export type {
 } from '../api/generated'
 
 // ── control roles ───────────────────────────────────────────────────────────
+
+// ── client strategies ───────────────────────────────────────────────────────
+
+export function fetchStrategies(orgId: number): Promise<Strategy[]> {
+  return apiFetch<Strategy[]>(`/api/v1/orgs/${orgId}/strategies`)
+}
+
+export function createStrategy(orgId: number, request: StrategyCreateRequest): Promise<Strategy> {
+  return apiFetch<Strategy>(`/api/v1/orgs/${orgId}/strategies`, {
+    method: 'POST',
+    body: JSON.stringify(request),
+  })
+}
+
+export function updateStrategy(
+  orgId: number,
+  strategyId: number,
+  request: StrategyUpdateRequest,
+): Promise<Strategy> {
+  return apiFetch<Strategy>(`/api/v1/orgs/${orgId}/strategies/${strategyId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(request),
+  })
+}
+
+export async function deleteStrategy(orgId: number, strategyId: number): Promise<void> {
+  await apiFetch<unknown>(`/api/v1/orgs/${orgId}/strategies/${strategyId}`, {
+    method: 'DELETE',
+  })
+}
+
+async function putStrategyAssignment(path: string, strategyId: number | null): Promise<void> {
+  await apiFetch<unknown>(path, {
+    method: 'PUT',
+    body: JSON.stringify({ strategy_id: strategyId }),
+  })
+}
+
+export function assignMemberStrategy(
+  orgId: number,
+  userId: number,
+  strategyId: number | null,
+): Promise<void> {
+  return putStrategyAssignment(`/api/v1/orgs/${orgId}/members/${userId}/strategy`, strategyId)
+}
+
+export function assignDeviceGroupStrategy(
+  orgId: number,
+  groupId: number,
+  strategyId: number | null,
+): Promise<void> {
+  return putStrategyAssignment(
+    `/api/v1/orgs/${orgId}/device-groups/${groupId}/strategy`,
+    strategyId,
+  )
+}
+
+export function assignDeviceStrategy(
+  orgId: number,
+  deviceId: number,
+  strategyId: number | null,
+): Promise<void> {
+  return putStrategyAssignment(`/api/v1/orgs/${orgId}/devices/${deviceId}/strategy`, strategyId)
+}
 
 export function fetchControlRoles(orgId: number): Promise<ControlRole[]> {
   return apiFetch<ControlRole[]>(`/api/v1/orgs/${orgId}/control-roles`)
