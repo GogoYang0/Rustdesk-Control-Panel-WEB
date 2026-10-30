@@ -1,7 +1,11 @@
 const scripts = new Map<string, Promise<void>>()
 
 /** Loads a provider script once; concurrent callers share the same request. */
-export function loadExternalScript(url: string, timeoutMs = 10_000): Promise<void> {
+export function loadExternalScript(
+  url: string,
+  timeoutMs = 10_000,
+  isReady?: () => boolean,
+): Promise<void> {
   const cached = scripts.get(url)
   if (cached) return cached
 
@@ -23,6 +27,13 @@ export function loadExternalScript(url: string, timeoutMs = 10_000): Promise<voi
 
     script.onload = () => {
       cleanup()
+      // A proxy can answer 200 with an empty/error body; caching that success
+      // would make every retry fail without reloading the script.
+      if (isReady && !isReady()) {
+        script.remove()
+        reject(new Error('script global missing'))
+        return
+      }
       resolve()
     }
     script.onerror = () => {

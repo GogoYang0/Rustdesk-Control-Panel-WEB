@@ -72,6 +72,8 @@ describe('GeeTestField', () => {
     await waitFor(() => expect(init).toHaveBeenCalled())
     expect(scriptMock.loadExternalScript).toHaveBeenCalledWith(
       'https://static.geetest.com/v4/gt4.js',
+      10_000,
+      expect.any(Function),
     )
     expect(init.mock.calls[0][0]).toEqual({
       captchaId: 'captcha-id',

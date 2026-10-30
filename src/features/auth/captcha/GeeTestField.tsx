@@ -67,7 +67,7 @@ export default function GeeTestField({
         return
       }
       try {
-        await loadExternalScript(scriptUrl)
+        await loadExternalScript(scriptUrl, 10_000, () => typeof window.initGeetest4 === 'function')
         if (!active) return
         const init = window.initGeetest4
         if (typeof init !== 'function') throw new Error('initGeetest4 missing')

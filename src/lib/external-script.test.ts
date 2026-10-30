@@ -36,6 +36,19 @@ describe('loadExternalScript', () => {
     await expect(retry).resolves.toBeUndefined()
   })
 
+  it('rejects and clears the cache when the expected global is missing', async () => {
+    const url = 'https://static.geetest.com/v4/test-missing-global.js'
+    const first = loadExternalScript(url, 5000, () => false)
+    findScript(url)?.dispatchEvent(new Event('load'))
+    await expect(first).rejects.toThrow('script global missing')
+    expect(findScript(url)).toBeNull()
+
+    const retry = loadExternalScript(url, 5000, () => true)
+    expect(findScript(url)).not.toBeNull()
+    findScript(url)?.dispatchEvent(new Event('load'))
+    await expect(retry).resolves.toBeUndefined()
+  })
+
   it('times out a script that never settles', async () => {
     vi.useFakeTimers()
     const url = 'https://static.geetest.com/v4/test-timeout.js'
