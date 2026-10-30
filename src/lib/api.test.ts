@@ -28,6 +28,9 @@ const {
   fetchProvisioning,
   fetchProviders,
   fetchTokens,
+  exchangeOidcLogin,
+  ldapLogin,
+  startOidcLogin,
   updateAuditRetention,
   updateProvisioning,
   renamePasskey,
@@ -233,6 +236,67 @@ describe('personal tokens and identities', () => {
     expect(JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body))).toEqual({
       identity_id: 5,
       stepup_token: 'step-token',
+    })
+  })
+})
+
+describe('external login endpoints', () => {
+  beforeEach(() => {
+    refreshAccessToken.mockReset()
+    logout.mockReset()
+    sessionMock.expiresSoon = false
+    sessionMock.refreshToken = 'refresh-1'
+  })
+  afterEach(() => vi.restoreAllMocks())
+
+  it('starts OIDC with the login redirect path and no session', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        code: 'ok',
+        message: 'ok',
+        data: { authorization_url: 'https://idp.example.com/auth', state: 'state-1' },
+      }),
+    )
+    await expect(startOidcLogin({ redirect_path: '/login' })).resolves.toMatchObject({
+      state: 'state-1',
+    })
+    const call = fetchMock.mock.calls[0]
+    expect(String(call[0])).toBe('/api/v1/auth/oidc/start')
+    expect(String((call[1] as RequestInit).method)).toBe('POST')
+    expect(JSON.parse(String((call[1] as RequestInit).body))).toEqual({
+      redirect_path: '/login',
+    })
+  })
+
+  it('does not refresh or replay a rejected OIDC ticket', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(jsonResponse({ code: 'unauthorized', message: 'ticket rejected' }, 401))
+    await expect(exchangeOidcLogin({ ticket: 'ticket-1' })).rejects.toMatchObject({
+      status: 401,
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(refreshAccessToken).not.toHaveBeenCalled()
+    expect(JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body))).toEqual({
+      ticket: 'ticket-1',
+    })
+  })
+
+  it('does not refresh or replay a rejected LDAP password', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(
+        jsonResponse({ code: 'unauthorized', message: 'invalid credentials' }, 401),
+      )
+    await expect(ldapLogin({ username: 'alice', password: 'wrong' })).rejects.toMatchObject({
+      status: 401,
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(refreshAccessToken).not.toHaveBeenCalled()
+    expect(String(fetchMock.mock.calls[0][0])).toBe('/api/v1/auth/ldap/login')
+    expect(JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body))).toEqual({
+      username: 'alice',
+      password: 'wrong',
     })
   })
 })

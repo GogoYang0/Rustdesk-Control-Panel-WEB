@@ -1,5 +1,5 @@
 import { Banner, Spin, Typography } from '@douyinfe/semi-ui'
-import { createBrowserRouter, Navigate } from 'react-router'
+import { createBrowserRouter, Navigate, useSearchParams } from 'react-router'
 
 import LoginPage from './features/auth/LoginPage'
 import OverviewPage from './features/overview/OverviewPage'
@@ -27,7 +27,18 @@ import { useGetMeQuery } from './store/api'
 const { Title, Text } = Typography
 
 function RootRedirect() {
-  const { data, isLoading, error } = useGetMeQuery()
+  const [params] = useSearchParams()
+  const ticket = params.get('ticket')
+  const oidcError = params.get('error')
+  const { data, isLoading, error } = useGetMeQuery(undefined, {
+    skip: Boolean(ticket || oidcError),
+  })
+  if (ticket || oidcError) {
+    const next = new URLSearchParams()
+    if (ticket) next.set('ticket', ticket)
+    if (oidcError) next.set('error', oidcError)
+    return <Navigate to={`/login?${next.toString()}`} replace />
+  }
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">

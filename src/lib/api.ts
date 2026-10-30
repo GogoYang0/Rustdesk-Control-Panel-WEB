@@ -63,6 +63,10 @@ import type {
   AuthProviders,
   ProvisioningStatus,
   AuditRetention,
+  OidcStartRequest,
+  OidcStart,
+  OidcExchangeRequest,
+  LdapLoginRequest,
 } from '../api/generated'
 import {
   accessTokenExpiresSoon,
@@ -331,6 +335,30 @@ export function fetchCaptcha(): Promise<CaptchaInfo> {
   return apiFetch('/api/v1/auth/captcha')
 }
 
+export function startOidcLogin(input: OidcStartRequest): Promise<OidcStart> {
+  return apiFetch<OidcStart>('/api/v1/auth/oidc/start', {
+    method: 'POST',
+    body: JSON.stringify(input),
+    retryOn401: false,
+  })
+}
+
+export function exchangeOidcLogin(input: OidcExchangeRequest): Promise<TokenPair> {
+  return apiFetch<TokenPair>('/api/v1/auth/oidc/exchange', {
+    method: 'POST',
+    body: JSON.stringify(input),
+    retryOn401: false,
+  })
+}
+
+export function ldapLogin(input: LdapLoginRequest): Promise<TokenPair> {
+  return apiFetch<TokenPair>('/api/v1/auth/ldap/login', {
+    method: 'POST',
+    body: JSON.stringify(input),
+    retryOn401: false,
+  })
+}
+
 export function fetchMe(): Promise<Me> {
   return apiFetch<Me>('/api/v1/me')
 }
@@ -341,6 +369,10 @@ export type {
   ApiToken,
   IssuedApiToken,
   TokenCreateRequest,
+  OidcStartRequest,
+  OidcStart,
+  OidcExchangeRequest,
+  LdapLoginRequest,
   Identity,
   IdentityList,
   IdentityUnlinkRequest,

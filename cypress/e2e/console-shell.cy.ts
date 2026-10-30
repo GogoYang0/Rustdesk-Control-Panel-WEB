@@ -39,6 +39,21 @@ import { consoleE2EEnabled, openConsole, signIn } from '../support/console'
     cy.get('#modalRoot .mask').should('not.exist')
   })
 
+  it('forwards an OIDC ticket from the root and clears it afterwards', () => {
+    cy.visit('/?ticket=invalid-e2e-ticket')
+    cy.location('pathname', { timeout: 10000 }).should('eq', '/login')
+    cy.location('search').should('not.contain', 'ticket=')
+    cy.contains(/SSO (回调已失效|尚未启用)/).should('be.visible')
+    cy.get('.login-card input').should('have.length.at.least', 2)
+  })
+
+  it('forwards an OIDC callback error from the root to the login page', () => {
+    cy.visit('/?error=oidc_failed')
+    cy.location('pathname', { timeout: 10000 }).should('eq', '/login')
+    cy.contains('SSO 登录失败，请重试或联系管理员').should('be.visible')
+    cy.location('search').should('not.contain', 'error=')
+  })
+
   it('keeps one tab per page and closes the inactive one', () => {
     cy.get('.tab-item').should('have.length', 1)
     cy.contains('.nav-item', '角色与权限').click()
