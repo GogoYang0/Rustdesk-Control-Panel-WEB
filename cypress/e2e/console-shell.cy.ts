@@ -9,6 +9,8 @@ import { consoleE2EEnabled, openConsole, signIn } from '../support/console'
   beforeEach(openConsole)
 
   it('signs in and lists the organization members', () => {
+    cy.contains('.nav-item', '组织与成员').click()
+    cy.location('pathname', { timeout: 10000 }).should('match', /\/members$/)
     cy.get('.page-title').should('have.text', '组织与成员')
     cy.get('.table tbody tr').should('have.length.at.least', 1)
     cy.env(['consoleEmail']).then(({ consoleEmail }) => {
@@ -25,6 +27,8 @@ import { consoleE2EEnabled, openConsole, signIn } from '../support/console'
   })
 
   it('opens the invite dialog as an overlay and closes it', () => {
+    cy.contains('.nav-item', '组织与成员').click()
+    cy.location('pathname', { timeout: 10000 }).should('match', /\/members$/)
     cy.contains('.page-head button', '邀请成员').click()
     cy.get('#modalRoot .mask').should('be.visible')
     cy.get('#modalRoot .modal-head').should('have.text', '邀请成员')

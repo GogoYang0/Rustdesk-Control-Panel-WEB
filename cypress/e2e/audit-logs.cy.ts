@@ -4,9 +4,15 @@ import { consoleE2EEnabled, openConsole, signIn } from '../support/console'
 
 ;(consoleE2EEnabled ? describe : describe.skip)('audit & logs', () => {
   before(signIn)
-  beforeEach(openConsole)
+  beforeEach(() => {
+    cy.intercept('GET', '**/api/v1/orgs/*/members').as('members')
+    openConsole()
+  })
 
   it('lists audit rows and opens a row snapshot', () => {
+    cy.contains('.nav-item', '组织与成员').click()
+    cy.location('pathname', { timeout: 10000 }).should('match', /\/members$/)
+    cy.wait('@members')
     cy.contains('.nav-item', '审计与日志').click()
     cy.location('pathname', { timeout: 10000 }).should('match', /\/audit$/)
     cy.get('.page-title').should('have.text', '审计与日志')
@@ -25,6 +31,9 @@ import { consoleE2EEnabled, openConsole, signIn } from '../support/console'
   })
 
   it('filters by exact action and resets', () => {
+    cy.contains('.nav-item', '组织与成员').click()
+    cy.location('pathname', { timeout: 10000 }).should('match', /\/members$/)
+    cy.wait('@members')
     cy.contains('.nav-item', '审计与日志').click()
     cy.location('pathname', { timeout: 10000 }).should('match', /\/audit$/)
 
@@ -62,6 +71,9 @@ import { consoleE2EEnabled, openConsole, signIn } from '../support/console'
     cy.get('[role=tablist][aria-label="日志类型"] [role=tab]').should('have.length', 3)
   })
   it('exports the filtered audit tab as CSV', () => {
+    cy.contains('.nav-item', '组织与成员').click()
+    cy.location('pathname', { timeout: 10000 }).should('match', /\/members$/)
+    cy.wait('@members')
     cy.contains('.nav-item', '审计与日志').click()
     cy.location('pathname', { timeout: 10000 }).should('match', /\/audit$/)
 

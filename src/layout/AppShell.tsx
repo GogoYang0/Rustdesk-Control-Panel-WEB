@@ -19,6 +19,22 @@ interface NavEntry {
 }
 
 const ICONS: Record<string, ReactElement> = {
+  overview: (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 18 18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+    >
+      <rect x="2.5" y="2.5" width="5" height="5" rx="1" />
+      <rect x="10.5" y="2.5" width="5" height="5" rx="1" />
+      <rect x="2.5" y="10.5" width="5" height="5" rx="1" />
+      <rect x="10.5" y="10.5" width="5" height="5" rx="1" />
+    </svg>
+  ),
   devices: (
     <svg
       width="18"
@@ -210,6 +226,10 @@ const ICONS: Record<string, ReactElement> = {
 
 const GROUPS: { title: string; items: NavEntry[] }[] = [
   {
+    title: '概览',
+    items: [{ key: 'overview', label: '总览', ready: true, icon: ICONS.overview }],
+  },
+  {
     title: '资产与身份',
     items: [
       {
@@ -297,6 +317,7 @@ const GROUPS: { title: string; items: NavEntry[] }[] = [
 ]
 
 const TAB_LABELS: Record<string, string> = {
+  overview: '总览',
   devices: '设备',
   members: '组织与成员',
   roles: '角色与权限',
@@ -324,7 +345,7 @@ export default function AppShell() {
   const [collapsed, setCollapsed] = useState(false)
   const [orgOpen, setOrgOpen] = useState(false)
   // Open tabs, least-recently-used first (design D3: tabs are route handles).
-  const [tabs, setTabs] = useState<string[]>(['members'])
+  const [tabs, setTabs] = useState<string[]>([])
   const tabbarRef = useRef<HTMLDivElement>(null)
   const [theme, setTheme] = useState<ThemeMode>(() => getStoredTheme())
 
@@ -354,7 +375,7 @@ export default function AppShell() {
   const perms = useMemo(() => new Set(current?.permissions ?? []), [current])
   // `includes` keeps the tab highlighted on detail routes such as
   // /address-books/12, which do not end with the page key.
-  const activeKey = PAGE_KEYS.find((key) => location.pathname.includes(`/${key}`)) ?? 'members'
+  const activeKey = PAGE_KEYS.find((key) => location.pathname.includes(`/${key}`)) ?? 'overview'
 
   useEffect(() => {
     setTabs((prev) => pushTab(prev, activeKey))
@@ -398,7 +419,7 @@ export default function AppShell() {
                 : '当前账号还没有加入任何组织。'
             }
             actionLabel={fallback ? `前往 ${fallback.name}` : undefined}
-            onAction={fallback ? () => navigate(`/orgs/${fallback.id}/members`) : undefined}
+            onAction={fallback ? () => navigate(`/orgs/${fallback.id}/overview`) : undefined}
           />
         </div>
       </div>
@@ -554,7 +575,7 @@ export default function AppShell() {
                       className={`org-menu-item ${org.id === current.id ? 'on' : ''}`}
                       onClick={() => {
                         setOrgOpen(false)
-                        navigate(`/orgs/${org.id}/members`)
+                        navigate(`/orgs/${org.id}/overview`)
                       }}
                     >
                       <span className="org-ava">{org.name.slice(0, 1).toUpperCase()}</span>
