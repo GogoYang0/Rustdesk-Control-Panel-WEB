@@ -23,6 +23,7 @@ export default function StrategiesPage() {
   const {
     currentData: strategies,
     isLoading,
+    isFetching,
     error,
     refetch,
   } = useGetStrategiesQuery(id, { skip: !validId || !canManage })
@@ -199,6 +200,7 @@ export default function StrategiesPage() {
         orgId={id}
         strategies={list}
         strategiesLoading={isLoading}
+        strategiesFetching={isFetching}
         strategiesError={error}
         onRetryStrategies={() => void refetch()}
       />

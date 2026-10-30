@@ -52,7 +52,7 @@ import { consoleE2EEnabled, openConsole, signIn } from '../support/console'
       cy.get('input[aria-label="下发 启用声音"]').check()
       cy.contains('button', '保存').click()
     })
-    cy.contains('tbody tr', name).contains('1')
+    cy.contains('tbody tr', name).find('td').eq(2).should('have.text', '1')
 
     cy.intercept('PUT', '**/members/2/strategy').as('assign')
     cy.get('select[aria-label="策略 ops@acme.local"]').select(name)

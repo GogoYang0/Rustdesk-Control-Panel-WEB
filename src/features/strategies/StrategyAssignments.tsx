@@ -61,12 +61,14 @@ export default function StrategyAssignments({
   orgId,
   strategies,
   strategiesLoading,
+  strategiesFetching,
   strategiesError,
   onRetryStrategies,
 }: {
   orgId: number
   strategies: Strategy[]
   strategiesLoading: boolean
+  strategiesFetching: boolean
   strategiesError?: unknown
   onRetryStrategies: () => void
 }) {
@@ -77,7 +79,7 @@ export default function StrategyAssignments({
   const [assignMember] = useAssignMemberStrategyMutation()
   const [assignGroup] = useAssignDeviceGroupStrategyMutation()
   const [assignDevice] = useAssignDeviceStrategyMutation()
-  const strategiesReady = !strategiesLoading && !strategiesError
+  const strategiesReady = !strategiesLoading && !strategiesFetching && !strategiesError
 
   const {
     currentData: members,
