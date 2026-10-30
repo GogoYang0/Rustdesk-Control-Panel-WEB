@@ -55,6 +55,11 @@ import type {
   TotpRecoveryCodes,
   PasswordRemoveResult,
   StepupToken,
+  ApiToken,
+  IssuedApiToken,
+  TokenCreateRequest,
+  IdentityList,
+  IdentityUnlinkRequest,
 } from '../api/generated'
 import {
   accessTokenExpiresSoon,
@@ -333,6 +338,12 @@ export function fetchMe(): Promise<Me> {
 // ── account security ───────────────────────────────────────────────────────
 
 export type {
+  ApiToken,
+  IssuedApiToken,
+  TokenCreateRequest,
+  Identity,
+  IdentityList,
+  IdentityUnlinkRequest,
   Passkey,
   PasskeyCeremony,
   PasskeyList,
@@ -448,6 +459,36 @@ export async function setPassword(newPassword: string, stepupToken: string): Pro
   await apiFetch<unknown>('/api/v1/auth/password/set', {
     method: 'POST',
     body: JSON.stringify({ new_password: newPassword, stepup_token: stepupToken }),
+    retryOn401: false,
+    refreshIfExpired: true,
+  })
+}
+
+// ── personal tokens & external identities ─────────────────────────────────
+
+export function fetchTokens(organizationId: number): Promise<ApiToken[]> {
+  return apiFetch<ApiToken[]>(`/api/v1/auth/tokens?organizationId=${organizationId}`)
+}
+
+export function createToken(input: TokenCreateRequest): Promise<IssuedApiToken> {
+  return apiFetch<IssuedApiToken>('/api/v1/auth/tokens', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export async function revokeToken(tokenId: number): Promise<void> {
+  await apiFetch<unknown>(`/api/v1/auth/tokens/${tokenId}`, { method: 'DELETE' })
+}
+
+export function fetchIdentities(): Promise<IdentityList> {
+  return apiFetch<IdentityList>('/api/v1/auth/identity')
+}
+
+export async function unlinkIdentity(input: IdentityUnlinkRequest): Promise<void> {
+  await apiFetch<unknown>('/api/v1/auth/identity/unlink', {
+    method: 'POST',
+    body: JSON.stringify(input),
     retryOn401: false,
     refreshIfExpired: true,
   })

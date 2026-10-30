@@ -30,6 +30,21 @@ describe('account security copy', () => {
   it('treats a missing deployment capability as 503, not a validation error', () => {
     expect(accountSecurityError(api(503), 'passkey')).toBe('该能力未在部署中启用')
     expect(accountSecurityError(api(503), 'stepup')).toBe('该能力未在部署中启用')
+    expect(accountSecurityError(api(503), 'identity')).toBe('外部身份未启用')
+  })
+
+  it('maps token quota and permission failures to their operations', () => {
+    expect(accountSecurityError(api(409), 'token-create')).toContain('20')
+    expect(accountSecurityError(api(403), 'token-create')).toContain('权限')
+    expect(accountSecurityError(api(400), 'token-create')).toContain('名称')
+    expect(accountSecurityError(api(404), 'token-revoke')).toContain('令牌不存在')
+    expect(accountSecurityError(api(401), 'identity')).toBe('密码或 Passkey 验证不正确')
+    expect(accountSecurityError(api(409), 'identity')).toContain('唯一登录通道')
+    expect(accountSecurityError(api(404), 'identity')).toContain('绑定不存在')
+    expect(accountSecurityError(api(401), 'token-list')).toBe('登录状态已失效，请重新登录')
+    expect(accountSecurityError(api(403), 'token-list')).toBe('当前账户无权执行该操作')
+    expect(accountSecurityError(api(401), 'identity-list')).toBe('登录状态已失效，请重新登录')
+    expect(accountSecurityError(api(503), 'identity-list')).toBe('外部身份未启用')
   })
 
   it('handles network and unknown errors', () => {

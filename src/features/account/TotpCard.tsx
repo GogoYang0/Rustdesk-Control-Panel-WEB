@@ -5,6 +5,7 @@ import Modal from '../../components/Modal'
 import { disableTotp, enableTotp, regenerateRecoveryCodes, setupTotp } from '../../lib/api'
 import type { TotpSetup } from '../../lib/api'
 import { accountSecurityError } from '../../lib/account-security'
+import { writeClipboard } from '../../lib/clipboard'
 
 type Mode = 'setup' | 'disable' | 'recovery' | null
 
@@ -52,10 +53,9 @@ export default function TotpCard({
   }
 
   async function copyText(text: string, label: string) {
-    try {
-      await navigator.clipboard.writeText(text)
+    if (await writeClipboard(text)) {
       Toast.success(`${label}已复制`)
-    } catch {
+    } else {
       Toast.error('复制失败，请手动选择')
     }
   }

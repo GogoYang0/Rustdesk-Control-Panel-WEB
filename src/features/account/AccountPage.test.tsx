@@ -1,7 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { Provider } from 'react-redux'
-import { MemoryRouter, Route, Routes } from 'react-router'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { panelApi } from '../../store/api'
@@ -22,6 +22,11 @@ vi.mock('../../lib/webauthn', async (importOriginal) => {
     createPasskeyCredential: webauthnMock.create,
   }
 })
+
+function LocationProbe() {
+  const location = useLocation()
+  return <div data-testid="location">{`${location.pathname}${location.search}`}</div>
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -49,6 +54,7 @@ interface SetupOptions {
   hasPassword?: boolean
   passkeys?: ReturnType<typeof passkey>[]
   passkeysStatus?: number
+  initialPath?: string
 }
 
 function setup(options: SetupOptions = {}) {
@@ -88,6 +94,16 @@ function setup(options: SetupOptions = {}) {
           has_password: user.has_password,
           totp_enabled: user.totp_enabled,
         },
+      })
+    }
+    if (url.includes('/auth/tokens?')) {
+      return json({ code: 'ok', message: 'ok', data: [] })
+    }
+    if (url.endsWith('/auth/identity')) {
+      return json({
+        code: 'ok',
+        message: 'ok',
+        data: { active_provider: 'oidc', identities: [] },
       })
     }
     if (url.endsWith('/auth/2fa/setup')) {
@@ -197,9 +213,17 @@ function setup(options: SetupOptions = {}) {
   })
   render(
     <Provider store={store}>
-      <MemoryRouter initialEntries={['/orgs/1/account']}>
+      <MemoryRouter initialEntries={[options.initialPath ?? '/orgs/1/account']}>
         <Routes>
-          <Route path="/orgs/:orgId/account" element={<AccountPage />} />
+          <Route
+            path="/orgs/:orgId/account"
+            element={
+              <>
+                <AccountPage />
+                <LocationProbe />
+              </>
+            }
+          />
         </Routes>
       </MemoryRouter>
     </Provider>,
@@ -224,9 +248,46 @@ describe('AccountPage', () => {
     expect(screen.getByTestId('password-card').textContent).toContain('已设置')
     const tabs = screen.getAllByRole('tab')
     expect(tabs[0].getAttribute('aria-selected')).toBe('true')
-    expect((tabs[1] as HTMLButtonElement).disabled).toBe(true)
+    expect(tabs).toHaveLength(3)
+    expect((tabs[1] as HTMLButtonElement).disabled).toBe(false)
+    expect((tabs[2] as HTMLButtonElement).disabled).toBe(false)
+    for (const item of tabs) expect(item.getAttribute('aria-controls')).toBe('account-panel')
     expect(requests.some((request) => request.url.endsWith('/me'))).toBe(true)
     expect(requests.some((request) => request.url.endsWith('/members'))).toBe(false)
+  })
+
+  it('deep-links to the token and identity tabs and switches back', async () => {
+    setup({ initialPath: '/orgs/1/account?tab=tokens' })
+    expect(await screen.findByTestId('token-card')).toBeTruthy()
+    expect(screen.queryByTestId('totp-card')).toBeNull()
+    expect(screen.getByRole('tab', { name: '个人 API Token' }).getAttribute('aria-selected')).toBe(
+      'true',
+    )
+
+    expect(screen.getByTestId('location').textContent).toBe('/orgs/1/account?tab=tokens')
+
+    fireEvent.click(screen.getByRole('tab', { name: '外部身份' }))
+    expect(await screen.findByTestId('identity-card')).toBeTruthy()
+    expect(screen.queryByTestId('token-card')).toBeNull()
+    expect(screen.getByTestId('location').textContent).toBe('/orgs/1/account?tab=identities')
+
+    fireEvent.click(screen.getByRole('tab', { name: '登录凭据' }))
+    expect(await screen.findByTestId('totp-card')).toBeTruthy()
+    expect(screen.queryByTestId('identity-card')).toBeNull()
+    expect(screen.getByTestId('location').textContent).toBe('/orgs/1/account')
+  })
+
+  it('explains an unsupported browser on the identity tab', async () => {
+    webauthnMock.supported = false
+    setup({ hasPassword: false, initialPath: '/orgs/1/account?tab=identities' })
+    expect(await screen.findByTestId('identity-card')).toBeTruthy()
+    expect(await screen.findByText(/当前浏览器不支持 Passkey/)).toBeTruthy()
+  })
+
+  it('falls back to credentials for an unknown tab parameter', async () => {
+    setup({ initialPath: '/orgs/1/account?tab=wat' })
+    expect(await screen.findByTestId('totp-card')).toBeTruthy()
+    expect(screen.queryByTestId('token-card')).toBeNull()
   })
 
   it('starts TOTP enrollment, copies the secret and verifies the first code', async () => {
