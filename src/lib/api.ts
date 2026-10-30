@@ -359,6 +359,36 @@ export function ldapLogin(input: LdapLoginRequest): Promise<TokenPair> {
   })
 }
 
+// Public onboarding endpoints. 401 is a credential/ticket answer, never an
+// expired session, so none of them may refresh and replay the request.
+export async function verifyEmail(token: string): Promise<void> {
+  await apiFetch<unknown>('/api/v1/auth/verify-email', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+    retryOn401: false,
+    // The token may still be in the address bar when this fires; a same-origin
+    // Referer would copy it into proxy/API access logs.
+    referrerPolicy: 'no-referrer',
+  })
+}
+
+export async function resendVerification(email: string): Promise<void> {
+  await apiFetch<unknown>('/api/v1/auth/resend-verification', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+    retryOn401: false,
+  })
+}
+
+export function acceptInvitation(token: string, password: string): Promise<Member> {
+  return apiFetch<Member>('/api/v1/invitations/accept', {
+    method: 'POST',
+    body: JSON.stringify({ token, password }),
+    retryOn401: false,
+    referrerPolicy: 'no-referrer',
+  })
+}
+
 export function fetchMe(): Promise<Me> {
   return apiFetch<Me>('/api/v1/me')
 }

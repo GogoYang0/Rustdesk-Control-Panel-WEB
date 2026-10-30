@@ -2,6 +2,8 @@ import { Banner, Spin, Typography } from '@douyinfe/semi-ui'
 import { createBrowserRouter, Navigate, useSearchParams } from 'react-router'
 
 import LoginPage from './features/auth/LoginPage'
+import AcceptInvitationPage from './features/onboarding/AcceptInvitationPage'
+import VerifyEmailPage from './features/onboarding/VerifyEmailPage'
 import OverviewPage from './features/overview/OverviewPage'
 import AccountPage from './features/account/AccountPage'
 import MembersPage from './features/members/MembersPage'
@@ -71,6 +73,8 @@ function RootRedirect() {
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
+  { path: '/verify-email', element: <VerifyEmailPage /> },
+  { path: '/accept-invitation', element: <AcceptInvitationPage /> },
   { path: '/', element: <RootRedirect /> },
   {
     path: '/orgs/:orgId',

@@ -114,6 +114,10 @@
   width: min(980px, 100%);
   min-height: min(620px, calc(100vh - 48px));
 }
+.login-page .login-wrap.onboarding-wrap {
+  width: min(460px, 100%);
+  min-height: 0;
+}
 
 /* 会话详情侧滑：原型 #sheet 的组件化版本（遮罩 + 432px 面板）。
    面板内的 .sheet-head/.sheet-title/.sheet-body 沿用 prototype.css。 */
