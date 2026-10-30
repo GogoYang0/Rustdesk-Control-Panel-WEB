@@ -214,6 +214,13 @@ const GROUPS: { title: string; items: NavEntry[] }[] = [
         permission: 'access.manage',
         icon: ICONS.access,
       },
+      {
+        key: 'control-roles',
+        label: '控制角色',
+        ready: true,
+        permission: 'control_role.manage',
+        icon: ICONS.access,
+      },
     ],
   },
   {
@@ -256,6 +263,7 @@ const TAB_LABELS: Record<string, string> = {
   audit: '审计与日志',
   builds: '客户端生成器',
   access: '访问控制',
+  'control-roles': '控制角色',
   'address-books': '地址簿',
 }
 const PAGE_KEYS = Object.keys(TAB_LABELS)
