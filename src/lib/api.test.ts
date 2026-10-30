@@ -2,9 +2,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const refreshAccessToken = vi.fn()
 const logout = vi.fn()
+const sessionMock = vi.hoisted(() => ({
+  expiresSoon: false,
+  refreshToken: 'refresh-1' as string | null,
+}))
 
 vi.mock('./session', () => ({
   getAccessToken: () => 'access-1',
+  getRefreshToken: () => sessionMock.refreshToken,
+  accessTokenExpiresSoon: () => sessionMock.expiresSoon,
   refreshAccessToken: (...args: unknown[]) => refreshAccessToken(...args),
   logout: () => logout(),
 }))
@@ -37,6 +43,8 @@ describe('credential endpoints and session refresh', () => {
   beforeEach(() => {
     refreshAccessToken.mockReset()
     logout.mockReset()
+    sessionMock.expiresSoon = false
+    sessionMock.refreshToken = 'refresh-1'
   })
   afterEach(() => vi.restoreAllMocks())
 
@@ -68,6 +76,50 @@ describe('credential endpoints and session refresh', () => {
       name: 'Office key',
     })
     expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(refreshAccessToken).toHaveBeenCalledTimes(1)
+  })
+
+  it('refreshes proactively before a credential check when the access token is about to lapse', async () => {
+    sessionMock.expiresSoon = true
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(jsonResponse({ code: 'ok', message: 'ok', data: null }))
+    refreshAccessToken.mockResolvedValue({ access: 'access-2', invalid: false })
+
+    await expect(enableTotp('123456')).resolves.toBeUndefined()
+    expect(refreshAccessToken).toHaveBeenCalledTimes(1)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('aborts the credential check without logging out when the pre-refresh is transient', async () => {
+    sessionMock.expiresSoon = true
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+    refreshAccessToken.mockResolvedValue({ access: null, invalid: false })
+
+    await expect(enableTotp('123456')).rejects.toMatchObject({ status: 0 })
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(logout).not.toHaveBeenCalled()
+  })
+
+  it('logs out when the pre-refresh proves the refresh token invalid', async () => {
+    sessionMock.expiresSoon = true
+    vi.spyOn(globalThis, 'fetch')
+    refreshAccessToken.mockResolvedValue({ access: null, invalid: true })
+
+    await expect(enableTotp('123456')).rejects.toMatchObject({ status: 401 })
+    expect(logout).toHaveBeenCalledTimes(1)
+  })
+
+  it('skips the pre-refresh when there is no refresh token', async () => {
+    sessionMock.expiresSoon = true
+    sessionMock.refreshToken = null
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(jsonResponse({ code: 'unauthorized', message: 'invalid code' }, 401))
+
+    await expect(enableTotp('123456')).rejects.toMatchObject({ status: 401 })
+    expect(refreshAccessToken).not.toHaveBeenCalled()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 })
 

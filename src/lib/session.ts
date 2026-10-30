@@ -15,6 +15,8 @@ function fingerprint(token: string): string {
 }
 
 let accessToken: string | null = null
+// Absolute expiry of the in-memory access token; 0 when the issuer did not say.
+let accessExpiresAt = 0
 let refreshing: Promise<RefreshResult> | null = null
 let logoutHandler: (() => void) | null = null
 // Bumped on logout: an in-flight refresh that started before the bump must not
@@ -40,11 +42,27 @@ export function getRefreshToken(): string | null {
 export function setTokens(pair: TokenPair, startedAt = epoch): void {
   if (startedAt !== epoch) return
   accessToken = pair.access_token
+  accessExpiresAt =
+    typeof pair.expires_in === 'number' && pair.expires_in > 0
+      ? Date.now() + pair.expires_in * 1000
+      : 0
   localStorage.setItem(REFRESH_KEY, pair.refresh_token)
+}
+
+/**
+ * Credential requests cannot treat a 401 as "session expired" — it may be the
+ * wrong code or password — so they refresh proactively when the access token is
+ * about to lapse. Unknown expiry is treated as still valid.
+ */
+export function accessTokenExpiresSoon(leewayMs = 30_000): boolean {
+  if (!accessToken) return true
+  if (accessExpiresAt === 0) return false
+  return accessExpiresAt - Date.now() <= leewayMs
 }
 
 export function clearSession(): void {
   accessToken = null
+  accessExpiresAt = 0
   localStorage.removeItem(REFRESH_KEY)
 }
 

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
+  accessTokenExpiresSoon,
   clearSession,
   getAccessToken,
   getRefreshToken,
@@ -38,10 +39,13 @@ function installLocks(): Set<string> {
 }
 
 function pairResponse(access: string, refresh: string, status = 200): Response {
-  return new Response(JSON.stringify({ data: { access_token: access, refresh_token: refresh } }), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  })
+  return new Response(
+    JSON.stringify({ data: { access_token: access, refresh_token: refresh, expires_in: 900 } }),
+    {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    },
+  )
 }
 
 afterEach(() => {
@@ -54,6 +58,18 @@ describe('session refresh', () => {
     localStorage.clear()
     clearSession()
     installLocks()
+  })
+
+  it('tracks whether the access token is about to expire', () => {
+    expect(accessTokenExpiresSoon()).toBe(true)
+    setTokens({ access_token: 'a1', refresh_token: 'r1' })
+    expect(accessTokenExpiresSoon()).toBe(false)
+    setTokens({ access_token: 'a1', refresh_token: 'r1', expires_in: 900 })
+    expect(accessTokenExpiresSoon()).toBe(false)
+    setTokens({ access_token: 'a1', refresh_token: 'r1', expires_in: 1 })
+    expect(accessTokenExpiresSoon()).toBe(true)
+    clearSession()
+    expect(accessTokenExpiresSoon()).toBe(true)
   })
 
   it('stores the refresh token in localStorage and keeps access in memory', () => {

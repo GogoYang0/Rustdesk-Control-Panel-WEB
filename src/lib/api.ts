@@ -56,7 +56,14 @@ import type {
   PasswordRemoveResult,
   StepupToken,
 } from '../api/generated'
-import { getAccessToken, logout, refreshAccessToken, type TokenPair } from './session'
+import {
+  accessTokenExpiresSoon,
+  getAccessToken,
+  getRefreshToken,
+  logout,
+  refreshAccessToken,
+  type TokenPair,
+} from './session'
 
 export type { Member, Me, Role }
 export type RoleKind = Role['kind']
@@ -88,6 +95,12 @@ export class ApiError extends Error {
 interface RequestOptions extends RequestInit {
   /** Login and refresh must not attempt a token refresh themselves. */
   retryOn401?: boolean
+  /**
+   * Credential checks answer 401 for a wrong code/password, so they cannot
+   * refresh-and-replay. Refresh before sending when the access token is about
+   * to lapse instead, keeping a stale token from masquerading as a bad code.
+   */
+  refreshIfExpired?: boolean
 }
 
 async function request(path: string, init: RequestInit): Promise<Response> {
@@ -105,7 +118,17 @@ async function request(path: string, init: RequestInit): Promise<Response> {
  * opt out; network and 5xx failures keep the session and surface as errors.
  */
 async function authorizedFetch(path: string, options: RequestOptions): Promise<Response> {
-  const { retryOn401 = true, ...init } = options
+  const { retryOn401 = true, refreshIfExpired = false, ...init } = options
+  if (refreshIfExpired && getRefreshToken() && accessTokenExpiresSoon()) {
+    const refreshed = await refreshAccessToken()
+    if (!refreshed.access) {
+      if (refreshed.invalid) {
+        logout()
+        throw new ApiError(401, 'unauthorized', '登录已失效，请重新登录')
+      }
+      throw new ApiError(0, 'internal', '会话刷新失败，请稍后重试')
+    }
+  }
   const res = await request(path, init)
   if (res.status !== 401 || !retryOn401) return res
 
@@ -334,6 +357,7 @@ export async function enableTotp(code: string): Promise<void> {
     method: 'POST',
     body: JSON.stringify({ code }),
     retryOn401: false,
+    refreshIfExpired: true,
   })
 }
 
@@ -342,6 +366,7 @@ export async function disableTotp(password: string, code: string): Promise<void>
     method: 'POST',
     body: JSON.stringify({ password, code }),
     retryOn401: false,
+    refreshIfExpired: true,
   })
 }
 
@@ -353,6 +378,7 @@ export function regenerateRecoveryCodes(
     method: 'POST',
     body: JSON.stringify({ password, code }),
     retryOn401: false,
+    refreshIfExpired: true,
   })
 }
 
@@ -373,6 +399,7 @@ export function finishPasskeyRegistration(input: {
     method: 'POST',
     body: JSON.stringify(input),
     retryOn401: false,
+    refreshIfExpired: true,
   })
 }
 
@@ -401,6 +428,7 @@ export function finishPasskeyStepup(input: {
     method: 'POST',
     body: JSON.stringify(input),
     retryOn401: false,
+    refreshIfExpired: true,
   })
 }
 
@@ -412,6 +440,7 @@ export function removePassword(
     method: 'POST',
     body: JSON.stringify({ password, stepup_token: stepupToken }),
     retryOn401: false,
+    refreshIfExpired: true,
   })
 }
 
@@ -420,6 +449,7 @@ export async function setPassword(newPassword: string, stepupToken: string): Pro
     method: 'POST',
     body: JSON.stringify({ new_password: newPassword, stepup_token: stepupToken }),
     retryOn401: false,
+    refreshIfExpired: true,
   })
 }
 
