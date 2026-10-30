@@ -337,6 +337,9 @@ export function fetchProviders(): Promise<AuthProviders> {
 export function fetchCaptchaChallenge(): Promise<CaptchaChallenge> {
   return apiFetch<CaptchaChallenge>('/api/v1/auth/captcha', {
     retryOn401: false,
+    // A stalled proxy must not leave the form stuck in `loading` (submit is
+    // blocked and there is no retry until the request settles).
+    signal: AbortSignal.timeout(10_000),
     // The page may still carry an OIDC ticket or invitation token when this
     // runs; a default Referer would copy it into proxy/API access logs.
     referrerPolicy: 'no-referrer',

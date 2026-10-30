@@ -334,7 +334,9 @@ describe('captcha endpoints', () => {
       challenge: { params: { challenge: 'c1' } },
     })
     expect(String(fetchMock.mock.calls[0][0])).toBe('/api/v1/auth/captcha')
-    expect((fetchMock.mock.calls[0][1] as RequestInit).referrerPolicy).toBe('no-referrer')
+    const init = fetchMock.mock.calls[0][1] as RequestInit
+    expect(init.referrerPolicy).toBe('no-referrer')
+    expect(init.signal).toBeInstanceOf(AbortSignal)
 
     fetchMock.mockResolvedValueOnce(jsonResponse({ code: 'unauthorized', message: 'no' }, 401))
     await expect(fetchCaptchaChallenge()).rejects.toMatchObject({ status: 401 })
