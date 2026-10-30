@@ -169,6 +169,26 @@ describe('LoginPage passkey login', () => {
     expect(JSON.parse(begin?.body ?? '{}')).toEqual({ challenge_token: 'challenge-1' })
   })
 
+  it('tells the second factor to go back when the challenge is no longer valid', async () => {
+    setup({
+      loginStatus: 401,
+      loginBody: {
+        code: 'two_factor_required',
+        message: 'two factor required',
+        data: { challenge_token: 'challenge-1', methods: ['totp', 'passkey'] },
+      },
+      beginStatus: 401,
+    })
+    fireEvent.change(await screen.findByLabelText(/邮箱/), {
+      target: { value: 'owner@acme.local' },
+    })
+    fireEvent.change(screen.getByLabelText(/密码/), { target: { value: 'secret-pass' } })
+    fireEvent.click(screen.getByRole('button', { name: '登录' }))
+    expect(await screen.findByRole('heading', { name: '两步验证' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '使用 Passkey 验证' }))
+    expect(await screen.findByText('验证挑战已失效或未通过，请返回重新登录')).toBeTruthy()
+  })
+
   it('reports a cancelled authenticator without calling the finish endpoint', async () => {
     const { requests } = setup()
     webauthnMock.assert.mockRejectedValue(new DOMException('cancelled', 'NotAllowedError'))

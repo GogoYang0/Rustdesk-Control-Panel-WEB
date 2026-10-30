@@ -107,7 +107,7 @@ export default function LoginPage() {
     try {
       await finishPasskey(await beginPasskeyLogin({ email: email.trim() || undefined }))
     } catch (err) {
-      const message = passkeyFailureMessage(err)
+      const message = passkeyFailureMessage(err, 'discoverable')
       setError(message)
       Toast.error(message)
     } finally {
@@ -122,7 +122,7 @@ export default function LoginPage() {
     try {
       await finishPasskey(await beginPasskeyLogin({ challenge_token: challenge }))
     } catch (err) {
-      const message = passkeyFailureMessage(err)
+      const message = passkeyFailureMessage(err, 'second-factor')
       setError(message)
       Toast.error(message)
     } finally {
@@ -383,18 +383,30 @@ export default function LoginPage() {
 
 // WebAuthn throws DOMException; fetch throws TypeError; only the latter is a
 // network problem. ApiError is the server answering with a status.
-function passkeyFailureMessage(err: unknown): string {
-  if (err instanceof ApiError) return passkeyLoginMessage(err)
+type PasskeyLoginMode = 'discoverable' | 'second-factor'
+
+function passkeyFailureMessage(err: unknown, mode: PasskeyLoginMode): string {
+  if (err instanceof ApiError) return passkeyLoginMessage(err, mode)
   if (err instanceof DOMException) return webAuthnErrorMessage(err)
   return '网络异常，请稍后重试'
 }
 
-function passkeyLoginMessage(err: ApiError): string {
+function passkeyLoginMessage(err: ApiError, mode: PasskeyLoginMode): string {
   if (err.status === 0) return '网络异常，请稍后重试'
   if (err.status === 503) return '该部署未启用 Passkey 登录'
-  if (err.status === 409) return '该账户没有可用的 Passkey'
+  if (err.status === 409) {
+    // The server returns 409 only when the account has no credential; an
+    // expired challenge is a 401 from ParseChallenge.
+    return mode === 'second-factor'
+      ? '该账户没有可用的 Passkey，请改用动态码或返回重新登录'
+      : '该账户没有可用的 Passkey'
+  }
   if (err.status === 429) return '尝试过于频繁，请稍后再试'
-  if (err.status === 401) return 'Passkey 验证失败，请重试'
+  if (err.status === 401) {
+    return mode === 'second-factor'
+      ? '验证挑战已失效或未通过，请返回重新登录'
+      : 'Passkey 验证失败，请重试'
+  }
   if (err.status >= 500) return '服务异常，请稍后重试'
   if (err.code === 'email_not_verified') return '邮箱尚未验证，请先完成邮件验证'
   return loginMessage(err)
