@@ -183,10 +183,18 @@ function readPair(body: unknown): TokenPair | null {
   if (typeof body !== 'object' || body === null) return null
   const data = (body as { data?: unknown }).data
   if (typeof data !== 'object' || data === null) return null
-  const { access_token: access, refresh_token: refresh } = data as Record<string, unknown>
+  const {
+    access_token: access,
+    refresh_token: refresh,
+    expires_in: expiresIn,
+  } = data as Record<string, unknown>
   if (typeof access !== 'string' || access === '') return null
   if (typeof refresh !== 'string' || refresh === '') return null
-  return { access_token: access, refresh_token: refresh }
+  return {
+    access_token: access,
+    refresh_token: refresh,
+    expires_in: typeof expiresIn === 'number' ? expiresIn : undefined,
+  }
 }
 
 /** Exchanges the refresh token for a new pair; concurrent callers share one flight. */

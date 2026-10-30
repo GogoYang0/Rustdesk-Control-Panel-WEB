@@ -87,6 +87,7 @@ describe('session refresh', () => {
     expect(b.access).toBe('new')
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(getRefreshToken()).toBe('r2')
+    expect(accessTokenExpiresSoon()).toBe(false)
   })
 
   it('clears the session only when the server rejects the refresh token', async () => {

@@ -19,7 +19,7 @@ import {
   webAuthnSupported,
   type RequestOptions,
 } from '../../lib/webauthn'
-import { setTokens } from '../../lib/session'
+import { setTokens, type TokenPair } from '../../lib/session'
 import { panelApi } from '../../store/api'
 
 type Step = 'credentials' | 'totp'
@@ -53,8 +53,8 @@ export default function LoginPage() {
       .catch(() => setProviders([]))
   }, [])
 
-  function finish(accessToken: string, refreshToken: string) {
-    setTokens({ access_token: accessToken, refresh_token: refreshToken })
+  function finish(pair: TokenPair) {
+    setTokens(pair)
     // The cache is keyed by resource, not by user: signing in as another account
     // from /login must not serve the previous account's passkeys or org data.
     dispatch(panelApi.util.resetApiState())
@@ -68,7 +68,7 @@ export default function LoginPage() {
     setError(null)
     try {
       const pair = await login(email.trim(), password)
-      finish(pair.access_token, pair.refresh_token)
+      finish(pair)
     } catch (err) {
       const apiError = err as ApiError
       if (apiError.code === 'two_factor_required') {
@@ -97,7 +97,7 @@ export default function LoginPage() {
       ceremony_token: ceremony.ceremony_token,
       credential,
     })
-    finish(pair.access_token, pair.refresh_token)
+    finish(pair)
   }
 
   async function onPasskeyLogin() {
@@ -137,7 +137,7 @@ export default function LoginPage() {
     setError(null)
     try {
       const pair = await verifyTwoFactor(challenge, code.trim())
-      finish(pair.access_token, pair.refresh_token)
+      finish(pair)
     } catch (err) {
       const message = loginMessage(err as ApiError)
       setError(message)
