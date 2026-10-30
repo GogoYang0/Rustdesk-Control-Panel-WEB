@@ -593,7 +593,10 @@ export const panelApi = createApi({
         const result = await wrap(() => assignDeviceStrategyRequest(orgId, deviceId, strategyId))
         return 'data' in result ? { data: undefined } : result
       },
-      invalidatesTags: (_result, _error, { orgId }) => [{ type: 'Devices', id: orgId }],
+      invalidatesTags: (_result, _error, { orgId }) => [
+        { type: 'Devices', id: orgId },
+        { type: 'AccessDevices', id: orgId },
+      ],
     }),
     getControlRoles: build.query<ControlRole[], number>({
       queryFn: (orgId) => wrap(() => fetchControlRoles(orgId)),
