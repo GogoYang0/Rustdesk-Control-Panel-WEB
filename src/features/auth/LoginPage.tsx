@@ -5,12 +5,20 @@ import { useNavigate } from 'react-router'
 
 import {
   ApiError,
+  beginPasskeyLogin,
   fetchCaptcha,
   fetchProviders,
+  finishPasskeyLogin,
   login,
   verifyTwoFactor,
   type TwoFactorChallenge,
 } from '../../lib/api'
+import {
+  assertPasskeyCredential,
+  webAuthnErrorMessage,
+  webAuthnSupported,
+  type RequestOptions,
+} from '../../lib/webauthn'
 import { setTokens } from '../../lib/session'
 import { panelApi } from '../../store/api'
 
@@ -24,6 +32,7 @@ export default function LoginPage() {
   const [code, setCode] = useState('')
   const [step, setStep] = useState<Step>('credentials')
   const [challenge, setChallenge] = useState<string | null>(null)
+  const [methods, setMethods] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [captchaEnabled, setCaptchaEnabled] = useState(false)
@@ -46,7 +55,9 @@ export default function LoginPage() {
 
   function finish(accessToken: string, refreshToken: string) {
     setTokens({ access_token: accessToken, refresh_token: refreshToken })
-    dispatch(panelApi.util.invalidateTags(['Me']))
+    // The cache is keyed by resource, not by user: signing in as another account
+    // from /login must not serve the previous account's passkeys or org data.
+    dispatch(panelApi.util.resetApiState())
     navigate('/', { replace: true })
   }
 
@@ -66,12 +77,52 @@ export default function LoginPage() {
         const detail = apiError.detail as TwoFactorChallenge | undefined
         if (detail?.challenge_token) {
           setChallenge(detail.challenge_token)
+          setMethods(detail.methods ?? [])
           setStep('totp')
           setCode('')
           return
         }
       }
       const message = loginMessage(apiError)
+      setError(message)
+      Toast.error(message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function finishPasskey(ceremony: Awaited<ReturnType<typeof beginPasskeyLogin>>) {
+    const credential = await assertPasskeyCredential(ceremony.options as unknown as RequestOptions)
+    const pair = await finishPasskeyLogin({
+      ceremony_token: ceremony.ceremony_token,
+      credential,
+    })
+    finish(pair.access_token, pair.refresh_token)
+  }
+
+  async function onPasskeyLogin() {
+    if (submitting) return
+    setSubmitting(true)
+    setError(null)
+    try {
+      await finishPasskey(await beginPasskeyLogin({ email: email.trim() || undefined }))
+    } catch (err) {
+      const message = passkeyFailureMessage(err)
+      setError(message)
+      Toast.error(message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function onPasskeySecondFactor() {
+    if (submitting || !challenge) return
+    setSubmitting(true)
+    setError(null)
+    try {
+      await finishPasskey(await beginPasskeyLogin({ challenge_token: challenge }))
+    } catch (err) {
+      const message = passkeyFailureMessage(err)
       setError(message)
       Toast.error(message)
     } finally {
@@ -185,26 +236,28 @@ export default function LoginPage() {
               ) : null}
 
               <div className="field mb-14">
-                <label className="form-label">
+                <label className="form-label" htmlFor="login-email">
                   <span className="req">*</span>邮箱
                 </label>
                 <div className="input lg" style={{ height: 40 }}>
                   <input
+                    id="login-email"
+                    autoComplete="username"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="name@company.com"
-                    autoComplete="username"
                     required
                   />
                 </div>
               </div>
 
               <div className="field mb-14">
-                <label className="form-label">
+                <label className="form-label" htmlFor="login-password">
                   <span className="req">*</span>密码
                 </label>
                 <div className="input lg" style={{ height: 40 }}>
                   <input
+                    id="login-password"
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -241,6 +294,18 @@ export default function LoginPage() {
                   ? `使用 ${providers.join(' / ')} 登录（后续）`
                   : '使用企业 SSO 登录'}
               </button>
+              {webAuthnSupported() ? (
+                <button
+                  className="btn tertiary lg block"
+                  type="button"
+                  style={{ marginTop: 8 }}
+                  disabled={submitting}
+                  title="邮箱可留空，使用设备上的可发现凭据直接登录"
+                  onClick={() => void onPasskeyLogin()}
+                >
+                  使用 Passkey 登录
+                </button>
+              ) : null}
               <p className="help" style={{ textAlign: 'center', margin: '18px 0 0' }}>
                 没有账号？请联系组织管理员邀请你加入
               </p>
@@ -261,11 +326,12 @@ export default function LoginPage() {
               ) : null}
 
               <div className="field mb-14">
-                <label className="form-label">
+                <label className="form-label" htmlFor="login-code">
                   <span className="req">*</span>动态码
                 </label>
                 <div className="input lg" style={{ height: 40 }}>
                   <input
+                    id="login-code"
                     value={code}
                     onChange={(e) => setCode(e.target.value)}
                     placeholder="123456"
@@ -281,6 +347,17 @@ export default function LoginPage() {
               <button className="btn primary lg block" type="submit" disabled={submitting}>
                 {submitting ? '校验中…' : '验证并登录'}
               </button>
+              {webAuthnSupported() && methods.includes('passkey') ? (
+                <button
+                  className="btn outline lg block"
+                  type="button"
+                  style={{ marginTop: 8 }}
+                  disabled={submitting}
+                  onClick={() => void onPasskeySecondFactor()}
+                >
+                  使用 Passkey 验证
+                </button>
+              ) : null}
               <button
                 className="btn tertiary block"
                 type="button"
@@ -289,6 +366,7 @@ export default function LoginPage() {
                 onClick={() => {
                   setStep('credentials')
                   setChallenge(null)
+                  setMethods([])
                   setCode('')
                   setError(null)
                 }}
@@ -301,6 +379,25 @@ export default function LoginPage() {
       </div>
     </div>
   )
+}
+
+// WebAuthn throws DOMException; fetch throws TypeError; only the latter is a
+// network problem. ApiError is the server answering with a status.
+function passkeyFailureMessage(err: unknown): string {
+  if (err instanceof ApiError) return passkeyLoginMessage(err)
+  if (err instanceof DOMException) return webAuthnErrorMessage(err)
+  return '网络异常，请稍后重试'
+}
+
+function passkeyLoginMessage(err: ApiError): string {
+  if (err.status === 0) return '网络异常，请稍后重试'
+  if (err.status === 503) return '该部署未启用 Passkey 登录'
+  if (err.status === 409) return '该账户没有可用的 Passkey'
+  if (err.status === 429) return '尝试过于频繁，请稍后再试'
+  if (err.status === 401) return 'Passkey 验证失败，请重试'
+  if (err.status >= 500) return '服务异常，请稍后重试'
+  if (err.code === 'email_not_verified') return '邮箱尚未验证，请先完成邮件验证'
+  return loginMessage(err)
 }
 
 function loginMessage(err: ApiError): string {

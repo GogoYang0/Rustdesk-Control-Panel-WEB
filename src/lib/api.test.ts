@@ -9,7 +9,15 @@ vi.mock('./session', () => ({
   logout: () => logout(),
 }))
 
-const { ApiError, apiBlob, apiFetch, fetchClientBuildArtifact, fetchCsv } = await import('./api')
+const {
+  ApiError,
+  apiBlob,
+  apiFetch,
+  enableTotp,
+  fetchClientBuildArtifact,
+  fetchCsv,
+  renamePasskey,
+} = await import('./api')
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -24,6 +32,44 @@ function csvResponse(body: string, disposition = 'attachment; filename="audit-or
     headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': disposition },
   })
 }
+
+describe('credential endpoints and session refresh', () => {
+  beforeEach(() => {
+    refreshAccessToken.mockReset()
+    logout.mockReset()
+  })
+  afterEach(() => vi.restoreAllMocks())
+
+  it('does not refresh a 401 from a credential check', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(jsonResponse({ code: 'unauthorized', message: 'invalid code' }, 401))
+
+    await expect(enableTotp('123456')).rejects.toMatchObject({ status: 401 })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(refreshAccessToken).not.toHaveBeenCalled()
+  })
+
+  it('refreshes and replays a passkey rename 401', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(jsonResponse({ code: 'unauthorized', message: 'expired' }, 401))
+      .mockResolvedValueOnce(
+        jsonResponse({
+          code: 'ok',
+          message: 'ok',
+          data: { id: 1, name: 'Office key' },
+        }),
+      )
+    refreshAccessToken.mockResolvedValue({ access: 'access-2', invalid: false })
+
+    await expect(renamePasskey(1, 'Office key')).resolves.toMatchObject({
+      id: 1,
+      name: 'Office key',
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+})
 
 describe('fetchCsv', () => {
   beforeEach(() => {

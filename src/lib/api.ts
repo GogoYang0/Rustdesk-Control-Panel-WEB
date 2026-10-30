@@ -48,6 +48,13 @@ import type {
   Strategy,
   StrategyCreateRequest,
   StrategyUpdateRequest,
+  Passkey,
+  PasskeyCeremony,
+  PasskeyList,
+  TotpSetup,
+  TotpRecoveryCodes,
+  PasswordRemoveResult,
+  StepupToken,
 } from '../api/generated'
 import { getAccessToken, logout, refreshAccessToken, type TokenPair } from './session'
 
@@ -298,6 +305,144 @@ export function fetchCaptcha(): Promise<CaptchaInfo> {
 
 export function fetchMe(): Promise<Me> {
   return apiFetch<Me>('/api/v1/me')
+}
+
+// ── account security ───────────────────────────────────────────────────────
+
+export type {
+  Passkey,
+  PasskeyCeremony,
+  PasskeyList,
+  TotpSetup,
+  TotpRecoveryCodes,
+} from '../api/generated'
+
+export interface PasskeyCredentialPayload {
+  id: string
+  rawId: string
+  type: string
+  clientExtensionResults?: Record<string, unknown>
+  response: Record<string, unknown>
+}
+
+export function setupTotp(): Promise<TotpSetup> {
+  return apiFetch<TotpSetup>('/api/v1/auth/2fa/setup', { method: 'POST' })
+}
+
+export async function enableTotp(code: string): Promise<void> {
+  await apiFetch<unknown>('/api/v1/auth/2fa/enable', {
+    method: 'POST',
+    body: JSON.stringify({ code }),
+    retryOn401: false,
+  })
+}
+
+export async function disableTotp(password: string, code: string): Promise<void> {
+  await apiFetch<unknown>('/api/v1/auth/2fa/disable', {
+    method: 'POST',
+    body: JSON.stringify({ password, code }),
+    retryOn401: false,
+  })
+}
+
+export function regenerateRecoveryCodes(
+  password: string,
+  code: string,
+): Promise<TotpRecoveryCodes> {
+  return apiFetch<TotpRecoveryCodes>('/api/v1/auth/2fa/recovery-codes', {
+    method: 'POST',
+    body: JSON.stringify({ password, code }),
+    retryOn401: false,
+  })
+}
+
+export function listPasskeys(): Promise<PasskeyList> {
+  return apiFetch<PasskeyList>('/api/v1/auth/passkeys')
+}
+
+export function beginPasskeyRegistration(): Promise<PasskeyCeremony> {
+  return apiFetch<PasskeyCeremony>('/api/v1/auth/passkey/register/begin', { method: 'POST' })
+}
+
+export function finishPasskeyRegistration(input: {
+  ceremony_token: string
+  credential: PasskeyCredentialPayload
+  name?: string
+}): Promise<Passkey> {
+  return apiFetch<Passkey>('/api/v1/auth/passkey/register/finish', {
+    method: 'POST',
+    body: JSON.stringify(input),
+    retryOn401: false,
+  })
+}
+
+export function renamePasskey(passkeyId: number, name: string): Promise<Passkey> {
+  return apiFetch<Passkey>(`/api/v1/auth/passkeys/${passkeyId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name }),
+  })
+}
+
+export async function deletePasskey(passkeyId: number): Promise<void> {
+  await apiFetch<unknown>(`/api/v1/auth/passkeys/${passkeyId}`, {
+    method: 'DELETE',
+  })
+}
+
+export function beginPasskeyStepup(): Promise<PasskeyCeremony> {
+  return apiFetch<PasskeyCeremony>('/api/v1/auth/passkey/stepup/begin', { method: 'POST' })
+}
+
+export function finishPasskeyStepup(input: {
+  ceremony_token: string
+  credential: PasskeyCredentialPayload
+}): Promise<StepupToken> {
+  return apiFetch<StepupToken>('/api/v1/auth/passkey/stepup/finish', {
+    method: 'POST',
+    body: JSON.stringify(input),
+    retryOn401: false,
+  })
+}
+
+export function removePassword(
+  password: string,
+  stepupToken: string,
+): Promise<PasswordRemoveResult> {
+  return apiFetch<PasswordRemoveResult>('/api/v1/auth/password/remove', {
+    method: 'POST',
+    body: JSON.stringify({ password, stepup_token: stepupToken }),
+    retryOn401: false,
+  })
+}
+
+export async function setPassword(newPassword: string, stepupToken: string): Promise<void> {
+  await apiFetch<unknown>('/api/v1/auth/password/set', {
+    method: 'POST',
+    body: JSON.stringify({ new_password: newPassword, stepup_token: stepupToken }),
+    retryOn401: false,
+  })
+}
+
+export function beginPasskeyLogin(input: {
+  challenge_token?: string
+  email?: string
+}): Promise<PasskeyCeremony> {
+  return apiFetch<PasskeyCeremony>('/api/v1/auth/passkey/login/begin', {
+    method: 'POST',
+    body: JSON.stringify(input),
+    retryOn401: false,
+  })
+}
+
+export function finishPasskeyLogin(input: {
+  ceremony_token: string
+  credential: PasskeyCredentialPayload
+}): Promise<TokenPair> {
+  return apiFetch<TokenPair>('/api/v1/auth/passkey/login/finish', {
+    method: 'POST',
+    body: JSON.stringify(input),
+    retryOn401: false,
+  })
 }
 
 // ── organization ────────────────────────────────────────────────────────────
