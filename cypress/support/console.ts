@@ -40,7 +40,9 @@ export function signIn() {
     cy.intercept('GET', '**/api/v1/auth/captcha').as('captchaProbe')
     cy.intercept('POST', '**/api/v1/auth/login').as('loginAttempt')
     cy.visit('/login')
-    cy.wait('@captchaProbe')
+    // Rsbuild compiles the login chunk on the first request; the default 5s
+    // wait can expire before the app has even mounted.
+    cy.wait('@captchaProbe', { timeout: 15000 })
     attemptLogin(email, password, 2)
   })
 }
