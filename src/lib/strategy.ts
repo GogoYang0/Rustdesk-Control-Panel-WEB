@@ -155,9 +155,9 @@ export function strategyError(err: unknown, operation: StrategyOperation): strin
   if (err.status === 0) return '网络异常，请稍后重试'
   if (err.status === 401) return '登录已失效，请重新登录'
   if (err.status === 403) {
-    return operation === 'assign-group' || operation === 'strategies'
-      ? '没有客户端策略管理权限或设备组读取权限（设备组需要 access.manage）'
-      : '当前角色没有客户端策略管理权限'
+    if (operation === 'assign-group') return '设备组读取需要 access.manage'
+    if (operation === 'assign-device') return '当前角色没有设备读取权限'
+    return '当前角色没有客户端策略管理权限'
   }
   if (err.status === 404) {
     if (operation === 'strategies') return '组织不存在或服务不可用'

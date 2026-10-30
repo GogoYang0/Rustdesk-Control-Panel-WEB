@@ -1,5 +1,5 @@
 import { Toast } from '@douyinfe/semi-ui'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { ApiError } from '../../lib/api'
 import type { Strategy } from '../../lib/api'
@@ -60,9 +60,15 @@ function StrategySelect({
 export default function StrategyAssignments({
   orgId,
   strategies,
+  strategiesLoading,
+  strategiesError,
+  onRetryStrategies,
 }: {
   orgId: number
   strategies: Strategy[]
+  strategiesLoading: boolean
+  strategiesError?: unknown
+  onRetryStrategies: () => void
 }) {
   const [tab, setTab] = useState<AssignmentTab>('members')
   const [busy, setBusy] = useState<string | null>(null)
@@ -71,6 +77,7 @@ export default function StrategyAssignments({
   const [assignMember] = useAssignMemberStrategyMutation()
   const [assignGroup] = useAssignDeviceGroupStrategyMutation()
   const [assignDevice] = useAssignDeviceStrategyMutation()
+  const strategiesReady = !strategiesLoading && !strategiesError
 
   const {
     currentData: members,
@@ -141,12 +148,32 @@ export default function StrategyAssignments({
 
   const devicePageCount = totalPages(deviceData?.total ?? 0, deviceData?.page_size ?? 50)
 
+  useEffect(() => {
+    if (deviceData && devicePage > devicePageCount) setDevicePage(devicePageCount)
+  }, [deviceData, devicePage, devicePageCount])
+
+  function strategyValue(targetId: number | null | undefined) {
+    return targetId == null ? '' : String(targetId)
+  }
+
   return (
     <div style={{ marginTop: 24 }}>
       <div className="card-title" style={{ marginBottom: 8 }}>
         三层分配
       </div>
       <div className="help mb-14">{STRATEGY_PRIORITY_COPY}</div>
+
+      {strategiesError ? (
+        <div className="banner danger mb-14">
+          <div>
+            <b>加载策略字典失败。</b>
+            {strategyError(strategiesError, 'strategies')}
+          </div>
+          <button className="btn outline sm" type="button" onClick={onRetryStrategies}>
+            重试
+          </button>
+        </div>
+      ) : null}
 
       {error ? (
         <div className="banner danger mb-14" style={{ padding: '9px 11px' }}>
@@ -223,9 +250,14 @@ export default function StrategyAssignments({
                           <td>
                             <StrategySelect
                               label={`策略 ${member.email}`}
-                              value={member.strategy_id == null ? '' : String(member.strategy_id)}
+                              value={strategyValue(member.strategy_id)}
                               strategies={strategies}
-                              disabled={busy !== null || !!membersError || membersFetching}
+                              disabled={
+                                busy !== null ||
+                                !strategiesReady ||
+                                !!membersError ||
+                                membersFetching
+                              }
                               onChange={(value) =>
                                 void save('members', member.user_id, member.email, value)
                               }
@@ -281,9 +313,11 @@ export default function StrategyAssignments({
                           <td>
                             <StrategySelect
                               label={`策略 ${group.name}`}
-                              value={group.strategy_id == null ? '' : String(group.strategy_id)}
+                              value={strategyValue(group.strategy_id)}
                               strategies={strategies}
-                              disabled={busy !== null || !!groupsError || groupsFetching}
+                              disabled={
+                                busy !== null || !strategiesReady || !!groupsError || groupsFetching
+                              }
                               onChange={(value) => void save('groups', group.id, group.name, value)}
                             />
                           </td>
@@ -301,6 +335,7 @@ export default function StrategyAssignments({
               <div className="input" style={{ width: 260 }}>
                 <input
                   aria-label="搜索设备"
+                  maxLength={64}
                   value={deviceDraft}
                   placeholder="设备名 / RustDesk ID"
                   onChange={(event) => setDeviceDraft(event.target.value)}
@@ -365,9 +400,14 @@ export default function StrategyAssignments({
                           <td>
                             <StrategySelect
                               label={`策略 ${device.name}`}
-                              value={device.strategy_id == null ? '' : String(device.strategy_id)}
+                              value={strategyValue(device.strategy_id)}
                               strategies={strategies}
-                              disabled={busy !== null || !!devicesError || devicesFetching}
+                              disabled={
+                                busy !== null ||
+                                !strategiesReady ||
+                                !!devicesError ||
+                                devicesFetching
+                              }
                               onChange={(value) =>
                                 void save('devices', device.id, device.name, value)
                               }
@@ -383,13 +423,14 @@ export default function StrategyAssignments({
             {(deviceData?.total ?? 0) > 0 ? (
               <div className="pager" style={{ marginTop: 12, justifyContent: 'flex-end' }}>
                 <span className="total">
-                  共 {deviceData?.total} 条 · 第 {devicePage} / {devicePageCount} 页
+                  共 {deviceData?.total} 条 · 第 {deviceData?.page ?? devicePage} /{' '}
+                  {devicePageCount} 页
                 </span>
                 <button
                   className="pg"
                   type="button"
                   aria-label="上一页"
-                  disabled={devicePage <= 1}
+                  disabled={(deviceData?.page ?? devicePage) <= 1}
                   onClick={() => setDevicePage((page) => Math.max(1, page - 1))}
                 >
                   ‹
@@ -398,7 +439,7 @@ export default function StrategyAssignments({
                   className="pg"
                   type="button"
                   aria-label="下一页"
-                  disabled={devicePage >= devicePageCount}
+                  disabled={(deviceData?.page ?? devicePage) >= devicePageCount}
                   onClick={() => setDevicePage((page) => page + 1)}
                 >
                   ›

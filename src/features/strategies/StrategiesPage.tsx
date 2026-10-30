@@ -194,7 +194,14 @@ export default function StrategiesPage() {
         </div>
       )}
 
-      <StrategyAssignments orgId={id} strategies={list} />
+      <StrategyAssignments
+        key={id}
+        orgId={id}
+        strategies={list}
+        strategiesLoading={isLoading}
+        strategiesError={error}
+        onRetryStrategies={() => void refetch()}
+      />
 
       {editing ? (
         <StrategyEditor

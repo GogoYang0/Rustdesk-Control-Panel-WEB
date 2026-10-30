@@ -16,11 +16,14 @@ import { consoleE2EEnabled, openConsole, signIn } from '../support/console'
     openConsole()
     cy.contains('.nav-item', '客户端策略').click()
     cy.location('pathname', { timeout: 10000 }).should('match', /\/strategies$/)
+    cy.get('select[aria-label="策略 ops@acme.local"]')
+      .should('exist')
+      .then(($select) => {
+        if ($select.val() !== initialStrategy) {
+          cy.wrap($select).select(initialStrategy)
+        }
+      })
     cy.get('body').then(($body) => {
-      const select = $body.find('select[aria-label="策略 ops@acme.local"]')
-      if (select.length > 0 && select.val() !== initialStrategy) {
-        cy.get('select[aria-label="策略 ops@acme.local"]').select(initialStrategy)
-      }
       const row = [...$body.find('tbody tr')].find((tr) => tr.textContent?.includes(name))
       if (!row) return
       cy.contains('tbody tr', name).contains('button', '删除').click()
@@ -51,7 +54,9 @@ import { consoleE2EEnabled, openConsole, signIn } from '../support/console'
     })
     cy.contains('tbody tr', name).contains('1')
 
+    cy.intercept('PUT', '**/members/2/strategy').as('assign')
     cy.get('select[aria-label="策略 ops@acme.local"]').select(name)
+    cy.wait('@assign')
     cy.get('select[aria-label="策略 ops@acme.local"]').invoke('val').should('not.be.empty')
 
     cy.get('select[aria-label="策略 ops@acme.local"]').select('')
@@ -67,7 +72,5 @@ import { consoleE2EEnabled, openConsole, signIn } from '../support/console'
     cy.contains('tbody tr', name).contains('button', '删除').click()
     cy.get('.modal').within(() => cy.contains('button', '删除').click())
     cy.contains('tbody tr', name).should('not.exist')
-    createdName = ''
-    originalStrategy = ''
   })
 })

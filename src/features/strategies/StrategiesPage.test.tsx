@@ -54,6 +54,7 @@ function setup(
     permissions?: string[]
     strategies?: Record<string, unknown>[]
     groupsError?: number
+    strategiesError?: number
     members?: Record<string, unknown>[]
   } = {},
 ) {
@@ -61,6 +62,7 @@ function setup(
     permissions = ['strategy.manage', 'access.manage'],
     strategies = [strategy()],
     groupsError = 0,
+    strategiesError = 0,
     members = [member()],
   } = options
   const strategyRows = strategies.map((row) => ({ ...row })) as ReturnType<typeof strategy>[]
@@ -123,7 +125,12 @@ function setup(
       strategyRows.push(created)
       return json({ code: 'ok', message: 'ok', data: created }, 201)
     }
-    if (url.endsWith('/strategies')) return json({ code: 'ok', message: 'ok', data: strategyRows })
+    if (url.endsWith('/strategies')) {
+      if (strategiesError) {
+        return json({ code: 'internal', message: 'strategies locked' }, strategiesError)
+      }
+      return json({ code: 'ok', message: 'ok', data: strategyRows })
+    }
     return json({ code: 'ok', message: 'ok', data: null })
   })
   const store = configureStore({
@@ -198,6 +205,10 @@ describe('StrategiesPage', () => {
     const select = (await screen.findByLabelText('策略 ops@acme.local')) as HTMLSelectElement
     fireEvent.change(select, { target: { value: '1' } })
     await waitFor(() => expect(memberRows[0].strategy_id).toBe(1))
+    await waitFor(() =>
+      expect(screen.getByLabelText('策略 ops@acme.local')).toHaveProperty('value', '1'),
+    )
+    expect(requests.filter((request) => request.url.endsWith('/members')).length).toBeGreaterThan(1)
     expect(JSON.parse(requests.find((r) => r.method === 'PUT')?.body ?? '{}')).toEqual({
       strategy_id: 1,
     })
@@ -244,12 +255,51 @@ describe('StrategiesPage', () => {
   })
 
   it('warns qualitatively and deletes a strategy', async () => {
-    const { strategyRows } = setup()
+    const { requests, strategyRows } = setup()
     await screen.findAllByText('基线')
     fireEvent.click(screen.getByRole('button', { name: '删除' }))
     const dialog = await screen.findByRole('dialog', { name: /删除客户端策略/ })
     expect(within(dialog).getByText(/成员、设备组、设备三层/)).toBeTruthy()
     fireEvent.click(within(dialog).getByRole('button', { name: '删除' }))
     await waitFor(() => expect(strategyRows).toHaveLength(0))
+    expect(requests.some((request) => request.method === 'DELETE')).toBe(true)
   })
+})
+
+it('preserves the loaded configuration on a no-op save', async () => {
+  const { requests } = setup()
+  await screen.findAllByText('基线')
+  fireEvent.click(screen.getByRole('button', { name: '编辑' }))
+  const dialog = await screen.findByRole('dialog', { name: /编辑客户端策略/ })
+  fireEvent.click(within(dialog).getByRole('button', { name: '保存' }))
+  await waitFor(() => expect(requests.some((request) => request.method === 'PATCH')).toBe(true))
+  const payload = JSON.parse(requests.find((request) => request.method === 'PATCH')?.body ?? '{}')
+  expect(payload.config_options).toEqual({ 'enable-audio': 'Y' })
+  expect(payload.enabled).toBe(true)
+  expect(screen.getByText('3')).toBeTruthy()
+})
+
+it('assigns a device-group strategy with the expected body', async () => {
+  const { requests } = setup()
+  await screen.findAllByText('基线')
+  fireEvent.click(screen.getByRole('tab', { name: '设备组' }))
+  const select = (await screen.findByLabelText('策略 研发组')) as HTMLSelectElement
+  fireEvent.change(select, { target: { value: '1' } })
+  await waitFor(() =>
+    expect(
+      requests.some(
+        (request) => request.method === 'PUT' && request.url.includes('/device-groups/5/strategy'),
+      ),
+    ).toBe(true),
+  )
+  expect(JSON.parse(requests.find((r) => r.method === 'PUT')?.body ?? '{}')).toEqual({
+    strategy_id: 1,
+  })
+})
+
+it('disables assignment when the strategy dictionary fails', async () => {
+  setup({ strategiesError: 500 })
+  expect(await screen.findByText(/加载客户端策略失败/)).toBeTruthy()
+  expect(await screen.findByText(/加载策略字典失败/)).toBeTruthy()
+  expect((screen.getByLabelText('策略 ops@acme.local') as HTMLSelectElement).disabled).toBe(true)
 })
