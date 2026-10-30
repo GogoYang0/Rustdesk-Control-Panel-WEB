@@ -2,6 +2,7 @@ import { Banner, Spin, Typography } from '@douyinfe/semi-ui'
 import { createBrowserRouter, Navigate } from 'react-router'
 
 import LoginPage from './features/auth/LoginPage'
+import OverviewPage from './features/overview/OverviewPage'
 import AccountPage from './features/account/AccountPage'
 import MembersPage from './features/members/MembersPage'
 import AddressBookPage from './features/addressbooks/AddressBookPage'
@@ -54,7 +55,7 @@ function RootRedirect() {
       </div>
     )
   }
-  return <Navigate to={`/orgs/${first.id}/members`} replace />
+  return <Navigate to={`/orgs/${first.id}/overview`} replace />
 }
 
 export const router = createBrowserRouter([
@@ -64,7 +65,8 @@ export const router = createBrowserRouter([
     path: '/orgs/:orgId',
     element: <AppShell />,
     children: [
-      { index: true, element: <Navigate to="members" replace /> },
+      { index: true, element: <Navigate to="overview" replace /> },
+      { path: 'overview', element: <OverviewPage /> },
       { path: 'members', element: <MembersPage /> },
       { path: 'roles', element: <RolesPage /> },
       { path: 'devices', element: <DevicesPage /> },

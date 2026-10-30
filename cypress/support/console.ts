@@ -3,7 +3,7 @@
 // sensitive and go through cy.env so they stay out of the command log.
 export const consoleE2EEnabled = Cypress.expose('consoleE2E') === true
 
-const MEMBERS_PATH = /^\/orgs\/\d+\/members$/
+const LANDING_PATH = /^\/orgs\/\d+\/overview$/
 
 /**
  * Signs in once per spec. Test isolation stays off so a spec logs in only once.
@@ -25,7 +25,7 @@ function attemptLogin(email: string, password: string, retriesLeft: number) {
     if (response?.statusCode !== 200) {
       throw new Error(`login failed with ${response?.statusCode}`)
     }
-    cy.location('pathname', { timeout: 10000 }).should('match', MEMBERS_PATH)
+    cy.location('pathname', { timeout: 10000 }).should('match', LANDING_PATH)
   })
 }
 
@@ -44,5 +44,5 @@ export function signIn() {
 /** Loads the console entry, which redirects to the first organization. */
 export function openConsole() {
   cy.visit('/')
-  cy.location('pathname', { timeout: 10000 }).should('match', MEMBERS_PATH)
+  cy.location('pathname', { timeout: 10000 }).should('match', LANDING_PATH)
 }
