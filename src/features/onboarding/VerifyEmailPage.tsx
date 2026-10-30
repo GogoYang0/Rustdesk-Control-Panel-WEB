@@ -18,6 +18,7 @@ export default function VerifyEmailPage() {
     (searchParams.get('token')?.length ?? 0) >= 16 ? '' : INVALID_TOKEN_MESSAGE,
   )
   const startedRef = useRef(false)
+  const inFlightRef = useRef(false)
 
   // The token is a one-shot credential: take it out of the address bar before
   // the exchange resolves, and keep it only in memory for a manual retry.
@@ -33,6 +34,8 @@ export default function VerifyEmailPage() {
   }, [])
 
   async function submit(value: string) {
+    if (inFlightRef.current) return
+    inFlightRef.current = true
     setStatus('verifying')
     setMessage('')
     try {
@@ -44,6 +47,8 @@ export default function VerifyEmailPage() {
       setMessage(verifyEmailError(err))
       setStatus(retryable ? 'retryable' : 'invalid')
       if (!retryable) setToken(null)
+    } finally {
+      inFlightRef.current = false
     }
   }
 
