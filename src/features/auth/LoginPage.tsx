@@ -513,14 +513,19 @@ export default function LoginPage() {
                 </div>
               ) : null}
 
-              {captchaEnabled === true ? (
-                <div className="banner warning mb-14" style={{ padding: '9px 11px' }}>
-                  <div>
-                    该部署启用了交互式验证码；TOTP 第二步需要验证码 proof，控制台将在 17c
-                    接入，当前无法完成。
-                  </div>
-                </div>
-              ) : null}
+              <div
+                id="totp-captcha-hint"
+                role="status"
+                aria-live="polite"
+                className={captchaEnabled === true ? 'banner warning mb-14' : 'help mb-14'}
+                style={captchaEnabled === true ? { padding: '9px 11px' } : undefined}
+              >
+                {captchaEnabled === true
+                  ? '该部署启用了交互式验证码；TOTP 第二步需要验证码 proof，控制台将在 17c 接入，当前无法完成。'
+                  : captchaEnabled === null
+                    ? '正在确认验证码状态；若部署启用了验证码，TOTP 第二步将无法完成。'
+                    : ''}
+              </div>
 
               <div className="field mb-14">
                 <label className="form-label" htmlFor="login-code">
@@ -529,6 +534,7 @@ export default function LoginPage() {
                 <div className="input lg" style={{ height: 40 }}>
                   <input
                     id="login-code"
+                    aria-describedby="totp-captcha-hint"
                     value={code}
                     onChange={(e) => setCode(e.target.value)}
                     placeholder="123456"
