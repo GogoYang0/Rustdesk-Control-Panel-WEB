@@ -190,7 +190,9 @@ export default function ControlRolesPage() {
                           </span>
                         </td>
                         <td className="mono">
-                          {membersError ? '—' : memberCountForRole(role, list, memberList)}
+                          {membersError || membersLoading
+                            ? '—'
+                            : memberCountForRole(role, list, memberList)}
                         </td>
                         <td>
                           <span className="tag green">允许 {counts.enable}</span>{' '}

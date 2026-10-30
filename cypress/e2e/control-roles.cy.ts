@@ -7,17 +7,19 @@ import { consoleE2EEnabled, openConsole, signIn } from '../support/console'
   beforeEach(openConsole)
 
   let createdName = ''
+  let originalRole = ''
 
   afterEach(() => {
     const name = createdName
+    const initialRole = originalRole
     if (!name) return
     openConsole()
     cy.contains('.nav-item', '控制角色').click()
     cy.location('pathname', { timeout: 10000 }).should('match', /\/control-roles$/)
     cy.get('body').then(($body) => {
       const select = $body.find('select[aria-label="控制角色 ops@acme.local"]')
-      if (select.length > 0 && select.val() !== '') {
-        cy.get('select[aria-label="控制角色 ops@acme.local"]').select('')
+      if (select.length > 0 && select.val() !== initialRole) {
+        cy.get('select[aria-label="控制角色 ops@acme.local"]').select(initialRole)
       }
       const row = [...$body.find('tbody tr')].find((tr) => tr.textContent?.includes(name))
       if (!row) return
@@ -26,14 +28,20 @@ import { consoleE2EEnabled, openConsole, signIn } from '../support/console'
       cy.contains('tbody tr', name).should('not.exist')
     })
     createdName = ''
+    originalRole = ''
   })
 
   it('creates, edits, assigns and deletes a control role', () => {
     const name = `E2E 角色 ${Date.now()}`
-    createdName = name
     cy.contains('.nav-item', '控制角色').click()
     cy.location('pathname', { timeout: 10000 }).should('match', /\/control-roles$/)
     cy.get('.page-title').should('have.text', '控制角色')
+    cy.get('select[aria-label="控制角色 ops@acme.local"]')
+      .invoke('val')
+      .then((value) => {
+        originalRole = String(value ?? '')
+        createdName = name
+      })
     cy.contains('.banner', '原生客户端直连').should('be.visible')
 
     cy.contains('button', '新建角色').click()
@@ -64,5 +72,6 @@ import { consoleE2EEnabled, openConsole, signIn } from '../support/console'
       '未分配',
     )
     createdName = ''
+    originalRole = ''
   })
 })
