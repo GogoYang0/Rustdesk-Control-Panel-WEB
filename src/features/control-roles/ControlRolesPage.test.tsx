@@ -60,6 +60,7 @@ function setup(
     roles?: Record<string, unknown>[]
     members?: Record<string, unknown>[]
     membersError?: number
+    rolesStatus?: number
   } = {},
 ) {
   const {
@@ -70,6 +71,7 @@ function setup(
     ],
     members = [member(1, 'owner@acme.local', 1), member(2, 'ops@acme.local', null)],
     membersError = 0,
+    rolesStatus = 0,
   } = options
   const roleRows = roles.map((row) => ({
     ...row,
@@ -119,6 +121,9 @@ function setup(
       return json({ code: 'ok', message: 'ok', data: null })
     }
     if (url.endsWith('/control-roles')) {
+      if (rolesStatus) {
+        return json({ code: 'internal', message: 'roles locked' }, rolesStatus)
+      }
       return json({ code: 'ok', message: 'ok', data: roleRows })
     }
     return json({ code: 'ok', message: 'ok', data: null })
@@ -245,4 +250,46 @@ describe('ControlRolesPage', () => {
     expect(within(rows[0]).getByText('—')).toBeTruthy()
     expect(await screen.findByText(/加载成员失败/)).toBeTruthy()
   })
+})
+
+it('saves an unchanged role with the complete original map', async () => {
+  const { requests } = setup()
+  await screen.findAllByText('Ops')
+  const rows = within(screen.getAllByRole('table')[0]).getAllByRole('row').slice(1)
+  fireEvent.click(within(rows[1]).getByRole('button', { name: '编辑' }))
+  const dialog = await screen.findByRole('dialog', { name: /编辑控制角色/ })
+  fireEvent.click(within(dialog).getByRole('button', { name: '保存' }))
+  await waitFor(() => expect(requests.some((request) => request.method === 'PATCH')).toBe(true))
+  const payload = JSON.parse(
+    requests.find((request) => request.method === 'PATCH')?.body ?? '{}',
+  ) as {
+    name: string
+    permissions: Record<string, string>
+  }
+  expect(payload.name).toBe('Ops')
+  expect(Object.keys(payload.permissions)).toHaveLength(14)
+  expect(payload.permissions.file).toBe('disable')
+  expect(payload.permissions.keyboard).toBe('use_client')
+})
+
+it('disables assignment while the role dictionary is unavailable', async () => {
+  setup({ rolesStatus: 500 })
+  expect(await screen.findByText(/加载控制角色失败/)).toBeTruthy()
+  expect(await screen.findByText(/加载控制角色字典失败/)).toBeTruthy()
+  expect((screen.getByLabelText('控制角色 ops@acme.local') as HTMLSelectElement).disabled).toBe(
+    true,
+  )
+})
+
+it('keeps disabled members visible with their assigned role', async () => {
+  setup({
+    members: [
+      member(1, 'owner@acme.local', 1),
+      { ...member(2, 'ops@acme.local', 2), disabled: true },
+    ],
+  })
+  await screen.findByText('成员控制角色')
+  const select = (await screen.findByLabelText('控制角色 ops@acme.local')) as HTMLSelectElement
+  expect(select.value).toBe('2')
+  expect(screen.getByText('停用')).toBeTruthy()
 })

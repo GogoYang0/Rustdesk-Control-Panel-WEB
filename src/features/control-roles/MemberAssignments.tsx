@@ -1,6 +1,7 @@
 import { Toast } from '@douyinfe/semi-ui'
 import { useState } from 'react'
 
+import { ApiError } from '../../lib/api'
 import type { ControlRole, Member } from '../../lib/api'
 import { controlRoleError, isBuiltinRole, roleAssignmentLabel } from '../../lib/control-role'
 import { useAssignMemberControlRoleMutation } from '../../store/api'
@@ -12,6 +13,9 @@ export default function MemberAssignments({
   membersError,
   membersLoading,
   onRetryMembers,
+  rolesLoading,
+  rolesError,
+  onRetryRoles,
 }: {
   orgId: number
   roles: ControlRole[]
@@ -19,12 +23,16 @@ export default function MemberAssignments({
   membersError?: unknown
   membersLoading: boolean
   onRetryMembers: () => void
+  rolesLoading: boolean
+  rolesError?: unknown
+  onRetryRoles: () => void
 }) {
   const [assign] = useAssignMemberControlRoleMutation()
   const [busyUserId, setBusyUserId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const defaultRole = roles.find(isBuiltinRole)
   const customRoles = roles.filter((role) => !isBuiltinRole(role))
+  const rolesReady = !rolesLoading && !rolesError
 
   function currentValue(member: Member): string {
     if (member.control_role_id == null) return ''
@@ -42,6 +50,10 @@ export default function MemberAssignments({
       Toast.success('控制角色已更新')
     } catch (err) {
       setError(controlRoleError(err, 'assign'))
+      if (err instanceof ApiError && (err.status === 400 || err.status === 404)) {
+        onRetryRoles()
+        onRetryMembers()
+      }
     } finally {
       setBusyUserId(null)
     }
@@ -51,7 +63,7 @@ export default function MemberAssignments({
     <div style={{ marginTop: 24 }}>
       <div className="hstack" style={{ marginBottom: 10 }}>
         <div className="card-title">成员控制角色</div>
-        <span className="tag grey">{members.length}</span>
+        <span className="tag grey">{membersError || membersLoading ? '—' : members.length}</span>
         <div className="spacer" />
       </div>
       <div className="help mb-14">
@@ -62,6 +74,18 @@ export default function MemberAssignments({
       {error ? (
         <div className="banner danger mb-14" style={{ padding: '9px 11px' }}>
           <div>{error}</div>
+        </div>
+      ) : null}
+
+      {rolesError ? (
+        <div className="banner danger mb-14">
+          <div>
+            <b>加载控制角色字典失败。</b>
+            {controlRoleError(rolesError, 'roles')}
+          </div>
+          <button className="btn outline sm" type="button" onClick={onRetryRoles}>
+            重试
+          </button>
         </div>
       ) : null}
 
@@ -111,7 +135,7 @@ export default function MemberAssignments({
                           className="select-native"
                           aria-label={`控制角色 ${member.email}`}
                           value={currentValue(member)}
-                          disabled={busyUserId !== null}
+                          disabled={busyUserId !== null || !rolesReady}
                           onChange={(event) => void change(member, event.target.value)}
                         >
                           <option value="">未分配 → Default</option>
@@ -123,7 +147,9 @@ export default function MemberAssignments({
                           {member.control_role_id != null &&
                           !roles.some((role) => role.id === member.control_role_id) ? (
                             <option value={String(member.control_role_id)}>
-                              {roleAssignmentLabel(member.control_role_id, roles)}
+                              {rolesReady
+                                ? roleAssignmentLabel(member.control_role_id, roles)
+                                : '角色加载中…'}
                             </option>
                           ) : null}
                         </select>

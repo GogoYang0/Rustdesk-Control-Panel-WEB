@@ -9,15 +9,21 @@ import { consoleE2EEnabled, openConsole, signIn } from '../support/console'
   let createdName = ''
 
   afterEach(() => {
-    if (!createdName) return
+    const name = createdName
+    if (!name) return
+    openConsole()
     cy.contains('.nav-item', '控制角色').click()
     cy.location('pathname', { timeout: 10000 }).should('match', /\/control-roles$/)
     cy.get('body').then(($body) => {
-      const row = [...$body.find('tbody tr')].find((tr) => tr.textContent?.includes(createdName))
+      const select = $body.find('select[aria-label="控制角色 ops@acme.local"]')
+      if (select.length > 0 && select.val() !== '') {
+        cy.get('select[aria-label="控制角色 ops@acme.local"]').select('')
+      }
+      const row = [...$body.find('tbody tr')].find((tr) => tr.textContent?.includes(name))
       if (!row) return
-      cy.contains('tbody tr', createdName).contains('button', '删除').click()
+      cy.contains('tbody tr', name).contains('button', '删除').click()
       cy.get('.modal').within(() => cy.contains('button', '删除').click())
-      cy.contains('tbody tr', createdName).should('not.exist')
+      cy.contains('tbody tr', name).should('not.exist')
     })
     createdName = ''
   })

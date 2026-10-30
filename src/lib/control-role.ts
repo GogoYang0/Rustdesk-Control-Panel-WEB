@@ -150,7 +150,7 @@ export function roleNameProblem(name: string, roles: RoleLike[], exceptId?: numb
 }
 
 export type ControlRoleOperation =
-  'roles' | 'role-create' | 'role-update' | 'role-delete' | 'assign'
+  'roles' | 'role-create' | 'role-update' | 'role-delete' | 'assign' | 'members'
 
 export function controlRoleError(
   err: unknown,
@@ -163,7 +163,9 @@ export function controlRoleError(
   if (err.status === 403) return '当前角色没有控制角色管理权限'
   if (err.status === 404) {
     if (operation === 'assign') return '成员或控制角色不存在'
-    return operation === 'roles' ? '组织不存在或服务不可用' : '控制角色不存在'
+    return operation === 'roles' || operation === 'members'
+      ? '组织不存在或服务不可用'
+      : '控制角色不存在'
   }
   if (err.status === 409) {
     if (builtin && (operation === 'role-delete' || operation === 'role-update')) {

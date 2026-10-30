@@ -135,6 +135,7 @@ export default function RoleEditor({
                     type="button"
                     className={`chip-btn ${permissions[key] === state ? 'on' : ''}`}
                     aria-pressed={permissions[key] === state}
+                    disabled={busy}
                     onClick={() => setState(key, state)}
                   >
                     <span className={`tag ${controlStateTone(state)}`}>

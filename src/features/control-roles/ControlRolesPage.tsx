@@ -1,5 +1,5 @@
 import { Toast } from '@douyinfe/semi-ui'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router'
 
 import Modal from '../../components/Modal'
@@ -47,6 +47,15 @@ export default function ControlRolesPage() {
   const [deleting, setDeleting] = useState<ControlRole | null>(null)
   const [busy, setBusy] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setEditing(null)
+    setDeleting(null)
+    setActionError(null)
+    setDeleteError(null)
+    setBusy(false)
+  }, [id])
 
   if (!validId) {
     return <StateBlock code="404" title="组织不存在" description="组织 id 不合法。" />
@@ -89,13 +98,13 @@ export default function ControlRolesPage() {
   async function remove() {
     if (!deleting || busy) return
     setBusy(true)
-    setActionError(null)
+    setDeleteError(null)
     try {
       await deleteRole({ orgId: id, roleId: deleting.id }).unwrap()
       setDeleting(null)
       Toast.success('控制角色已删除')
     } catch (err) {
-      setActionError(controlRoleError(err, 'role-delete', isBuiltinRole(deleting)))
+      setDeleteError(controlRoleError(err, 'role-delete', isBuiltinRole(deleting)))
     } finally {
       setBusy(false)
     }
@@ -202,7 +211,7 @@ export default function ControlRolesPage() {
                               className="btn danger sm"
                               type="button"
                               onClick={() => {
-                                setActionError(null)
+                                setDeleteError(null)
                                 setDeleting(role)
                               }}
                             >
@@ -227,6 +236,9 @@ export default function ControlRolesPage() {
         membersError={membersError}
         membersLoading={membersLoading}
         onRetryMembers={() => void refetchMembers()}
+        rolesLoading={rolesLoading}
+        rolesError={rolesError}
+        onRetryRoles={() => void refetchRoles()}
       />
 
       {editing ? (
@@ -239,7 +251,7 @@ export default function ControlRolesPage() {
           onClose={() => {
             if (!busy) {
               setDeleting(null)
-              setActionError(null)
+              setDeleteError(null)
             }
           }}
           footer={
@@ -248,7 +260,10 @@ export default function ControlRolesPage() {
                 className="btn tertiary"
                 type="button"
                 disabled={busy}
-                onClick={() => setDeleting(null)}
+                onClick={() => {
+                  setDeleting(null)
+                  setDeleteError(null)
+                }}
               >
                 取消
               </button>
@@ -266,9 +281,9 @@ export default function ControlRolesPage() {
           <div className="banner danger mb-14" style={{ padding: '9px 11px' }}>
             <div>持有该角色的成员会回退组织内置 Default；删除与分配清理由服务端同事务完成。</div>
           </div>
-          {actionError ? (
+          {deleteError ? (
             <div className="banner danger" style={{ padding: '9px 11px' }}>
-              <div>{actionError}</div>
+              <div>{deleteError}</div>
             </div>
           ) : null}
         </Modal>
