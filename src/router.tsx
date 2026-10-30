@@ -11,6 +11,7 @@ import ApprovalsPage from './features/approvals/ApprovalsPage'
 import AccessPage from './features/access/AccessPage'
 import AuditPage from './features/audit/AuditPage'
 import BuildsPage from './features/builds/BuildsPage'
+import SettingsPage from './features/settings/SettingsPage'
 import ControlRolesPage from './features/control-roles/ControlRolesPage'
 import StrategiesPage from './features/strategies/StrategiesPage'
 import LogsPage from './features/logs/LogsPage'
@@ -80,6 +81,7 @@ export const router = createBrowserRouter([
       { path: 'address-books', element: <AddressBooksPage /> },
       { path: 'address-books/:bookId', element: <AddressBookPage /> },
       { path: 'account', element: <AccountPage /> },
+      { path: 'settings', element: <SettingsPage /> },
       {
         path: '*',
         element: (

@@ -60,6 +60,9 @@ import type {
   TokenCreateRequest,
   IdentityList,
   IdentityUnlinkRequest,
+  AuthProviders,
+  ProvisioningStatus,
+  AuditRetention,
 } from '../api/generated'
 import {
   accessTokenExpiresSoon,
@@ -320,11 +323,8 @@ export function verifyTwoFactor(challengeToken: string, code: string): Promise<T
   })
 }
 
-export function fetchProviders(): Promise<{
-  oidc: { enabled: boolean; name?: string }
-  ldap: { enabled: boolean }
-}> {
-  return apiFetch('/api/v1/auth/providers')
+export function fetchProviders(): Promise<AuthProviders> {
+  return apiFetch<AuthProviders>('/api/v1/auth/providers')
 }
 
 export function fetchCaptcha(): Promise<CaptchaInfo> {
@@ -344,6 +344,9 @@ export type {
   Identity,
   IdentityList,
   IdentityUnlinkRequest,
+  AuthProviders,
+  ProvisioningStatus,
+  AuditRetention,
   Passkey,
   PasskeyCeremony,
   PasskeyList,
@@ -513,6 +516,30 @@ export function finishPasskeyLogin(input: {
     method: 'POST',
     body: JSON.stringify(input),
     retryOn401: false,
+  })
+}
+
+// ── system settings ─────────────────────────────────────────────────────────
+
+export function fetchProvisioning(orgId: number): Promise<ProvisioningStatus> {
+  return apiFetch<ProvisioningStatus>(`/api/v1/orgs/${orgId}/provisioning`)
+}
+
+export function updateProvisioning(orgId: number, enabled: boolean): Promise<ProvisioningStatus> {
+  return apiFetch<ProvisioningStatus>(`/api/v1/orgs/${orgId}/provisioning`, {
+    method: 'PUT',
+    body: JSON.stringify({ enabled }),
+  })
+}
+
+export function fetchAuditRetention(orgId: number): Promise<AuditRetention> {
+  return apiFetch<AuditRetention>(`/api/v1/orgs/${orgId}/audit-retention`)
+}
+
+export function updateAuditRetention(orgId: number, days: number): Promise<AuditRetention> {
+  return apiFetch<AuditRetention>(`/api/v1/orgs/${orgId}/audit-retention`, {
+    method: 'PUT',
+    body: JSON.stringify({ days }),
   })
 }
 
