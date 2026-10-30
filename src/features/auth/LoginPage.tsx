@@ -14,6 +14,7 @@ import {
   finishPasskeyLogin,
   ldapLogin,
   login,
+  resendVerification,
   startOidcLogin,
   verifyTwoFactor,
   type AuthProviders,
@@ -31,6 +32,7 @@ import {
   oidcExchangeError,
   oidcStartError,
 } from '../../lib/login-errors'
+import { RESEND_VERIFICATION_NOTICE, resendVerificationError } from '../../lib/onboarding'
 import { setTokens, type TokenPair } from '../../lib/session'
 import { panelApi } from '../../store/api'
 
@@ -56,7 +58,12 @@ export default function LoginPage() {
   const [mode, setMode] = useState<LoginMode>('local')
   const [ldapUsername, setLdapUsername] = useState('')
   const [ldapPassword, setLdapPassword] = useState('')
+  const [verifyEmailBlocked, setVerifyEmailBlocked] = useState(false)
+  const [resending, setResending] = useState(false)
+  const [resendSent, setResendSent] = useState(false)
+  const [resendError, setResendError] = useState('')
   const handledCallbackRef = useRef(false)
+  const resendSeqRef = useRef(0)
 
   // OIDC callback: the ticket is a one-shot 60s credential. Strip it from the
   // URL and exchange it exactly once (StrictMode re-runs this effect).
@@ -125,21 +132,52 @@ export default function LoginPage() {
     }
   }
 
+  function resetVerificationResend() {
+    resendSeqRef.current += 1
+    setVerifyEmailBlocked(false)
+    setResending(false)
+    setResendSent(false)
+    setResendError('')
+  }
+
   async function onSubmitCredentials(event: React.FormEvent) {
     event.preventDefault()
     if (submitting || mode !== 'local') return
     setSubmitting(true)
     setError(null)
+    resetVerificationResend()
     try {
       const pair = await login(email.trim(), password)
       finish(pair)
     } catch (err) {
       if (beginSecondFactor(err)) return
+      if (err instanceof ApiError && err.status === 403 && err.code === 'email_not_verified') {
+        setVerifyEmailBlocked(true)
+      }
       const message = loginMessage(err as ApiError)
       setError(message)
       Toast.error(message)
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function onResendVerification() {
+    if (submitting || resending) return
+    const target = email.trim()
+    if (!target) return
+    const seq = ++resendSeqRef.current
+    setResending(true)
+    setResendError('')
+    try {
+      await resendVerification(target)
+      if (resendSeqRef.current !== seq) return
+      setResendSent(true)
+    } catch (err) {
+      if (resendSeqRef.current !== seq) return
+      setResendError(resendVerificationError(err))
+    } finally {
+      if (resendSeqRef.current === seq) setResending(false)
     }
   }
 
@@ -330,6 +368,7 @@ export default function LoginPage() {
                       setMode('local')
                       setError(null)
                       setLdapPassword('')
+                      resetVerificationResend()
                     }}
                   >
                     本地账号
@@ -343,6 +382,7 @@ export default function LoginPage() {
                       setMode('ldap')
                       setError(null)
                       setLdapPassword('')
+                      resetVerificationResend()
                     }}
                   >
                     目录账号
@@ -355,6 +395,36 @@ export default function LoginPage() {
                   <div>
                     <span className="t">{error}</span>
                   </div>
+                </div>
+              ) : null}
+
+              {verifyEmailBlocked ? (
+                <div className="mb-14">
+                  {resendSent ? (
+                    <div className="help" role="status">
+                      {RESEND_VERIFICATION_NOTICE}
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        className="btn tertiary sm"
+                        type="button"
+                        disabled={submitting || resending}
+                        onClick={() => void onResendVerification()}
+                      >
+                        {resending ? '发送中…' : '重新发送验证邮件'}
+                      </button>
+                      {resendError ? (
+                        <div
+                          className="help"
+                          role="alert"
+                          style={{ color: 'var(--danger)', marginTop: 6 }}
+                        >
+                          {resendError}
+                        </div>
+                      ) : null}
+                    </>
+                  )}
                 </div>
               ) : null}
 
@@ -396,7 +466,10 @@ export default function LoginPage() {
                         id="login-email"
                         autoComplete="username"
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        onChange={(e) => {
+                          setEmail(e.target.value)
+                          resetVerificationResend()
+                        }}
                         placeholder="name@company.com"
                         required
                       />

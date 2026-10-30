@@ -68,6 +68,8 @@ function setup(
     ldapStatus?: number
     verifyBody?: unknown
     verifyStatus?: number
+    resendStatus?: number
+    resendNetworkError?: boolean
     strict?: boolean
   } = {},
 ) {
@@ -120,6 +122,13 @@ function setup(
     }
     if (url.endsWith('/auth/2fa/verify')) {
       return json(options.verifyBody ?? tokenPair(), options.verifyStatus ?? 200)
+    }
+    if (url.endsWith('/auth/resend-verification')) {
+      if (options.resendNetworkError) throw new TypeError('Failed to fetch')
+      if (options.resendStatus) {
+        return json({ code: 'rate_limited', message: 'too many requests' }, options.resendStatus)
+      }
+      return json({ code: 'ok', message: 'ok' })
     }
     if (url.endsWith('/auth/passkey/login/begin')) {
       if (options.beginNetworkError) throw new TypeError('Failed to fetch')
@@ -532,5 +541,87 @@ describe('LoginPage passkey login', () => {
     fireEvent.click(await screen.findByRole('button', { name: '使用 Passkey 登录' }))
     await screen.findByText('控制台')
     expect(Object.keys(store.getState().panelApi.queries)).toHaveLength(0)
+  })
+})
+
+describe('LoginPage verification resend', () => {
+  type SetupOptions = NonNullable<Parameters<typeof setup>[0]>
+
+  async function submitUnverified(options: SetupOptions = {}) {
+    const result = setup({
+      loginStatus: 403,
+      loginBody: { code: 'email_not_verified', message: 'email is not verified' },
+      ...options,
+    })
+    fireEvent.change(await screen.findByLabelText(/邮箱/), {
+      target: { value: ' new@acme.local ' },
+    })
+    fireEvent.change(screen.getByLabelText(/密码/), { target: { value: 'secret-pass' } })
+    fireEvent.click(screen.getByRole('button', { name: '登录' }))
+    expect(await screen.findByText('邮箱尚未验证，请先完成邮件验证')).toBeTruthy()
+    return result
+  }
+
+  it('resends to the trimmed address with a neutral notice', async () => {
+    const { requests } = await submitUnverified()
+    fireEvent.click(screen.getByRole('button', { name: '重新发送验证邮件' }))
+
+    expect(await screen.findByText(/如果该邮箱尚未验证/)).toBeTruthy()
+    const resend = requests.find((request) => request.url.endsWith('/auth/resend-verification'))
+    expect(JSON.parse(resend?.body ?? '{}')).toEqual({ email: 'new@acme.local' })
+    expect(screen.queryByRole('button', { name: '重新发送验证邮件' })).toBeNull()
+  })
+
+  it('reports throttling and network failures inline', async () => {
+    await submitUnverified({ resendStatus: 429 })
+    fireEvent.click(screen.getByRole('button', { name: '重新发送验证邮件' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('发送过于频繁')
+  })
+
+  it('reports a network failure without replacing the login error', async () => {
+    await submitUnverified({ resendNetworkError: true })
+    fireEvent.click(screen.getByRole('button', { name: '重新发送验证邮件' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('发送失败')
+    expect(screen.getByText('邮箱尚未验证，请先完成邮件验证')).toBeTruthy()
+  })
+
+  it('maps an invalid resend address and a server failure', async () => {
+    await submitUnverified({ resendStatus: 400 })
+    fireEvent.click(screen.getByRole('button', { name: '重新发送验证邮件' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('邮箱格式不正确')
+  })
+
+  it('reports a resend server failure', async () => {
+    await submitUnverified({ resendStatus: 500 })
+    fireEvent.click(screen.getByRole('button', { name: '重新发送验证邮件' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('发送失败')
+  })
+
+  it('does not offer a resend for a wrong password', async () => {
+    setup()
+    fireEvent.change(await screen.findByLabelText(/邮箱/), {
+      target: { value: 'new@acme.local' },
+    })
+    fireEvent.change(screen.getByLabelText(/密码/), { target: { value: 'wrong-pass' } })
+    fireEvent.click(screen.getByRole('button', { name: '登录' }))
+
+    expect(await screen.findByText('邮箱或密码不正确')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: '重新发送验证邮件' })).toBeNull()
+  })
+
+  it('hides the resend when the mailbox or login mode changes', async () => {
+    await submitUnverified({
+      providers: { oidc: { enabled: false }, ldap: { enabled: true } },
+    })
+    fireEvent.change(screen.getByLabelText(/邮箱/), { target: { value: 'other@acme.local' } })
+    expect(screen.queryByRole('button', { name: '重新发送验证邮件' })).toBeNull()
+  })
+
+  it('clears the resend entry when switching to directory login', async () => {
+    await submitUnverified({
+      providers: { oidc: { enabled: false }, ldap: { enabled: true } },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '目录账号' }))
+    expect(screen.queryByRole('button', { name: '重新发送验证邮件' })).toBeNull()
   })
 })
