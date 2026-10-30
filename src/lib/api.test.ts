@@ -19,10 +19,15 @@ const {
   ApiError,
   apiBlob,
   apiFetch,
+  createToken,
   enableTotp,
   fetchClientBuildArtifact,
   fetchCsv,
+  fetchIdentities,
+  fetchTokens,
   renamePasskey,
+  revokeToken,
+  unlinkIdentity,
 } = await import('./api')
 
 function jsonResponse(body: unknown, status = 200) {
@@ -120,6 +125,110 @@ describe('credential endpoints and session refresh', () => {
     await expect(enableTotp('123456')).rejects.toMatchObject({ status: 401 })
     expect(refreshAccessToken).not.toHaveBeenCalled()
     expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('personal tokens and identities', () => {
+  beforeEach(() => {
+    refreshAccessToken.mockReset()
+    logout.mockReset()
+    sessionMock.expiresSoon = false
+    sessionMock.refreshToken = 'refresh-1'
+  })
+  afterEach(() => vi.restoreAllMocks())
+
+  it('lists tokens for one organization and sends the exact create payload', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        jsonResponse({
+          code: 'ok',
+          message: 'ok',
+          data: [{ id: 1, organization_id: 7, name: 'CI', token_prefix: 'rdt_abcd' }],
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(
+          {
+            code: 'ok',
+            message: 'ok',
+            data: { token: { id: 2 }, plaintext: 'rdt_secret' },
+          },
+          201,
+        ),
+      )
+
+    await expect(fetchTokens(7)).resolves.toMatchObject([{ id: 1 }])
+    expect(String(fetchMock.mock.calls[0][0])).toBe('/api/v1/auth/tokens?organizationId=7')
+
+    const input = {
+      name: ' CI ',
+      organization_id: 7,
+      permissions: ['device.read'],
+      expires_in_days: 30,
+    }
+    await expect(createToken(input)).resolves.toMatchObject({ plaintext: 'rdt_secret' })
+    const createCall = fetchMock.mock.calls[1]
+    expect(String(createCall[0])).toBe('/api/v1/auth/tokens')
+    expect(String((createCall[1] as RequestInit).method)).toBe('POST')
+    expect(JSON.parse(String((createCall[1] as RequestInit).body))).toEqual(input)
+  })
+
+  it('revokes with DELETE and lists identities without an organization parameter', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(jsonResponse({ code: 'ok', message: 'ok', data: null }))
+      .mockResolvedValueOnce(
+        jsonResponse({
+          code: 'ok',
+          message: 'ok',
+          data: { active_provider: 'oidc', identities: [] },
+        }),
+      )
+
+    await expect(revokeToken(3)).resolves.toBeUndefined()
+    expect(String(fetchMock.mock.calls[0][0])).toBe('/api/v1/auth/tokens/3')
+    expect(String((fetchMock.mock.calls[0][1] as RequestInit).method)).toBe('DELETE')
+
+    await expect(fetchIdentities()).resolves.toMatchObject({ active_provider: 'oidc' })
+    expect(String(fetchMock.mock.calls[1][0])).toBe('/api/v1/auth/identity')
+  })
+
+  it('does not refresh a 401 from identity unlink', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(jsonResponse({ code: 'unauthorized', message: 'invalid password' }, 401))
+
+    await expect(unlinkIdentity({ identity_id: 5, password: 'wrong-pass' })).rejects.toMatchObject({
+      status: 401,
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(refreshAccessToken).not.toHaveBeenCalled()
+    expect(JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body))).toEqual({
+      identity_id: 5,
+      password: 'wrong-pass',
+    })
+  })
+
+  it('refreshes before unlinking when the access token is about to lapse', async () => {
+    sessionMock.expiresSoon = true
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(jsonResponse({ code: 'ok', message: 'ok', data: null }))
+    refreshAccessToken.mockResolvedValue({ access: 'access-2', invalid: false })
+
+    await expect(
+      unlinkIdentity({ identity_id: 5, stepup_token: 'step-token' }),
+    ).resolves.toBeUndefined()
+    expect(refreshAccessToken).toHaveBeenCalledTimes(1)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(refreshAccessToken.mock.invocationCallOrder[0]).toBeLessThan(
+      fetchMock.mock.invocationCallOrder[0],
+    )
+    expect(JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body))).toEqual({
+      identity_id: 5,
+      stepup_token: 'step-token',
+    })
   })
 })
 

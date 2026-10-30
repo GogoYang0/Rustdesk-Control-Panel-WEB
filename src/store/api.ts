@@ -10,6 +10,8 @@ import {
   fetchDevices,
   fetchMe,
   fetchMembers,
+  fetchIdentities,
+  fetchTokens,
   listPasskeys,
   fetchRoles,
   fetchSession,
@@ -103,6 +105,8 @@ import {
   type ControlPermissionStates,
   type ControlRoleUpdateRequest,
   type PasskeyList,
+  type ApiToken,
+  type IdentityList,
   type Strategy,
   type StrategyCreateRequest,
   type StrategyUpdateRequest,
@@ -171,6 +175,8 @@ export const panelApi = createApi({
     'ControlRoles',
     'Strategies',
     'Passkeys',
+    'Tokens',
+    'Identities',
   ],
   endpoints: (build) => ({
     getMe: build.query<Me, void>({
@@ -541,6 +547,14 @@ export const panelApi = createApi({
       queryFn: () => wrap(() => listPasskeys()),
       providesTags: ['Passkeys'],
     }),
+    getTokens: build.query<ApiToken[], number>({
+      queryFn: (orgId) => wrap(() => fetchTokens(orgId)),
+      providesTags: (_result, _error, orgId) => [{ type: 'Tokens', id: orgId }],
+    }),
+    getIdentities: build.query<IdentityList, void>({
+      queryFn: () => wrap(() => fetchIdentities()),
+      providesTags: ['Identities'],
+    }),
     getStrategies: build.query<Strategy[], number>({
       queryFn: (orgId) => wrap(() => fetchStrategies(orgId)),
       providesTags: (_result, _error, orgId) => [{ type: 'Strategies', id: orgId }],
@@ -772,6 +786,8 @@ export const {
   useDeleteClientBuildProfileLogoMutation,
   useGetStrategiesQuery,
   useGetPasskeysQuery,
+  useGetTokensQuery,
+  useGetIdentitiesQuery,
   useCreateStrategyMutation,
   useUpdateStrategyMutation,
   useDeleteStrategyMutation,
