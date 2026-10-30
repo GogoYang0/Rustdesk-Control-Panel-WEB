@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
 import { ApiError } from './api'
-import { captchaChallengeError, captchaProviderLabel, captchaSubmitMessage } from './captcha'
+import {
+  captchaChallengeError,
+  captchaProviderLabel,
+  captchaProviderSupported,
+  captchaSubmitMessage,
+} from './captcha'
 
 function api(status: number, code = 'error') {
   return new ApiError(status, code, 'backend English message')
@@ -25,6 +30,15 @@ describe('captchaSubmitMessage', () => {
     expect(captchaSubmitMessage(api(503, 'internal'))).toBeNull()
     expect(captchaSubmitMessage(api(401, 'unauthorized'))).toBeNull()
     expect(captchaSubmitMessage(new TypeError('failed to fetch'))).toBeNull()
+  })
+})
+
+describe('captchaProviderSupported', () => {
+  it('supports the three implemented providers only', () => {
+    expect(captchaProviderSupported('altcha')).toBe(true)
+    expect(captchaProviderSupported('geetest')).toBe(true)
+    expect(captchaProviderSupported('cap')).toBe(true)
+    expect(captchaProviderSupported('other')).toBe(false)
   })
 })
 

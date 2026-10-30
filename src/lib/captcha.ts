@@ -24,9 +24,9 @@ export function captchaSubmitMessage(err: unknown): string | null {
   return null
 }
 
-/** Providers the console can actually render; 17c-2 adds geetest/cap. */
+/** Providers the console can actually render. */
 export function captchaProviderSupported(provider: string): boolean {
-  return provider === 'altcha'
+  return provider === 'altcha' || provider === 'geetest' || provider === 'cap'
 }
 
 export function captchaProviderLabel(provider: string | undefined): string {

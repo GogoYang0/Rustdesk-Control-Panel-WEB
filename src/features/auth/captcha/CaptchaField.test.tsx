@@ -5,6 +5,18 @@ import type { CaptchaProof } from '../../../lib/api'
 import CaptchaField from './CaptchaField'
 import type { CaptchaState } from './useCaptchaChallenge'
 
+vi.mock('./GeeTestField', () => ({
+  default: ({ captchaId }: { captchaId: string }) => (
+    <div data-testid="geetest-field" data-captcha-id={captchaId} />
+  ),
+}))
+
+vi.mock('./CapField', () => ({
+  default: ({ apiEndpoint }: { apiEndpoint: string }) => (
+    <div data-testid="cap-field" data-api-endpoint={apiEndpoint} />
+  ),
+}))
+
 vi.mock('./AltchaField', () => ({
   default: ({
     generation,
@@ -70,7 +82,7 @@ describe('CaptchaField', () => {
 
     rerender(
       <CaptchaField
-        state={ready(3, 'geetest')}
+        state={ready(3, 'other')}
         proof={null}
         onProof={vi.fn()}
         onExpired={vi.fn()}
@@ -78,6 +90,57 @@ describe('CaptchaField', () => {
       />,
     )
     expect(screen.getByRole('alert')).toHaveTextContent('不支持的验证码提供商')
+  })
+
+  it('routes the geetest and cap providers to their fields', async () => {
+    const { rerender } = render(
+      <CaptchaField
+        state={{
+          kind: 'ready',
+          generation: 4,
+          provider: 'geetest',
+          params: { captcha_id: 'cid-1', script_url: 'https://static.geetest.com/v4/gt4.js' },
+        }}
+        proof={null}
+        onProof={vi.fn()}
+        onExpired={vi.fn()}
+        onRetry={vi.fn()}
+      />,
+    )
+    expect(await screen.findByTestId('geetest-field')).toHaveAttribute('data-captcha-id', 'cid-1')
+
+    rerender(
+      <CaptchaField
+        state={{
+          kind: 'ready',
+          generation: 5,
+          provider: 'cap',
+          params: { api_endpoint: 'https://cap.example.com/site/', site_key: 'site' },
+        }}
+        proof={null}
+        onProof={vi.fn()}
+        onExpired={vi.fn()}
+        onRetry={vi.fn()}
+      />,
+    )
+    expect(await screen.findByTestId('cap-field')).toHaveAttribute(
+      'data-api-endpoint',
+      'https://cap.example.com/site/',
+    )
+  })
+
+  it('rejects provider challenges with missing params', async () => {
+    render(
+      <CaptchaField
+        state={ready(6, 'geetest')}
+        proof={null}
+        onProof={vi.fn()}
+        onExpired={vi.fn()}
+        onRetry={vi.fn()}
+      />,
+    )
+    expect(await screen.findByRole('alert')).toHaveTextContent('验证码参数无效')
+    expect(screen.queryByTestId('geetest-field')).toBeNull()
   })
 
   it('forwards a solved Altcha proof with the current generation', async () => {

@@ -16,6 +16,7 @@
     "gen:api": "bash scripts/gen-api.sh"
   },
   "dependencies": {
+    "@cap.js/widget": "^0.1.58",
     "@douyinfe/semi-ui": "^2.104.0",
     "@reduxjs/toolkit": "^2.13.0",
     "altcha": "^3.5.0",
