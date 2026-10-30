@@ -513,6 +513,15 @@ export default function LoginPage() {
                 </div>
               ) : null}
 
+              {captchaEnabled === true ? (
+                <div className="banner warning mb-14" style={{ padding: '9px 11px' }}>
+                  <div>
+                    该部署启用了交互式验证码；TOTP 第二步需要验证码 proof，控制台将在 17c
+                    接入，当前无法完成。
+                  </div>
+                </div>
+              ) : null}
+
               <div className="field mb-14">
                 <label className="form-label" htmlFor="login-code">
                   <span className="req">*</span>动态码

@@ -430,6 +430,21 @@ describe('LoginPage passkey login', () => {
     expect(await screen.findByText('动态码或恢复码不正确')).toBeTruthy()
   })
 
+  it('warns that TOTP cannot finish while captcha is enabled', async () => {
+    setup({
+      captchaEnabled: true,
+      initialPath: '/login?ticket=ticket-1',
+      exchangeStatus: 401,
+      exchangeBody: {
+        code: 'two_factor_required',
+        message: 'two factor required',
+        data: { challenge_token: 'challenge-oidc', methods: ['totp'] },
+      },
+    })
+    expect(await screen.findByRole('heading', { name: '两步验证' })).toBeTruthy()
+    expect(screen.getByText(/TOTP 第二步需要验证码 proof/)).toBeTruthy()
+  })
+
   it('continues an LDAP login through the local TOTP step', async () => {
     const { requests } = setup({
       providers: { oidc: { enabled: false }, ldap: { enabled: true } },
