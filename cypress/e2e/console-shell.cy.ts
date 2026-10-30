@@ -39,6 +39,30 @@ import { consoleE2EEnabled, openConsole, signIn } from '../support/console'
     cy.get('#modalRoot .mask').should('not.exist')
   })
 
+  it('opens the mobile drawer and mobile tab navigation', () => {
+    cy.viewport(589, 472)
+    cy.get('.hamburger').should('be.visible').click()
+    cy.get('.side').should('have.class', 'open')
+    cy.get('.side-scrim').should('be.visible').click()
+    cy.get('.side').should('not.have.class', 'open')
+
+    cy.get('.mobtab button').should('have.length', 5)
+    cy.contains('.mobtab button', '设备').click()
+    cy.location('pathname', { timeout: 10000 }).should('match', /\/devices$/)
+    cy.get('.mobtab button.on').should('contain', '设备')
+    cy.get('.page-title').should('have.text', '设备')
+
+    // The close control is a real button but must look like the prototype's span.
+    cy.get('.tab-item .tx')
+      .first()
+      .should(($tx) => {
+        const style = getComputedStyle($tx[0])
+        expect(style.backgroundColor).to.eq('rgba(0, 0, 0, 0)')
+        expect(style.borderTopWidth).to.eq('0px')
+      })
+    cy.viewport(1280, 720)
+  })
+
   it('keeps one tab per page and closes the inactive one', () => {
     cy.get('.tab-item').should('have.length', 1)
     cy.contains('.nav-item', '角色与权限').click()

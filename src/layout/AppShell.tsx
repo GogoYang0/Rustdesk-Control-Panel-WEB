@@ -337,12 +337,21 @@ const TAB_LABELS: Record<string, string> = {
 }
 const PAGE_KEYS = Object.keys(TAB_LABELS)
 
+const MOBILE_NAV: { key: string; label: string; permission?: string; icon: ReactElement }[] = [
+  { key: 'overview', label: '总览', icon: ICONS.overview },
+  { key: 'sessions', label: '会话', permission: 'device.read', icon: ICONS.sessions },
+  { key: 'approvals', label: '审批', icon: ICONS.approvals },
+  { key: 'devices', label: '设备', permission: 'device.read', icon: ICONS.devices },
+  { key: 'alerts', label: '告警', icon: ICONS.alerts },
+]
+
 export default function AppShell() {
   const navigate = useNavigate()
   const location = useLocation()
   const { orgId } = useParams()
   const { data: me, isLoading, error } = useGetMeQuery()
   const [collapsed, setCollapsed] = useState(false)
+  const [sideOpen, setSideOpen] = useState(false)
   const [orgOpen, setOrgOpen] = useState(false)
   // Open tabs, least-recently-used first (design D3: tabs are route handles).
   const [tabs, setTabs] = useState<string[]>([])
@@ -362,6 +371,20 @@ export default function AppShell() {
   useEffect(() => {
     applyThemeMode(theme)
   }, [theme])
+
+  // A mobile drawer is route-scoped: navigation or Escape closes it.
+  useEffect(() => {
+    setSideOpen(false)
+  }, [location.pathname])
+
+  useEffect(() => {
+    if (!sideOpen) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSideOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [sideOpen])
 
   // A wrong organization id in the URL must not silently render the first org:
   // that made 404s look like a successful load of somebody else's scope.
@@ -428,7 +451,11 @@ export default function AppShell() {
 
   return (
     <div className="shell">
-      <aside className="side" data-collapsed={collapsed ? 'true' : 'false'}>
+      <aside
+        id="app-side"
+        className={`side${sideOpen ? ' open' : ''}`}
+        data-collapsed={collapsed ? 'true' : 'false'}
+      >
         <div className="side-head">
           <div className="brand-logo">R</div>
           <div className="brand">
@@ -459,6 +486,7 @@ export default function AppShell() {
                         Toast.warning('当前角色没有该域的权限')
                         return
                       }
+                      setSideOpen(false)
                       navigate(`/orgs/${current.id}/${item.key}`)
                     }}
                   >
@@ -517,9 +545,38 @@ export default function AppShell() {
           </svg>
         </button>
       </aside>
+      {sideOpen ? (
+        <button
+          className="side-scrim"
+          type="button"
+          aria-label="关闭菜单"
+          onClick={() => setSideOpen(false)}
+        />
+      ) : null}
 
       <div className="main">
         <header className="topbar">
+          <button
+            className="hamburger"
+            type="button"
+            title={sideOpen ? '关闭菜单' : '打开菜单'}
+            aria-label={sideOpen ? '关闭菜单' : '打开菜单'}
+            aria-controls="app-side"
+            aria-expanded={sideOpen}
+            onClick={() => setSideOpen((value) => !value)}
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 18 18"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinecap="round"
+            >
+              <path d="M3 5h12M3 9h12M3 13h12" />
+            </svg>
+          </button>
           <div className="spacer" />
           <button className="top-search" type="button" title="全局搜索（后续波次）">
             <svg
@@ -575,6 +632,7 @@ export default function AppShell() {
                       className={`org-menu-item ${org.id === current.id ? 'on' : ''}`}
                       onClick={() => {
                         setOrgOpen(false)
+                        setSideOpen(false)
                         navigate(`/orgs/${org.id}/overview`)
                       }}
                     >
@@ -702,6 +760,32 @@ export default function AppShell() {
           <Outlet />
         </div>
       </div>
+
+      <nav className="mobtab" aria-label="移动端快捷导航">
+        {MOBILE_NAV.map((item) => {
+          const allowed = item.permission ? perms.has(item.permission) : true
+          return (
+            <button
+              key={item.key}
+              type="button"
+              className={activeKey === item.key ? 'on' : ''}
+              aria-current={activeKey === item.key ? 'page' : undefined}
+              aria-disabled={!allowed}
+              onClick={() => {
+                if (!allowed) {
+                  Toast.warning('当前角色没有该域的权限')
+                  return
+                }
+                setSideOpen(false)
+                navigate(`/orgs/${current.id}/${item.key}`)
+              }}
+            >
+              <span className="mi">{item.icon}</span>
+              {item.label}
+            </button>
+          )
+        })}
+      </nav>
     </div>
   )
 }
