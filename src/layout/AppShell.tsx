@@ -177,6 +177,21 @@ const ICONS: Record<string, ReactElement> = {
       <path d="M3 4.5h12M3 9h12M3 13.5h7" />
     </svg>
   ),
+  settings: (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 18 18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="9" cy="9" r="2.2" />
+      <path d="M9 2.5v2M9 13.5v2M2.5 9h2M13.5 9h2M4.4 4.4l1.4 1.4M12.2 12.2l1.4 1.4M13.6 4.4l-1.4 1.4M5.8 12.2l-1.4 1.4" />
+    </svg>
+  ),
   builds: (
     <svg
       width="18"
@@ -264,6 +279,13 @@ const GROUPS: { title: string; items: NavEntry[] }[] = [
         icon: ICONS.audit,
       },
       {
+        key: 'settings',
+        label: '系统设置',
+        ready: true,
+        permission: 'org.admin',
+        icon: ICONS.settings,
+      },
+      {
         key: 'builds',
         label: '客户端生成器',
         ready: true,
@@ -290,6 +312,7 @@ const TAB_LABELS: Record<string, string> = {
   'control-roles': '控制角色',
   'address-books': '地址簿',
   account: '账户与安全',
+  settings: '系统设置',
 }
 const PAGE_KEYS = Object.keys(TAB_LABELS)
 

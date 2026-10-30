@@ -12,6 +12,9 @@ import {
   fetchMembers,
   fetchIdentities,
   fetchTokens,
+  fetchProviders,
+  fetchProvisioning,
+  fetchAuditRetention,
   listPasskeys,
   fetchRoles,
   fetchSession,
@@ -107,6 +110,9 @@ import {
   type PasskeyList,
   type ApiToken,
   type IdentityList,
+  type AuthProviders,
+  type ProvisioningStatus,
+  type AuditRetention,
   type Strategy,
   type StrategyCreateRequest,
   type StrategyUpdateRequest,
@@ -177,6 +183,9 @@ export const panelApi = createApi({
     'Passkeys',
     'Tokens',
     'Identities',
+    'Provisioning',
+    'AuditRetention',
+    'Providers',
   ],
   endpoints: (build) => ({
     getMe: build.query<Me, void>({
@@ -555,6 +564,18 @@ export const panelApi = createApi({
       queryFn: () => wrap(() => fetchIdentities()),
       providesTags: ['Identities'],
     }),
+    getProvisioning: build.query<ProvisioningStatus, number>({
+      queryFn: (orgId) => wrap(() => fetchProvisioning(orgId)),
+      providesTags: (_result, _error, orgId) => [{ type: 'Provisioning', id: orgId }],
+    }),
+    getAuditRetention: build.query<AuditRetention, number>({
+      queryFn: (orgId) => wrap(() => fetchAuditRetention(orgId)),
+      providesTags: (_result, _error, orgId) => [{ type: 'AuditRetention', id: orgId }],
+    }),
+    getProviders: build.query<AuthProviders, void>({
+      queryFn: () => wrap(() => fetchProviders()),
+      providesTags: ['Providers'],
+    }),
     getStrategies: build.query<Strategy[], number>({
       queryFn: (orgId) => wrap(() => fetchStrategies(orgId)),
       providesTags: (_result, _error, orgId) => [{ type: 'Strategies', id: orgId }],
@@ -788,6 +809,9 @@ export const {
   useGetPasskeysQuery,
   useGetTokensQuery,
   useGetIdentitiesQuery,
+  useGetProvisioningQuery,
+  useGetAuditRetentionQuery,
+  useGetProvidersQuery,
   useCreateStrategyMutation,
   useUpdateStrategyMutation,
   useDeleteStrategyMutation,

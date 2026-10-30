@@ -23,8 +23,13 @@ const {
   enableTotp,
   fetchClientBuildArtifact,
   fetchCsv,
+  fetchAuditRetention,
   fetchIdentities,
+  fetchProvisioning,
+  fetchProviders,
   fetchTokens,
+  updateAuditRetention,
+  updateProvisioning,
   renamePasskey,
   revokeToken,
   unlinkIdentity,
@@ -228,6 +233,80 @@ describe('personal tokens and identities', () => {
     expect(JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body))).toEqual({
       identity_id: 5,
       stepup_token: 'step-token',
+    })
+  })
+})
+
+describe('system settings endpoints', () => {
+  beforeEach(() => {
+    refreshAccessToken.mockReset()
+    logout.mockReset()
+    sessionMock.expiresSoon = false
+    sessionMock.refreshToken = 'refresh-1'
+  })
+  afterEach(() => vi.restoreAllMocks())
+
+  it('reads and updates provisioning with the exact shape', async () => {
+    const state = { enabled: false, state: 'disabled', cleanup_pending: true }
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(jsonResponse({ code: 'ok', message: 'ok', data: state }))
+      .mockResolvedValueOnce(
+        jsonResponse({
+          code: 'ok',
+          message: 'ok',
+          data: { enabled: true, state: 'pending', cleanup_pending: false },
+        }),
+      )
+
+    await expect(fetchProvisioning(7)).resolves.toEqual(state)
+    expect(String(fetchMock.mock.calls[0][0])).toBe('/api/v1/orgs/7/provisioning')
+    await expect(updateProvisioning(7, true)).resolves.toMatchObject({ enabled: true })
+    const update = fetchMock.mock.calls[1]
+    expect(String(update[0])).toBe('/api/v1/orgs/7/provisioning')
+    expect(String((update[1] as RequestInit).method)).toBe('PUT')
+    expect(JSON.parse(String((update[1] as RequestInit).body))).toEqual({ enabled: true })
+  })
+
+  it('reads and updates audit retention with days as an explicit number', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        jsonResponse({
+          code: 'ok',
+          message: 'ok',
+          data: { audit_retention_days: 0, last_archive: null },
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          code: 'ok',
+          message: 'ok',
+          data: { audit_retention_days: 30, last_archive: null },
+        }),
+      )
+
+    await expect(fetchAuditRetention(7)).resolves.toMatchObject({ audit_retention_days: 0 })
+    expect(String(fetchMock.mock.calls[0][0])).toBe('/api/v1/orgs/7/audit-retention')
+    await expect(updateAuditRetention(7, 30)).resolves.toMatchObject({
+      audit_retention_days: 30,
+    })
+    const update = fetchMock.mock.calls[1]
+    expect(String((update[1] as RequestInit).method)).toBe('PUT')
+    expect(JSON.parse(String((update[1] as RequestInit).body))).toEqual({ days: 30 })
+  })
+
+  it('reads provider status including the LDAP display name', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        code: 'ok',
+        message: 'ok',
+        data: { oidc: { enabled: false }, ldap: { enabled: true, name: 'Corp LDAP' } },
+      }),
+    )
+    await expect(fetchProviders()).resolves.toEqual({
+      oidc: { enabled: false },
+      ldap: { enabled: true, name: 'Corp LDAP' },
     })
   })
 })
