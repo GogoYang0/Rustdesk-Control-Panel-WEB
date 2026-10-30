@@ -12,6 +12,7 @@ export default function MemberAssignments({
   members,
   membersError,
   membersLoading,
+  membersFetching,
   onRetryMembers,
   rolesLoading,
   rolesError,
@@ -22,6 +23,7 @@ export default function MemberAssignments({
   members: Member[]
   membersError?: unknown
   membersLoading: boolean
+  membersFetching: boolean
   onRetryMembers: () => void
   rolesLoading: boolean
   rolesError?: unknown
@@ -63,7 +65,9 @@ export default function MemberAssignments({
     <div style={{ marginTop: 24 }}>
       <div className="hstack" style={{ marginBottom: 10 }}>
         <div className="card-title">成员控制角色</div>
-        <span className="tag grey">{membersError || membersLoading ? '—' : members.length}</span>
+        <span className="tag grey">
+          {membersError || membersLoading || membersFetching ? '—' : members.length}
+        </span>
         <div className="spacer" />
       </div>
       <div className="help mb-14">
@@ -135,7 +139,9 @@ export default function MemberAssignments({
                           className="select-native"
                           aria-label={`控制角色 ${member.email}`}
                           value={currentValue(member)}
-                          disabled={busyUserId !== null || !rolesReady || !!membersError}
+                          disabled={
+                            busyUserId !== null || !rolesReady || !!membersError || membersFetching
+                          }
                           onChange={(event) => void change(member, event.target.value)}
                         >
                           <option value="">未分配 → Default</option>

@@ -39,6 +39,7 @@ export default function ControlRolesPage() {
   const {
     currentData: members,
     isLoading: membersLoading,
+    isFetching: membersFetching,
     error: membersError,
     refetch: refetchMembers,
   } = useGetMembersQuery(id, { skip: !validId || !canManage })
@@ -190,7 +191,7 @@ export default function ControlRolesPage() {
                           </span>
                         </td>
                         <td className="mono">
-                          {membersError || membersLoading
+                          {membersError || membersLoading || membersFetching
                             ? '—'
                             : memberCountForRole(role, list, memberList)}
                         </td>
@@ -237,6 +238,7 @@ export default function ControlRolesPage() {
         members={memberList}
         membersError={membersError}
         membersLoading={membersLoading}
+        membersFetching={membersFetching}
         onRetryMembers={() => void refetchMembers()}
         rolesLoading={rolesLoading}
         rolesError={rolesError}

@@ -61,6 +61,7 @@ function setup(
     members?: Record<string, unknown>[]
     membersError?: number
     rolesStatus?: number
+    membersGate?: Promise<void>
   } = {},
 ) {
   const {
@@ -72,7 +73,9 @@ function setup(
     members = [member(1, 'owner@acme.local', 1), member(2, 'ops@acme.local', null)],
     membersError = 0,
     rolesStatus = 0,
+    membersGate,
   } = options
+  let membersCalls = 0
   const roleRows = roles.map((row) => ({
     ...row,
     permissions: { ...(row.permissions as object) },
@@ -93,6 +96,8 @@ function setup(
       return json({ code: 'ok', message: 'ok', data: null })
     }
     if (url.endsWith('/members')) {
+      membersCalls += 1
+      if (membersCalls > 1 && membersGate) await membersGate
       if (membersError) {
         return json({ code: 'internal', message: 'members locked' }, membersError)
       }
@@ -291,5 +296,19 @@ describe('ControlRolesPage', () => {
     const select = (await screen.findByLabelText('控制角色 ops@acme.local')) as HTMLSelectElement
     expect(select.value).toBe('2')
     expect(screen.getByText('停用')).toBeTruthy()
+  })
+
+  it('disables assignment while members refetch in the background', async () => {
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    setup({ membersGate: gate })
+    await screen.findByText('成员控制角色')
+    const select = (await screen.findByLabelText('控制角色 ops@acme.local')) as HTMLSelectElement
+    fireEvent.change(select, { target: { value: '2' } })
+    await waitFor(() => expect(select.disabled).toBe(true))
+    release()
+    await waitFor(() => expect(select.disabled).toBe(false))
   })
 })
