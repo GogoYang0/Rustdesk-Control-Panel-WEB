@@ -1,5 +1,5 @@
 import { Toast } from '@douyinfe/semi-ui'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 
 import Modal from '../../components/Modal'
@@ -49,6 +49,15 @@ export default function RequestApprovalDialog({ orgId, kind, device, session, on
   // The disabled state only lands on the next render; two clicks in one tick
   // would both see isLoading=false and submit twice.
   const busyRef = useRef(false)
+  // A response that lands after the caller closed the dialog (for example an
+  // organization switch) must not resurrect a result or announce it.
+  const mountedRef = useRef(true)
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
   const target = kind === 'pre_approval' ? device : session
   const title = kind === 'pre_approval' ? '申请事前审批' : '申请事后追认'
@@ -72,10 +81,11 @@ export default function RequestApprovalDialog({ orgId, kind, device, session, on
           reason,
         ),
       }).unwrap()
+      if (!mountedRef.current) return
       setResult(approval)
       Toast.success('审批请求已登记')
     } catch (err) {
-      setError(approvalRequestError(err, kind))
+      if (mountedRef.current) setError(approvalRequestError(err, kind))
     } finally {
       busyRef.current = false
     }
@@ -132,7 +142,9 @@ export default function RequestApprovalDialog({ orgId, kind, device, session, on
   return (
     <Modal
       title={title}
-      onClose={onClose}
+      // Closing while the request is in flight would discard the result (and
+      // its Toast); the caller may close again once it settles.
+      onClose={isLoading ? () => undefined : onClose}
       footer={
         <>
           <button className="btn tertiary" type="button" disabled={isLoading} onClick={onClose}>

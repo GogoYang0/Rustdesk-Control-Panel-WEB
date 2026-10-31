@@ -160,6 +160,10 @@ export default function SessionsPage() {
     deviceName: string
     startedAt: string
   } | null>(null)
+  // The switching render still holds the previous organization's target; the
+  // effect below clears it, but that render must not paint the dialog under the
+  // new orgId either.
+  const activeRatifyTarget = orgChanged ? null : ratifyTarget
   // The page instance survives an in-place organization change (a hand-edited
   // URL, or a future in-page switcher): drop the filters, which describe the
   // previous organization. The page correction below must not write the
@@ -461,11 +465,11 @@ export default function SessionsPage() {
         />
       ) : null}
 
-      {ratifyTarget ? (
+      {activeRatifyTarget ? (
         <RequestApprovalDialog
           orgId={id}
           kind="ratification"
-          session={ratifyTarget}
+          session={activeRatifyTarget}
           onClose={() => setRatifyTarget(null)}
         />
       ) : null}

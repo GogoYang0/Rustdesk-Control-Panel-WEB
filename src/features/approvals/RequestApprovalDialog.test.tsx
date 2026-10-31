@@ -34,13 +34,27 @@ interface SetupOptions {
   status?: number
   code?: string
   result?: Record<string, unknown>
+  deferred?: boolean
 }
 
-function setup({ kind = 'pre_approval', status = 200, code = 'ok', result }: SetupOptions = {}) {
+function setup({
+  kind = 'pre_approval',
+  status = 200,
+  code = 'ok',
+  result,
+  deferred = false,
+}: SetupOptions = {}) {
   const bodies: string[] = []
+  let release = () => {}
+  const gate = deferred
+    ? new Promise<void>((resolve) => {
+        release = resolve
+      })
+    : Promise.resolve()
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
     if (String(input).includes('/approvals')) {
       bodies.push(String(init?.body ?? ''))
+      await gate
       if (status >= 400) {
         return json({ code, message: 'backend english', data: null }, status)
       }
@@ -66,7 +80,7 @@ function setup({ kind = 'pre_approval', status = 200, code = 'ok', result }: Set
       </MemoryRouter>
     </Provider>,
   )
-  return { bodies, onClose }
+  return { bodies, onClose, release: () => release() }
 }
 
 describe('RequestApprovalDialog', () => {
@@ -137,6 +151,17 @@ describe('RequestApprovalDialog', () => {
     fireEvent.click(button)
     fireEvent.click(button)
     await waitFor(() => expect(bodies).toHaveLength(1))
+  })
+
+  it('cannot be dismissed while the request is in flight', async () => {
+    const { onClose, release } = setup({ deferred: true })
+    fireEvent.click(await screen.findByRole('button', { name: '提交审批' }))
+    await screen.findByRole('button', { name: '提交中…' })
+    fireEvent.keyDown(document, { key: 'Escape' })
+    fireEvent.click(screen.getByRole('button', { name: '取消' }))
+    expect(onClose).not.toHaveBeenCalled()
+    release()
+    expect(await screen.findByTestId('approval-request-result')).toBeTruthy()
   })
 
   it('maps the ratification-specific 400 without leaking backend text', async () => {
