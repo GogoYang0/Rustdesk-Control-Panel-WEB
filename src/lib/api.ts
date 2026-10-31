@@ -426,6 +426,14 @@ export function createOrg(name: string): Promise<Org> {
   })
 }
 
+/** Renames an organization. Only an owner holds the required org.admin. */
+export function renameOrg(orgId: number, name: string): Promise<Org> {
+  return apiFetch<Org>(`/api/v1/orgs/${orgId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name }),
+  })
+}
+
 // ── account security ───────────────────────────────────────────────────────
 
 export type {

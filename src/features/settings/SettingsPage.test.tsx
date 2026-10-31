@@ -1,4 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit'
+import { Toast } from '@douyinfe/semi-ui'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { Provider } from 'react-redux'
 import { MemoryRouter, Route, Routes } from 'react-router'
@@ -24,6 +25,8 @@ function setup(
     retentionStatus?: number
     providersStatus?: number
     provisioningWriteStatus?: number
+    renameStatus?: number
+    renameGate?: Promise<void>
   } = {},
 ) {
   const perms = options.permissions ?? ['org.admin', 'device.read']
@@ -65,6 +68,18 @@ function setup(
             },
           ],
         },
+      })
+    }
+    if (url.endsWith('/orgs/1') && method === 'PATCH') {
+      if (options.renameGate) await options.renameGate
+      if (options.renameStatus) {
+        return json({ code: 'internal', message: 'rename failed' }, options.renameStatus)
+      }
+      const parsed = JSON.parse(body) as { name: string }
+      return json({
+        code: 'ok',
+        message: 'ok',
+        data: { id: 1, name: parsed.name, created_at: '2026-01-01T00:00:00Z' },
       })
     }
     if (url.endsWith('/orgs/1/provisioning')) {
@@ -287,5 +302,64 @@ describe('SettingsPage', () => {
     expect(screen.getByTestId('provisioning-card').textContent).toContain('未启用')
     expect(screen.getByTestId('retention-card').textContent).toContain('永久保留')
     expect(screen.getByRole('button', { name: '重试' })).toBeTruthy()
+  })
+
+  it('renames the organization and updates the card from the /me cache', async () => {
+    const toast = vi.spyOn(Toast, 'success')
+    const { requests } = setup()
+    const card = await screen.findByTestId('org-card')
+    fireEvent.click(within(card).getByRole('button', { name: '重命名' }))
+    const dialog = await screen.findByRole('dialog', { name: '重命名组织' })
+    const input = within(dialog).getByLabelText('组织名称') as HTMLInputElement
+    expect(input.value).toBe('ACME')
+    fireEvent.change(input, { target: { value: '  ACME 2  ' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: '保存' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    await waitFor(() => expect(card.textContent).toContain('ACME 2'))
+    const patch = requests.find((request) => request.method === 'PATCH')
+    expect(JSON.parse(patch?.body ?? '{}')).toEqual({ name: 'ACME 2' })
+    expect(toast).toHaveBeenCalledWith('已重命名为 ACME 2')
+  })
+
+  it('keeps the rename dialog open with a Chinese error on failure', async () => {
+    setup({ renameStatus: 403 })
+    const card = await screen.findByTestId('org-card')
+    fireEvent.click(within(card).getByRole('button', { name: '重命名' }))
+    const dialog = await screen.findByRole('dialog', { name: '重命名组织' })
+    fireEvent.change(within(dialog).getByLabelText('组织名称'), { target: { value: 'ACME 2' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: '保存' }))
+    expect(await within(dialog).findByText('只有 owner 可以重命名组织')).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: '重命名组织' })).toBeTruthy()
+    expect(card.textContent).toContain('ACME')
+    expect(card.textContent).not.toContain('ACME 2')
+  })
+
+  it('rejects an unchanged name locally without calling the API', async () => {
+    const { requests } = setup()
+    const card = await screen.findByTestId('org-card')
+    fireEvent.click(within(card).getByRole('button', { name: '重命名' }))
+    const dialog = await screen.findByRole('dialog', { name: '重命名组织' })
+    fireEvent.click(within(dialog).getByRole('button', { name: '保存' }))
+    expect(within(dialog).getByText('新名称与当前名称相同')).toBeTruthy()
+    expect(requests.some((request) => request.method === 'PATCH')).toBe(false)
+  })
+
+  it('blocks closing the dialog while the rename is in flight', async () => {
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    setup({ renameGate: gate })
+    const card = await screen.findByTestId('org-card')
+    fireEvent.click(within(card).getByRole('button', { name: '重命名' }))
+    const dialog = await screen.findByRole('dialog', { name: '重命名组织' })
+    fireEvent.change(within(dialog).getByLabelText('组织名称'), { target: { value: 'ACME 2' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: '保存' }))
+    fireEvent.keyDown(document, { key: 'Escape' })
+    fireEvent.click(dialog.parentElement as HTMLElement)
+    expect(screen.getByRole('dialog', { name: '重命名组织' })).toBeTruthy()
+    release()
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    await waitFor(() => expect(card.textContent).toContain('ACME 2'))
   })
 })

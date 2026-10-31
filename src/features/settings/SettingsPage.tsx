@@ -74,7 +74,7 @@ export default function SettingsPage() {
         className="grid"
         style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 12 }}
       >
-        <OrgCard org={current} />
+        <OrgCard key={current.id} org={current} />
         <ProvisioningCard key={`provisioning-${id}`} orgId={id} />
         <RetentionCard key={`retention-${id}`} orgId={id} />
         <ProviderCard />
