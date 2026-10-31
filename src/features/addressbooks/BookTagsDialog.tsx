@@ -1,5 +1,5 @@
 import { Toast } from '@douyinfe/semi-ui'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 import Modal from '../../components/Modal'
 import type { AddressBook } from '../../lib/api'
@@ -14,9 +14,18 @@ interface Props {
   onDone: () => void
 }
 
+interface EditRow extends TagRow {
+  id: number
+}
+
 export default function BookTagsDialog({ orgId, book, onClose, onDone }: Props) {
-  const [rows, setRows] = useState<TagRow[]>(() =>
-    (book.tags ?? []).map((tag) => ({ name: tag.name, color: tag.color ?? 0 })),
+  const nextId = useRef(book.tags?.length ?? 0)
+  const [rows, setRows] = useState<EditRow[]>(() =>
+    (book.tags ?? []).map((tag, index) => ({
+      id: index,
+      name: tag.name,
+      color: tag.color ?? 0,
+    })),
   )
   const [error, setError] = useState('')
   const [replace, { isLoading }] = useReplaceAddressBookTagsMutation()
@@ -109,7 +118,7 @@ export default function BookTagsDialog({ orgId, book, onClose, onDone }: Props) 
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {rows.map((row, index) => (
-            <div className="hstack" key={index} style={{ gap: 8 }}>
+            <div className="hstack" key={row.id} style={{ gap: 8 }}>
               <div className="input" style={{ flex: 1 }}>
                 <input
                   value={row.name}
@@ -143,7 +152,9 @@ export default function BookTagsDialog({ orgId, book, onClose, onDone }: Props) 
           className="btn outline sm"
           type="button"
           disabled={rows.length >= 256}
-          onClick={() => setRows((previous) => [...previous, { name: '', color: 0 }])}
+          onClick={() =>
+            setRows((previous) => [...previous, { id: nextId.current++, name: '', color: 0 }])
+          }
         >
           添加标签
         </button>
