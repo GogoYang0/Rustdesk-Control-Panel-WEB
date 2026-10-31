@@ -117,6 +117,8 @@ describe('AppShell organization creation entry', () => {
     setup([acme, beta])
     fireEvent.click(await screen.findByTitle('切换组织'))
     const input = screen.getByLabelText('搜索组织')
+    fireEvent.keyDown(input, { key: 'Escape', isComposing: true })
+    expect(document.querySelector('.org-menu')).not.toBeNull()
     fireEvent.keyDown(input, { key: 'Escape' })
     expect(document.querySelector('.org-menu')).toBeNull()
     expect(document.activeElement).toBe(document.querySelector('.org-switch'))

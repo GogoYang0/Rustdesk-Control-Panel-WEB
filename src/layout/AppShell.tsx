@@ -394,6 +394,7 @@ export default function AppShell() {
   useEffect(() => {
     if (!sideOpen) return
     const onKey = (event: KeyboardEvent) => {
+      if (event.isComposing) return
       if (event.key === 'Escape') setSideOpen(false)
     }
     window.addEventListener('keydown', onKey)
@@ -774,6 +775,7 @@ export default function AppShell() {
                   id="desktop-org-menu"
                   className="org-menu"
                   onKeyDown={(event) => {
+                    if (event.nativeEvent.isComposing) return
                     if (event.key === 'Escape') {
                       setOrgOpen(false)
                       orgSwitchRef.current?.focus()
