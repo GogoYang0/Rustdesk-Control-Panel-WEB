@@ -815,10 +815,22 @@ export default function AppShell() {
   )
 }
 
-// Kept in sync with the 767px breakpoint in prototype.css.
+// Kept in sync with the 767px breakpoint in prototype.css. matchMedia is the
+// authoritative signal; the resize listener covers environments without it.
 function useIsMobile(): boolean {
-  const [mobile, setMobile] = useState(() => window.innerWidth <= 767)
+  const [mobile, setMobile] = useState(() =>
+    typeof window.matchMedia === 'function'
+      ? window.matchMedia('(max-width: 767px)').matches
+      : window.innerWidth <= 767,
+  )
   useEffect(() => {
+    const query = window.matchMedia?.('(max-width: 767px)')
+    if (query) {
+      const onChange = () => setMobile(query.matches)
+      onChange()
+      query.addEventListener('change', onChange)
+      return () => query.removeEventListener('change', onChange)
+    }
     const onResize = () => setMobile(window.innerWidth <= 767)
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)

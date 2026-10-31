@@ -6,11 +6,19 @@ import Modal from '../../components/Modal'
 import { ApiError, type Member, type Role } from '../../lib/api'
 import { formatTime } from '../../lib/format'
 import {
+  MEMBER_SECURITY_ACTIONS,
+  memberSecurityError,
+  type MemberSecurityAction,
+} from '../../lib/member-security'
+import {
   useGetMeQuery,
   useGetMembersQuery,
   useGetRolesQuery,
   useInviteMemberMutation,
   useRemoveMemberMutation,
+  useResetMemberIdentityMutation,
+  useResetMemberPasskeysMutation,
+  useResetMemberTotpMutation,
   useUpdateMemberMutation,
 } from '../../store/api'
 
@@ -19,6 +27,7 @@ type Dialog =
   | { kind: 'role'; member: Member }
   | { kind: 'disable'; member: Member }
   | { kind: 'remove'; member: Member }
+  | { kind: 'security'; member: Member; instance: number }
   | null
 
 // Member carries the role *name* (builtin names are owner/admin/member), not a
@@ -65,6 +74,7 @@ export default function MembersPage() {
   const canManage = perms.has('member.manage')
   const isOwner = current?.role_kind === 'owner'
   const [dialog, setDialog] = useState<Dialog>(null)
+  const securitySeq = useRef(0)
   const [updateMember] = useUpdateMemberMutation()
   const [busy, setBusy] = useState(false)
   // A result that lands after the scope moved must not close the new dialog.
@@ -169,7 +179,7 @@ export default function MembersPage() {
               成员<span className="hint">按加入时间排序</span>
             </div>
           </div>
-          <div className="card-body tight">
+          <div className="card-body tight" style={{ overflowX: 'auto' }}>
             {loadingCurrent ? (
               <div className="help" style={{ padding: '14px 0' }}>
                 正在加载成员…
@@ -184,7 +194,7 @@ export default function MembersPage() {
                     <th style={{ width: 150 }}>角色</th>
                     <th style={{ width: 110 }}>状态</th>
                     <th style={{ width: 160 }}>加入时间</th>
-                    <th style={{ width: 220 }} />
+                    <th style={{ width: 300 }} />
                   </tr>
                 </thead>
                 <tbody>
@@ -251,6 +261,28 @@ export default function MembersPage() {
                               }
                             />
                             <ActionButton
+                              label="安全"
+                              disabled={
+                                !canManage || self || (memberKind(member) === 'owner' && !isOwner)
+                              }
+                              title={
+                                !canManage
+                                  ? '需要 member.manage'
+                                  : self
+                                    ? '不能重置自己的凭据'
+                                    : memberKind(member) === 'owner' && !isOwner
+                                      ? '仅 owner 可重置 owner 的凭据'
+                                      : 'TOTP / Passkey / 外部身份重置'
+                              }
+                              onClick={() =>
+                                setDialog({
+                                  kind: 'security',
+                                  member,
+                                  instance: ++securitySeq.current,
+                                })
+                              }
+                            />
+                            <ActionButton
                               label="移除"
                               danger
                               disabled={
@@ -305,6 +337,17 @@ export default function MembersPage() {
       {dialog?.kind === 'remove' ? (
         <RemoveDialog orgId={id} member={dialog.member} onClose={() => setDialog(null)} />
       ) : null}
+      {dialog?.kind === 'security' ? (
+        <MemberSecurityDialog
+          orgId={id}
+          member={dialog.member}
+          onClose={() =>
+            setDialog((prev) =>
+              prev?.kind === 'security' && prev.instance === dialog.instance ? null : prev,
+            )
+          }
+        />
+      ) : null}
     </section>
   )
 
@@ -330,6 +373,136 @@ export default function MembersPage() {
       if (scopeRef.current === scope) setBusy(false)
     }
   }
+}
+
+export function MemberSecurityDialog({
+  orgId,
+  member,
+  onClose,
+}: {
+  orgId: number
+  member: Member
+  onClose: () => void
+}) {
+  const [pending, setPending] = useState<MemberSecurityAction | null>(null)
+  const [error, setError] = useState('')
+  const [resetTotp, { isLoading: totpBusy }] = useResetMemberTotpMutation()
+  const [resetPasskeys, { isLoading: passkeyBusy }] = useResetMemberPasskeysMutation()
+  const [resetIdentity, { isLoading: identityBusy }] = useResetMemberIdentityMutation()
+  const scopeRef = useRef(orgId)
+  useLayoutEffect(() => {
+    scopeRef.current = orgId
+  }, [orgId])
+  const busy = totpBusy || passkeyBusy || identityBusy
+  const action = MEMBER_SECURITY_ACTIONS.find((item) => item.action === pending)
+
+  async function run() {
+    if (!pending) return
+    setError('')
+    try {
+      const args = { orgId, userId: member.user_id }
+      if (pending === 'totp') await resetTotp(args).unwrap()
+      else if (pending === 'passkey') await resetPasskeys(args).unwrap()
+      else await resetIdentity(args).unwrap()
+      if (scopeRef.current !== orgId) return
+      Toast.success(
+        pending === 'identity'
+          ? `已解绑 ${member.email} 的外部身份`
+          : `已重置 ${member.email} 的${pending === 'totp' ? '两步验证' : ' Passkey'}`,
+      )
+      onClose()
+    } catch (err) {
+      if (scopeRef.current === orgId) setError(memberSecurityError(err, pending))
+    }
+  }
+
+  return (
+    <Modal
+      title="安全重置"
+      onClose={() => {
+        if (!busy) onClose()
+      }}
+      width={560}
+      footer={
+        pending ? (
+          <>
+            <button
+              className="btn tertiary"
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setPending(null)
+                setError('')
+              }}
+            >
+              返回
+            </button>
+            <button
+              className="btn danger solid"
+              type="button"
+              disabled={busy}
+              onClick={() => void run()}
+            >
+              {busy ? '处理中…' : action?.button}
+            </button>
+          </>
+        ) : (
+          <button className="btn tertiary" type="button" onClick={onClose}>
+            关闭
+          </button>
+        )
+      }
+    >
+      <div className="help mb-14">
+        成员：<b>{member.email}</b> · user #{member.user_id}
+        <div style={{ marginTop: 4 }}>安全重置是账户级操作，会影响该成员在所有组织的登录凭据。</div>
+      </div>
+      {error ? (
+        <div className="banner danger mb-14" role="alert" style={{ padding: '9px 11px' }}>
+          <div>{error}</div>
+        </div>
+      ) : null}
+      {pending && action ? (
+        <>
+          <div className="banner warning mb-14">
+            <div>{action.confirm}</div>
+          </div>
+          <p className="help">请确认该成员仍能通过其他方式登录；此操作不可撤销。</p>
+        </>
+      ) : (
+        <div className="vstack" style={{ gap: 10 }}>
+          {MEMBER_SECURITY_ACTIONS.map((item) => (
+            <div
+              key={item.action}
+              className="card"
+              style={{ boxShadow: 'none', border: '1px solid var(--border)' }}
+            >
+              <div className="card-body" style={{ padding: 12 }}>
+                <div className="hstack" style={{ gap: 8 }}>
+                  <b style={{ fontSize: 13 }}>{item.label}</b>
+                  <div className="spacer" />
+                  <button
+                    className={`btn sm ${item.action === 'totp' ? 'outline' : 'danger'}`}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => {
+                      setPending(item.action)
+                      setError('')
+                    }}
+                  >
+                    {item.action === 'identity' ? '解绑' : '重置'}
+                  </button>
+                </div>
+                <div className="help" style={{ marginTop: 4 }}>
+                  {item.description}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Modal>
+  )
 }
 
 function InviteDialog({ orgId, onClose }: { orgId: number; onClose: () => void }) {
