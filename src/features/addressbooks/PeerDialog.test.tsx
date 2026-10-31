@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { Provider } from 'react-redux'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import type { AddressBook } from '../../lib/api'
+import type { AddressBook, AddressBookTag } from '../../lib/api'
 import { panelApi } from '../../store/api'
 import { PeerDialog } from './AddressBookDialogs'
 
@@ -39,6 +39,7 @@ function setup(
     revisionAfterRead?: number
     failRefetch?: boolean
     peer?: { peer_id: string; tags?: string[] }
+    tags?: AddressBookTag[]
   } = {},
 ) {
   let gets = 0
@@ -54,7 +55,7 @@ function setup(
       return json({ code: 'internal', message: 'boom', data: null }, 500)
     }
     const revision = gets > 1 && options.revisionAfterRead ? options.revisionAfterRead : 1
-    return json({ code: 'ok', message: 'ok', data: book({ revision }) })
+    return json({ code: 'ok', message: 'ok', data: book({ revision, tags: options.tags ?? [] }) })
   })
   const store = configureStore({
     reducer: { [panelApi.reducerPath]: panelApi.reducer },
@@ -63,7 +64,13 @@ function setup(
   const onDone = vi.fn()
   render(
     <Provider store={store}>
-      <PeerDialog orgId={1} book={book()} peer={options.peer} onClose={() => {}} onDone={onDone} />
+      <PeerDialog
+        orgId={1}
+        book={book({ tags: options.tags ?? [] })}
+        peer={options.peer}
+        onClose={() => {}}
+        onDone={onDone}
+      />
     </Provider>,
   )
   return { puts, onDone, getGets: () => gets }
@@ -107,6 +114,41 @@ describe('PeerDialog', () => {
     fireEvent.click(await saveButton())
     expect(await screen.findByText(/已存在于本地址簿/)).toBeTruthy()
     expect(puts).toHaveLength(0)
+  })
+
+  it('selects a palette tag for a new peer', async () => {
+    const { puts, onDone } = setup({
+      tags: [
+        { name: 'lab', color: 0x0f4c81 },
+        { name: 'finance', color: 0 },
+      ],
+    })
+    fireEvent.change(screen.getByLabelText('Peer ID'), { target: { value: '1003' } })
+    fireEvent.click(screen.getByRole('checkbox', { name: 'lab' }))
+    fireEvent.click(await saveButton())
+    await waitFor(() => expect(puts).toHaveLength(1))
+    const body = JSON.parse(puts[0]) as { peers: { peer_id: string; tags?: string[] }[] }
+    expect(body.peers.find((peer) => peer.peer_id === '1003')?.tags).toEqual(['lab'])
+    await waitFor(() => expect(onDone).toHaveBeenCalled())
+  })
+
+  it('keeps an orphan tag checked and drops it only when unchecked', async () => {
+    const { puts } = setup({
+      tags: [{ name: 'lab', color: 0 }],
+      peer: { peer_id: '1001', tags: ['old'] },
+    })
+    expect(screen.getByRole('checkbox', { name: /old/ })).toBeChecked()
+    fireEvent.change(screen.getByLabelText('别名'), { target: { value: '改名' } })
+    fireEvent.click(await saveButton())
+    await waitFor(() => expect(puts).toHaveLength(1))
+    let body = JSON.parse(puts[0]) as { peers: { peer_id: string; tags?: string[] }[] }
+    expect(body.peers.find((peer) => peer.peer_id === '1001')?.tags).toEqual(['old'])
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /old/ }))
+    fireEvent.click(await saveButton())
+    await waitFor(() => expect(puts).toHaveLength(2))
+    body = JSON.parse(puts[1]) as { peers: { peer_id: string; tags?: string[] }[] }
+    expect(body.peers.find((peer) => peer.peer_id === '1001')?.tags).toBeUndefined()
   })
 
   it('keeps the tags of an edited peer that this wave cannot edit', async () => {

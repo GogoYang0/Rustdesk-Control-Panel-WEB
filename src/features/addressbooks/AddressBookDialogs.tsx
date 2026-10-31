@@ -1,8 +1,9 @@
 import { Toast } from '@douyinfe/semi-ui'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import Modal from '../../components/Modal'
 import type { AddressBook, AddressBookPeer } from '../../lib/api'
+import { peerTagsProblem } from '../../lib/addressbook-tags'
 import {
   PEER_LIMIT,
   addressBookError,
@@ -152,8 +153,16 @@ export function PeerDialog({
   onDone: () => void
 }) {
   const [form, setForm] = useState<PeerForm>(() => peerToForm(peer))
+  const [tags, setTags] = useState<string[]>(() => [...(peer?.tags ?? [])])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
+  const palette = useMemo(() => new Set((book.tags ?? []).map((tag) => tag.name)), [book.tags])
+  // Orphan tags stay selectable (and checked) so editing one field never drops
+  // a label the palette no longer defines.
+  const tagOptions = useMemo(() => {
+    const names = (book.tags ?? []).map((tag) => tag.name)
+    return [...names, ...(peer?.tags ?? []).filter((tag) => !palette.has(tag))]
+  }, [book.tags, peer?.tags, palette])
   const [replace, { isLoading }] = useReplaceAddressBookPeersMutation()
   // The baseline is the revision the form was built from. The page owns the
   // same query key and refreshes it, so `book.revision` can move while this
@@ -180,8 +189,9 @@ export function PeerDialog({
   async function submit() {
     const nextErrors = validatePeerForm(form, latest?.peers ?? book.peers ?? [], peer?.peer_id)
     setErrors(nextErrors)
-    setError(null)
-    if (Object.keys(nextErrors).length > 0) return
+    const tagsProblem = peerTagsProblem(tags)
+    setError(tagsProblem)
+    if (Object.keys(nextErrors).length > 0 || tagsProblem) return
     try {
       const result = await refetch()
       // A failed refetch resolves with the previous cache entry; trusting it
@@ -204,7 +214,7 @@ export function PeerDialog({
         setError('该 peer 已被他人删除，请刷新后重试')
         return
       }
-      const nextPeer = formToPeer(form, peer?.tags)
+      const nextPeer = formToPeer(form, tags)
       const peers = buildReplacePayload(
         freshPeers,
         peer
@@ -317,6 +327,37 @@ export function PeerDialog({
           />
         </div>
         {errors.platform ? <div className="help err">{errors.platform}</div> : null}
+      </div>
+      <div className="field mt-14">
+        <label className="form-label">标签</label>
+        {tagOptions.length === 0 ? (
+          <div className="help">地址簿还没有标签；可在详情页「标签」中维护。</div>
+        ) : (
+          <div className="chips" role="group" aria-label="标签" style={{ margin: 0 }}>
+            {tagOptions.map((tag) => (
+              <label className="check" key={tag}>
+                <input
+                  type="checkbox"
+                  checked={tags.includes(tag)}
+                  onChange={(event) =>
+                    setTags((previous) =>
+                      event.target.checked
+                        ? [...previous, tag]
+                        : previous.filter((name) => name !== tag),
+                    )
+                  }
+                />
+                {tag}
+                {!palette.has(tag) ? (
+                  <span className="tag grey" style={{ marginLeft: 4 }}>
+                    未定义
+                  </span>
+                ) : null}
+              </label>
+            ))}
+          </div>
+        )}
+        <div className="help">每个 peer 最多 64 个标签；取消勾选会在保存时移除。</div>
       </div>
     </Modal>
   )

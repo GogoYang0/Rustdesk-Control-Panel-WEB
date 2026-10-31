@@ -15,6 +15,8 @@ import {
 import { ConfirmDelete, PeerDialog } from './AddressBookDialogs'
 import BookGrantsPanel from './BookGrantsPanel'
 import BookRecyclePanel from './BookRecyclePanel'
+import BookTagsDialog from './BookTagsDialog'
+import TagChips, { tagColorMap } from './TagChips'
 
 export default function AddressBookPage() {
   const { orgId, bookId } = useParams()
@@ -77,6 +79,7 @@ export default function AddressBookPage() {
   }
 
   const [query, setQuery] = useState('')
+  const [tagsOpen, setTagsOpen] = useState(false)
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState<AddressBookPeer | null>(null)
   const [deleting, setDeleting] = useState<AddressBookPeer | null>(null)
@@ -85,6 +88,7 @@ export default function AddressBookPage() {
   const searchRef = useRef<HTMLInputElement>(null)
 
   const search = useMemo(() => filterPeers(book?.peers ?? [], query), [book?.peers, query])
+  const tagColors = useMemo(() => tagColorMap(book?.tags), [book?.tags])
 
   if (!validId) {
     return <StateBlock code="404" title="地址簿不存在" description="地址簿 id 不合法。" />
@@ -144,6 +148,17 @@ export default function AddressBookPage() {
           >
             {isFetching ? '刷新中…' : '刷新'}
           </button>
+          {editable ? (
+            <button
+              className="btn outline sm"
+              type="button"
+              disabled={!book}
+              title="管理标签目录"
+              onClick={() => setTagsOpen(true)}
+            >
+              标签
+            </button>
+          ) : null}
           {tab === 'peers' ? (
             <button
               className="btn primary sm"
@@ -227,7 +242,7 @@ export default function AddressBookPage() {
         aria-labelledby={showTabs ? `book-tab-${tab}` : undefined}
       >
         {tab === 'recycle' && book ? (
-          <BookRecyclePanel orgId={id} bookId={bid} emails={emails} />
+          <BookRecyclePanel orgId={id} bookId={bid} emails={emails} tagColors={tagColors} />
         ) : tab === 'grants' && book ? (
           <BookGrantsPanel
             orgId={id}
@@ -271,7 +286,7 @@ export default function AddressBookPage() {
                 <input
                   ref={searchRef}
                   value={query}
-                  placeholder="搜索 peer id / 别名 / 主机名"
+                  placeholder="搜索 peer id / 别名 / 主机名 / 标签"
                   aria-label="搜索 peer"
                   onChange={(event) => setQuery(event.target.value)}
                 />
@@ -297,17 +312,7 @@ export default function AddressBookPage() {
                       <td className="cell-wrap">{peer.hostname || '—'}</td>
                       <td>{peer.platform || '—'}</td>
                       <td>
-                        {(peer.tags ?? []).length === 0 ? (
-                          '—'
-                        ) : (
-                          <span className="hstack" style={{ flexWrap: 'wrap', gap: 4 }}>
-                            {(peer.tags ?? []).map((tag) => (
-                              <span key={tag} className="tag grey">
-                                {tag}
-                              </span>
-                            ))}
-                          </span>
-                        )}
+                        <TagChips tags={peer.tags} colors={tagColors} />
                       </td>
                       <td>
                         <div className="hstack" style={{ gap: 4, justifyContent: 'flex-end' }}>
@@ -366,6 +371,15 @@ export default function AddressBookPage() {
             setAdding(false)
             setEditing(null)
           }}
+        />
+      ) : null}
+
+      {tagsOpen && book ? (
+        <BookTagsDialog
+          orgId={id}
+          book={book}
+          onClose={() => setTagsOpen(false)}
+          onDone={() => setTagsOpen(false)}
         />
       ) : null}
 

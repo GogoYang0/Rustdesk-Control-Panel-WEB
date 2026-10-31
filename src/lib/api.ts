@@ -6,6 +6,7 @@ import type {
   AddressBookPeer,
   AddressBookPeersReplaceRequest,
   AddressBookRecycleBinItem,
+  AddressBookTag,
   AddressBookUpdateRequest,
   AccessRule,
   AccessRuleCreateRequest,
@@ -835,6 +836,7 @@ export type {
   AddressBookGrantRequest,
   AddressBookPeer,
   AddressBookRecycleBinItem,
+  AddressBookTag,
   UserGroup,
 } from '../api/generated'
 
@@ -915,6 +917,18 @@ export function replaceAddressBookPeers(
   return apiFetch<AddressBook>(`/api/v1/orgs/${orgId}/address-books/${bookId}/peers`, {
     method: 'PUT',
     body: JSON.stringify(body),
+  })
+}
+
+/** Replaces the whole palette; peer tag strings are not cascaded by the server. */
+export function replaceAddressBookTags(
+  orgId: number,
+  bookId: number,
+  tags: AddressBookTag[],
+): Promise<AddressBook> {
+  return apiFetch<AddressBook>(`/api/v1/orgs/${orgId}/address-books/${bookId}/tags`, {
+    method: 'PUT',
+    body: JSON.stringify({ tags }),
   })
 }
 

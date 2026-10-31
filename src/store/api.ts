@@ -83,6 +83,7 @@ import {
   registerDevice,
   removeMember,
   replaceAddressBookPeers,
+  replaceAddressBookTags,
   replaceDeviceGroupDevices,
   replaceUserGroupMembers,
   requestDeviceDisconnect,
@@ -98,6 +99,7 @@ import {
   type AddressBookGrant,
   type AddressBookGrantRequest,
   type AddressBookRecycleBinItem,
+  type AddressBookTag,
   type AccessRule,
   type AccessRuleCreateRequest,
   type AddressBookPeer,
@@ -498,6 +500,16 @@ export const panelApi = createApi({
         const result = await wrap(() => deleteAddressBook(orgId, bookId))
         return 'data' in result ? { data: undefined } : result
       },
+      invalidatesTags: (_result, _error, { orgId, bookId }) => [
+        { type: 'AddressBook', id: `${orgId}-${bookId}` },
+        { type: 'AddressBooks', id: orgId },
+      ],
+    }),
+    replaceAddressBookTags: build.mutation<
+      AddressBook,
+      { orgId: number; bookId: number; tags: AddressBookTag[] }
+    >({
+      queryFn: ({ orgId, bookId, tags }) => wrap(() => replaceAddressBookTags(orgId, bookId, tags)),
       invalidatesTags: (_result, _error, { orgId, bookId }) => [
         { type: 'AddressBook', id: `${orgId}-${bookId}` },
         { type: 'AddressBooks', id: orgId },
@@ -905,6 +917,7 @@ export const {
   useUpdateAddressBookMutation,
   useDeleteAddressBookMutation,
   useReplaceAddressBookPeersMutation,
+  useReplaceAddressBookTagsMutation,
   useDeleteAddressBookPeerMutation,
   useGetAddressBookRecycleBinQuery,
   useRestoreAddressBookPeerMutation,

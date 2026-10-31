@@ -116,7 +116,7 @@ export function filterPeers(
   const matched = (
     needle
       ? peers.filter((peer) =>
-          [peer.peer_id, peer.alias, peer.hostname]
+          [peer.peer_id, peer.alias, peer.hostname, ...(peer.tags ?? [])]
             .filter((value): value is string => Boolean(value))
             .some((value) => value.toLowerCase().includes(needle)),
         )

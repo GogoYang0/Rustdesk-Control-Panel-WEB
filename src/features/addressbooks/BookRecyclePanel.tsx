@@ -16,14 +16,16 @@ import {
   useRestoreAddressBookPeerMutation,
 } from '../../store/api'
 import { ConfirmDelete } from './AddressBookDialogs'
+import TagChips from './TagChips'
 
 interface Props {
   orgId: number
   bookId: number
   emails: Map<number, string>
+  tagColors: Map<string, number>
 }
 
-export default function BookRecyclePanel({ orgId, bookId, emails }: Props) {
+export default function BookRecyclePanel({ orgId, bookId, emails, tagColors }: Props) {
   const {
     currentData: items,
     isLoading,
@@ -146,17 +148,7 @@ export default function BookRecyclePanel({ orgId, bookId, emails }: Props) {
                       <div className="mono help">{item.hostname || '—'}</div>
                     </td>
                     <td>
-                      {(item.tags ?? []).length === 0 ? (
-                        '—'
-                      ) : (
-                        <span className="hstack" style={{ flexWrap: 'wrap', gap: 4 }}>
-                          {(item.tags ?? []).map((tag) => (
-                            <span key={tag} className="tag grey">
-                              {tag}
-                            </span>
-                          ))}
-                        </span>
-                      )}
+                      <TagChips tags={item.tags} colors={tagColors} />
                     </td>
                     <td>
                       <div className="mono">{formatTime(item.deleted_at)}</div>
