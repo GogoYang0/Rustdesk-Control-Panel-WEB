@@ -211,6 +211,11 @@ export type PasswordRemoveResponse = {
     data: PasswordRemoveResult;
 };
 
+export type PasswordResetRequest = {
+    token: string;
+    new_password: string;
+};
+
 export type PasswordSetRequest = {
     new_password: string;
     stepup_token: string;
@@ -2963,6 +2968,39 @@ export type RemovePasswordResponses = {
 
 export type RemovePasswordResponse = RemovePasswordResponses[keyof RemovePasswordResponses];
 
+export type ResetPasswordData = {
+    body: PasswordResetRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/password/reset';
+};
+
+export type ResetPasswordErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+    /**
+     * 服务端错误（如邀请邮件投递失败）
+     */
+    500: ErrorResponse;
+};
+
+export type ResetPasswordError = ResetPasswordErrors[keyof ResetPasswordErrors];
+
+export type ResetPasswordResponses = {
+    /**
+     * 密码已重置
+     */
+    200: OkResponse;
+};
+
+export type ResetPasswordResponse = ResetPasswordResponses[keyof ResetPasswordResponses];
+
 export type SetPasswordData = {
     body: PasswordSetRequest;
     path?: never;
@@ -3567,6 +3605,58 @@ export type ResetMemberPasskeysResponses = {
 };
 
 export type ResetMemberPasskeysResponse = ResetMemberPasskeysResponses[keyof ResetMemberPasskeysResponses];
+
+export type RequestMemberPasswordResetData = {
+    body?: never;
+    path: {
+        orgId: number;
+        userId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/members/{userId}/password/reset';
+};
+
+export type RequestMemberPasswordResetErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+    /**
+     * 触发限流
+     */
+    429: ErrorResponse;
+    /**
+     * 服务端错误（如邀请邮件投递失败）
+     */
+    500: ErrorResponse;
+};
+
+export type RequestMemberPasswordResetError = RequestMemberPasswordResetErrors[keyof RequestMemberPasswordResetErrors];
+
+export type RequestMemberPasswordResetResponses = {
+    /**
+     * 重置邮件已发送
+     */
+    200: OkResponse;
+};
+
+export type RequestMemberPasswordResetResponse = RequestMemberPasswordResetResponses[keyof RequestMemberPasswordResetResponses];
 
 export type ResetMemberTotpData = {
     body?: never;

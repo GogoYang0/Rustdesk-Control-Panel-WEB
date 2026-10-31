@@ -5,6 +5,7 @@ import { createBrowserRouter, Navigate, useNavigate, useSearchParams } from 'rea
 import LoginPage from './features/auth/LoginPage'
 import AcceptInvitationPage from './features/onboarding/AcceptInvitationPage'
 import VerifyEmailPage from './features/onboarding/VerifyEmailPage'
+import ResetPasswordPage from './features/onboarding/ResetPasswordPage'
 import CreateOrgDialog from './features/orgs/CreateOrgDialog'
 import OverviewPage from './features/overview/OverviewPage'
 import AccountPage from './features/account/AccountPage'
@@ -97,6 +98,7 @@ export function RootRedirect() {
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/verify-email', element: <VerifyEmailPage /> },
+  { path: '/reset-password', element: <ResetPasswordPage /> },
   { path: '/accept-invitation', element: <AcceptInvitationPage /> },
   { path: '/', element: <RootRedirect /> },
   {
