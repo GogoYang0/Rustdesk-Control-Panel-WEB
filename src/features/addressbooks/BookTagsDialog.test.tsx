@@ -60,12 +60,18 @@ function setup(options: { revisionAfterRead?: number; putStatus?: number } = {})
     middleware: (getDefault) => getDefault().concat(panelApi.middleware),
   })
   const onDone = vi.fn()
-  render(
+  const renderDialog = (current: AddressBook) => (
     <Provider store={store}>
-      <BookTagsDialog orgId={1} book={book()} onClose={() => {}} onDone={onDone} />
-    </Provider>,
+      <BookTagsDialog orgId={1} book={current} onClose={() => {}} onDone={onDone} />
+    </Provider>
   )
-  return { puts, onDone, getGets: () => gets }
+  const view = render(renderDialog(book()))
+  return {
+    puts,
+    onDone,
+    getGets: () => gets,
+    rerender: (revision: number) => view.rerender(renderDialog(book({ revision }))),
+  }
 }
 
 describe('BookTagsDialog', () => {
@@ -107,6 +113,20 @@ describe('BookTagsDialog', () => {
   it('aborts when the book changed before saving', async () => {
     const { puts } = setup({ revisionAfterRead: 4 })
     fireEvent.change(screen.getByLabelText('标签名称 1'), { target: { value: 'lab2' } })
+    fireEvent.click(await saveButton())
+    expect(await screen.findByText(/已被他人修改/)).toBeTruthy()
+    expect(puts).toHaveLength(0)
+  })
+
+  it('keeps aborting after a conflict even when the parent cache catches up', async () => {
+    const { puts, rerender } = setup({ revisionAfterRead: 4 })
+    fireEvent.change(screen.getByLabelText('标签名称 1'), { target: { value: 'lab2' } })
+    fireEvent.click(await saveButton())
+    expect(await screen.findByText(/已被他人修改/)).toBeTruthy()
+    expect(puts).toHaveLength(0)
+
+    // The first refetch refreshed the shared query; the page now has revision 4.
+    rerender(4)
     fireEvent.click(await saveButton())
     expect(await screen.findByText(/已被他人修改/)).toBeTruthy()
     expect(puts).toHaveLength(0)

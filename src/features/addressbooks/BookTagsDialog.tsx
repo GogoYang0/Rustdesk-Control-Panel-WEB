@@ -3,7 +3,7 @@ import { useRef, useState } from 'react'
 
 import Modal from '../../components/Modal'
 import type { AddressBook } from '../../lib/api'
-import { addressBookError } from '../../lib/addressbook-form'
+import { addressBookError, revisionChanged } from '../../lib/addressbook-form'
 import { colorToHex, hexToColor, tagRowsProblem, type TagRow } from '../../lib/addressbook-tags'
 import { useGetAddressBookQuery, useReplaceAddressBookTagsMutation } from '../../store/api'
 
@@ -20,6 +20,10 @@ interface EditRow extends TagRow {
 
 export default function BookTagsDialog({ orgId, book, onClose, onDone }: Props) {
   const nextId = useRef(book.tags?.length ?? 0)
+  // Freeze the opened baseline: the first failed save refreshes the shared book
+  // query, so comparing against the live `book.revision` would let the second
+  // click overwrite whatever changed in between.
+  const [baselineRevision] = useState(book.revision)
   const [rows, setRows] = useState<EditRow[]>(() =>
     (book.tags ?? []).map((tag, index) => ({
       id: index,
@@ -67,7 +71,7 @@ export default function BookTagsDialog({ orgId, book, onClose, onDone }: Props) 
         setError(readError ? addressBookError(readError) : '无法读取地址簿最新内容，请稍后重试')
         return
       }
-      if (fresh.revision !== book.revision) {
+      if (revisionChanged(baselineRevision, fresh.revision)) {
         setError('地址簿已被他人修改，请关闭后重新打开再保存')
         return
       }
