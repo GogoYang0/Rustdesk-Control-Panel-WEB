@@ -73,7 +73,11 @@ import { consoleE2EEnabled, openConsole, signIn } from '../support/console'
       cy.get('.org-scrim').click()
 
       renameTo(originalName)
-      renamedTo = ''
+      // Cypress queues commands: clearing the marker inside cy.then only runs
+      // after the restore assertions pass, so afterEach can still retry.
+      cy.then(() => {
+        renamedTo = ''
+      })
     })
   })
 })
