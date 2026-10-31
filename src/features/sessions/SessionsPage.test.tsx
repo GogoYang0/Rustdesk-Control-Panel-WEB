@@ -168,10 +168,12 @@ describe('sessions deep link', () => {
 
   it('loads ticket bookkeeping only after an explicit click', async () => {
     const { ticketRequests } = setup('2', 'native', 12)
-    expect(await screen.findByText('会话 #2')).toBeTruthy()
+    // The sheet title renders before the session detail resolves; wait for the
+    // button itself so a slow CI cannot click a loading sheet.
+    const button = await screen.findByRole('button', { name: '查看票据详情' })
     expect(ticketRequests).toHaveLength(0)
 
-    fireEvent.click(screen.getByRole('button', { name: '查看票据详情' }))
+    fireEvent.click(button)
     expect(await screen.findByTestId('ticket-facts')).toBeTruthy()
     expect(ticketRequests).toHaveLength(1)
     expect(ticketRequests[0]).toContain('/tickets/12')

@@ -5,6 +5,7 @@ import type {
   AddressBookGrantRequest,
   AddressBookPeer,
   AddressBookPeersReplaceRequest,
+  AddressBookRecycleBinItem,
   AddressBookUpdateRequest,
   AccessRule,
   AccessRuleCreateRequest,
@@ -833,6 +834,7 @@ export type {
   AddressBookGrantKind,
   AddressBookGrantRequest,
   AddressBookPeer,
+  AddressBookRecycleBinItem,
   UserGroup,
 } from '../api/generated'
 
@@ -867,6 +869,40 @@ export function updateAddressBook(
 
 export async function deleteAddressBook(orgId: number, bookId: number): Promise<void> {
   await apiFetch<unknown>(`/api/v1/orgs/${orgId}/address-books/${bookId}`, { method: 'DELETE' })
+}
+
+/** Requires write access. The server returns all recycled rows, newest first. */
+export function fetchAddressBookRecycleBin(
+  orgId: number,
+  bookId: number,
+): Promise<AddressBookRecycleBinItem[]> {
+  return apiFetch<AddressBookRecycleBinItem[]>(
+    `/api/v1/orgs/${orgId}/address-books/${bookId}/recycle-bin`,
+  )
+}
+
+/** Requires write access; capacity exhaustion is a 400. */
+export async function restoreAddressBookPeer(
+  orgId: number,
+  bookId: number,
+  peerId: string,
+): Promise<void> {
+  await apiFetch<unknown>(
+    `/api/v1/orgs/${orgId}/address-books/${bookId}/recycle-bin/${encodeURIComponent(peerId)}/restore`,
+    { method: 'POST' },
+  )
+}
+
+/** Requires full access; irreversible and does not bump the book revision. */
+export async function purgeAddressBookPeer(
+  orgId: number,
+  bookId: number,
+  peerId: string,
+): Promise<void> {
+  await apiFetch<unknown>(
+    `/api/v1/orgs/${orgId}/address-books/${bookId}/recycle-bin/${encodeURIComponent(peerId)}`,
+    { method: 'DELETE' },
+  )
 }
 
 /** Replacement is whole-list: the array must contain every peer to keep. */

@@ -45,6 +45,9 @@ import {
   deleteAddressBook,
   deleteAddressBookGrant,
   deleteAddressBookPeer,
+  fetchAddressBookRecycleBin,
+  restoreAddressBookPeer,
+  purgeAddressBookPeer,
   deleteClientBuildProfile,
   deleteClientBuildProfileLogo,
   deleteControlRole,
@@ -94,6 +97,7 @@ import {
   type AddressBook,
   type AddressBookGrant,
   type AddressBookGrantRequest,
+  type AddressBookRecycleBinItem,
   type AccessRule,
   type AccessRuleCreateRequest,
   type AddressBookPeer,
@@ -184,6 +188,7 @@ export const panelApi = createApi({
     'AddressBooks',
     'AddressBook',
     'AddressBookGrants',
+    'AddressBookRecycle',
     'UserGroups',
     'DeviceGroups',
     'AccessDevices',
@@ -305,6 +310,39 @@ export const panelApi = createApi({
       queryFn: ({ orgId, bookId }) => wrap(() => fetchAddressBookGrants(orgId, bookId)),
       providesTags: (_result, _error, { orgId, bookId }) => [
         { type: 'AddressBookGrants', id: `${orgId}-${bookId}` },
+      ],
+    }),
+    getAddressBookRecycleBin: build.query<
+      AddressBookRecycleBinItem[],
+      { orgId: number; bookId: number }
+    >({
+      queryFn: ({ orgId, bookId }) => wrap(() => fetchAddressBookRecycleBin(orgId, bookId)),
+      providesTags: (_result, _error, { orgId, bookId }) => [
+        { type: 'AddressBookRecycle', id: `${orgId}-${bookId}` },
+      ],
+    }),
+    restoreAddressBookPeer: build.mutation<void, { orgId: number; bookId: number; peerId: string }>(
+      {
+        queryFn: async ({ orgId, bookId, peerId }) => {
+          const result = await wrap(() => restoreAddressBookPeer(orgId, bookId, peerId))
+          return 'data' in result ? { data: undefined } : result
+        },
+        // Restore grows the live list and bumps the revision.
+        invalidatesTags: (_result, _error, { orgId, bookId }) => [
+          { type: 'AddressBookRecycle', id: `${orgId}-${bookId}` },
+          { type: 'AddressBook', id: `${orgId}-${bookId}` },
+          { type: 'AddressBooks', id: orgId },
+        ],
+      },
+    ),
+    purgeAddressBookPeer: build.mutation<void, { orgId: number; bookId: number; peerId: string }>({
+      queryFn: async ({ orgId, bookId, peerId }) => {
+        const result = await wrap(() => purgeAddressBookPeer(orgId, bookId, peerId))
+        return 'data' in result ? { data: undefined } : result
+      },
+      // Purging does not touch the live content or the revision.
+      invalidatesTags: (_result, _error, { orgId, bookId }) => [
+        { type: 'AddressBookRecycle', id: `${orgId}-${bookId}` },
       ],
     }),
     createAddressBookGrant: build.mutation<
@@ -472,10 +510,12 @@ export const panelApi = createApi({
       queryFn: ({ orgId, bookId, peers }) =>
         wrap(() => replaceAddressBookPeers(orgId, bookId, peers)),
       // Same as updateAddressBook: the response omits peers, so refetch the
-      // detail instead of patching it with a peer-less row.
+      // detail instead of patching it with a peer-less row. Missing peers move
+      // to the recycle bin, so that view must refetch too.
       invalidatesTags: (_result, _error, { orgId, bookId }) => [
         { type: 'AddressBook', id: `${orgId}-${bookId}` },
         { type: 'AddressBooks', id: orgId },
+        { type: 'AddressBookRecycle', id: `${orgId}-${bookId}` },
       ],
     }),
     deleteAddressBookPeer: build.mutation<void, { orgId: number; bookId: number; peerId: string }>({
@@ -486,6 +526,7 @@ export const panelApi = createApi({
       invalidatesTags: (_result, _error, { orgId, bookId }) => [
         { type: 'AddressBook', id: `${orgId}-${bookId}` },
         { type: 'AddressBooks', id: orgId },
+        { type: 'AddressBookRecycle', id: `${orgId}-${bookId}` },
       ],
     }),
     getDevicePage: build.query<DevicePage, { orgId: number; queryString: string }>({
@@ -865,6 +906,9 @@ export const {
   useDeleteAddressBookMutation,
   useReplaceAddressBookPeersMutation,
   useDeleteAddressBookPeerMutation,
+  useGetAddressBookRecycleBinQuery,
+  useRestoreAddressBookPeerMutation,
+  usePurgeAddressBookPeerMutation,
   useGetAlertPageQuery,
   useGetAuditLogPageQuery,
   useGetConnectionLogPageQuery,
