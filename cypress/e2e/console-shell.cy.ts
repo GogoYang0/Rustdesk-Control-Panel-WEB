@@ -47,6 +47,7 @@ import { consoleE2EEnabled, openConsole, signIn } from '../support/console'
     cy.get('.hamburger').should('be.visible').click()
     cy.get('.side').should('have.class', 'open')
     cy.get('.side').should('have.attr', 'aria-modal', 'true')
+    cy.get('.side').contains('button', '创建组织').should('be.visible')
     cy.get('.side').should('not.have.attr', 'inert')
     // Focus moves into the dialog; the in-drawer close button needs no route change.
     cy.get('.side .side-close').should('be.focused').click()

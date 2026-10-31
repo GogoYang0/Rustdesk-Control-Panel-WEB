@@ -2,6 +2,8 @@ import { Toast } from '@douyinfe/semi-ui'
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { Navigate, Outlet, useLocation, useNavigate, useParams } from 'react-router'
 
+import CreateOrgDialog from '../features/orgs/CreateOrgDialog'
+
 import StateBlock from '../components/StateBlock'
 import { useFocusTrap } from '../components/useFocusTrap'
 import { logout, setLogoutHandler } from '../lib/session'
@@ -360,6 +362,9 @@ export default function AppShell() {
   // it to the hamburger on close, and keep the closed drawer out of tab order.
   const drawerRef = useFocusTrap<HTMLElement>(isMobile && sideOpen, hamburgerRef.current)
   const [orgOpen, setOrgOpen] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [createFrom, setCreateFrom] = useState<'org' | 'menu'>('org')
+  const orgSwitchRef = useRef<HTMLButtonElement>(null)
   // Open tabs, least-recently-used first (design D3: tabs are route handles).
   const [tabs, setTabs] = useState<string[]>([])
   const tabbarRef = useRef<HTMLDivElement>(null)
@@ -419,6 +424,12 @@ export default function AppShell() {
     if (victim && el.scrollWidth > el.clientWidth + 1) setTabs((prev) => closeTabFrom(prev, victim))
   }, [tabs, activeKey])
 
+  function openCreate(from: 'org' | 'menu') {
+    setOrgOpen(false)
+    setCreateFrom(from)
+    setCreateOpen(true)
+  }
+
   if (isLoading) {
     return (
       <div className="shell">
@@ -432,6 +443,7 @@ export default function AppShell() {
     )
   }
   if (error || !me) return <Navigate to="/login" replace />
+  if (!current && me.orgs.length === 0) return <Navigate to="/" replace />
   if (!current) {
     const fallback = me.orgs[0]
     return (
@@ -487,6 +499,21 @@ export default function AppShell() {
             </button>
           ) : null}
         </div>
+
+        {isMobile ? (
+          <button
+            className="nav-item"
+            type="button"
+            style={{ margin: '0 8px 6px', width: 'calc(100% - 16px)' }}
+            onClick={() => {
+              setSideOpen(false)
+              openCreate('menu')
+            }}
+          >
+            <span className="ic">＋</span>
+            <span className="txt">创建组织</span>
+          </button>
+        ) : null}
 
         <nav className="side-nav">
           {GROUPS.map((group) => (
@@ -622,6 +649,7 @@ export default function AppShell() {
 
           <div style={{ position: 'relative' }}>
             <button
+              ref={orgSwitchRef}
               className="org-switch"
               type="button"
               title="切换组织"
@@ -666,6 +694,10 @@ export default function AppShell() {
                       <span className="tag primary">{org.role_kind}</span>
                     </button>
                   ))}
+                  <button type="button" className="org-menu-item" onClick={() => openCreate('org')}>
+                    <span className="org-ava">＋</span>
+                    <span className="nm">创建组织</span>
+                  </button>
                 </div>
               </>
             ) : null}
@@ -785,6 +817,20 @@ export default function AppShell() {
           <Outlet />
         </div>
       </div>
+
+      {createOpen ? (
+        <CreateOrgDialog
+          onClose={() => {
+            setCreateOpen(false)
+            if (createFrom === 'menu') hamburgerRef.current?.focus()
+            else orgSwitchRef.current?.focus()
+          }}
+          onCreated={(org) => {
+            setCreateOpen(false)
+            navigate(`/orgs/${org.id}/overview`)
+          }}
+        />
+      ) : null}
 
       <nav className="mobtab" aria-label="移动端快捷导航">
         {MOBILE_NAV.map((item) => {
