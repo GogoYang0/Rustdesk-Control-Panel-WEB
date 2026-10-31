@@ -10,6 +10,8 @@ import {
   fetchDevices,
   fetchMe,
   fetchMembers,
+  fetchInvitations,
+  revokeInvitation as revokeInvitationRequest,
   fetchIdentities,
   fetchTokens,
   fetchProviders,
@@ -178,6 +180,7 @@ export const panelApi = createApi({
   tagTypes: [
     'Me',
     'Members',
+    'Invitations',
     'Sessions',
     'Session',
     'SessionAlerts',
@@ -218,6 +221,10 @@ export const panelApi = createApi({
       queryFn: (orgId) => wrap(() => fetchMembers(orgId)),
       providesTags: (_result, _error, orgId) => [{ type: 'Members', id: orgId }],
     }),
+    getInvitations: build.query<Invitation[], number>({
+      queryFn: (orgId) => wrap(() => fetchInvitations(orgId)),
+      providesTags: (_result, _error, orgId) => [{ type: 'Invitations', id: orgId }],
+    }),
     getRoles: build.query<Role[], number>({
       queryFn: (orgId) => wrap(() => fetchRoles(orgId)),
       providesTags: (_result, _error, orgId) => [{ type: 'Members', id: `roles-${orgId}` }],
@@ -249,7 +256,17 @@ export const panelApi = createApi({
       { orgId: number; email: string; role: 'admin' | 'member' }
     >({
       queryFn: ({ orgId, email, role }) => wrap(() => inviteMember(orgId, email, role)),
-      invalidatesTags: (_result, _error, { orgId }) => [{ type: 'Members', id: orgId }],
+      invalidatesTags: (_result, _error, { orgId }) => [
+        { type: 'Members', id: orgId },
+        { type: 'Invitations', id: orgId },
+      ],
+    }),
+    revokeInvitation: build.mutation<void, { orgId: number; invitationId: number }>({
+      queryFn: async ({ orgId, invitationId }) => {
+        const result = await wrap(() => revokeInvitationRequest(orgId, invitationId))
+        return 'data' in result ? { data: undefined } : result
+      },
+      invalidatesTags: (_result, _error, { orgId }) => [{ type: 'Invitations', id: orgId }],
     }),
     updateMember: build.mutation<
       MemberMutation,
@@ -870,12 +887,14 @@ export const panelApi = createApi({
 export const {
   useGetMeQuery,
   useGetMembersQuery,
+  useGetInvitationsQuery,
   useGetRolesQuery,
   useGetPermissionsQuery,
   useCreateRoleMutation,
   useUpdateRoleMutation,
   useDeleteRoleMutation,
   useInviteMemberMutation,
+  useRevokeInvitationMutation,
   useUpdateMemberMutation,
   useRemoveMemberMutation,
   useResetMemberTotpMutation,

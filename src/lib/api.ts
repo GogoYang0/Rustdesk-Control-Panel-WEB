@@ -47,6 +47,7 @@ import type {
   Member,
   Me,
   Org,
+  Invitation,
   Policy,
   PolicyRequest,
   Role,
@@ -438,6 +439,7 @@ export function renameOrg(orgId: number, name: string): Promise<Org> {
 
 export type {
   ApiToken,
+  Invitation,
   IssuedApiToken,
   TokenCreateRequest,
   OidcStartRequest,
@@ -648,13 +650,6 @@ export function updateAuditRetention(orgId: number, days: number): Promise<Audit
 
 // ── organization ────────────────────────────────────────────────────────────
 
-export interface Invitation {
-  id: number
-  email: string
-  role: string
-  expires_at: string
-}
-
 export interface MemberMutation {
   revoked_sessions?: number
 }
@@ -697,6 +692,17 @@ export function inviteMember(
   return apiFetch<Invitation>(`/api/v1/orgs/${orgId}/invitations`, {
     method: 'POST',
     body: JSON.stringify({ email, role }),
+  })
+}
+
+/** Pending invitations only; the API never returns the token or its hash. */
+export function fetchInvitations(orgId: number): Promise<Invitation[]> {
+  return apiFetch<Invitation[]>(`/api/v1/orgs/${orgId}/invitations`)
+}
+
+export async function revokeInvitation(orgId: number, invitationId: number): Promise<void> {
+  await apiFetch<unknown>(`/api/v1/orgs/${orgId}/invitations/${invitationId}`, {
+    method: 'DELETE',
   })
 }
 
