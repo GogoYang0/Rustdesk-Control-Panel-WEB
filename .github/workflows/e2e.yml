@@ -48,7 +48,7 @@ jobs:
           # Pinned to the API develop commit that seeds sample client builds
           # as well as log events; bump it deliberately when the panel API
           # changes so e2e stays reproducible.
-          ref: 37ba316967442288800a50b209d10d105d3c77c5
+          ref: 6484f95cdc4ac5e173eea03c97ef544d7c35500f
           path: rustdesk-control-panel-api
           token: ${{ secrets.API_REPO_TOKEN }}
           persist-credentials: false

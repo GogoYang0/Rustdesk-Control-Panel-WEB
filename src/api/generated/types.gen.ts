@@ -535,6 +535,10 @@ export type OrgCreateRequest = {
     name: string;
 };
 
+export type OrgUpdateRequest = {
+    name: string;
+};
+
 export type OrgResponse = {
     code: ErrorCode;
     message: string;
@@ -3343,6 +3347,49 @@ export type CreateOrgResponses = {
 };
 
 export type CreateOrgResponse = CreateOrgResponses[keyof CreateOrgResponses];
+
+export type UpdateOrgData = {
+    body: OrgUpdateRequest;
+    path: {
+        orgId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}';
+};
+
+export type UpdateOrgErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 服务端错误（如邀请邮件投递失败）
+     */
+    500: ErrorResponse;
+};
+
+export type UpdateOrgError = UpdateOrgErrors[keyof UpdateOrgErrors];
+
+export type UpdateOrgResponses = {
+    /**
+     * 已重命名（同名时为 no-op）
+     */
+    200: OrgResponse;
+};
+
+export type UpdateOrgResponse = UpdateOrgResponses[keyof UpdateOrgResponses];
 
 export type ListMembersData = {
     body?: never;

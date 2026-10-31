@@ -1,11 +1,23 @@
+import { useState } from 'react'
+
 import type { MeOrg } from '../../lib/api'
+import RenameOrgDialog from './RenameOrgDialog'
 
 export default function OrgCard({ org }: { org: MeOrg }) {
+  const [renaming, setRenaming] = useState(false)
+  const canRename = org.permissions.includes('org.admin')
   return (
     <div className="card" data-testid="org-card">
       <div className="card-head">
         <div className="card-title">组织</div>
-        <span className="tag grey">{org.role_kind}</span>
+        <div className="hstack" style={{ gap: 8 }}>
+          <span className="tag grey">{org.role_kind}</span>
+          {canRename ? (
+            <button className="btn outline sm" type="button" onClick={() => setRenaming(true)}>
+              重命名
+            </button>
+          ) : null}
+        </div>
       </div>
       <div className="card-body">
         <div className="desc">
@@ -34,6 +46,7 @@ export default function OrgCard({ org }: { org: MeOrg }) {
           席位、设备配额与时区尚无 API；此处只展示账户已知的组织信息。
         </div>
       </div>
+      {renaming ? <RenameOrgDialog org={org} onClose={() => setRenaming(false)} /> : null}
     </div>
   )
 }
