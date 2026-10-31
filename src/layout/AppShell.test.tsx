@@ -113,6 +113,15 @@ describe('AppShell organization creation entry', () => {
     expect(document.querySelector('.org-switch')?.textContent).toContain('Beta')
   })
 
+  it('closes the desktop menu with Escape from its search box', async () => {
+    setup([acme, beta])
+    fireEvent.click(await screen.findByTitle('切换组织'))
+    const input = screen.getByLabelText('搜索组织')
+    fireEvent.keyDown(input, { key: 'Escape' })
+    expect(document.querySelector('.org-menu')).toBeNull()
+    expect(document.activeElement).toBe(document.querySelector('.org-switch'))
+  })
+
   it('switches organizations from the mobile drawer', async () => {
     setMobile(true)
     setup([acme, beta])

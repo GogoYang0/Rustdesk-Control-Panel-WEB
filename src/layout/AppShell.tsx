@@ -520,8 +520,8 @@ export default function AppShell() {
               className="side-org"
               type="button"
               title="切换组织"
-              aria-haspopup="listbox"
               aria-expanded={mobileOrgOpen}
+              aria-controls="mobile-org-menu"
               onClick={() => {
                 setOrgQuery('')
                 setMobileOrgOpen((value) => !value)
@@ -548,7 +548,12 @@ export default function AppShell() {
               </svg>
             </button>
             {mobileOrgOpen ? (
-              <div className="org-menu side-org-menu" role="group" aria-label="组织列表">
+              <div
+                id="mobile-org-menu"
+                className="org-menu side-org-menu"
+                role="group"
+                aria-label="组织列表"
+              >
                 <div className="input" style={{ margin: '2px 2px 4px' }}>
                   <input
                     value={orgQuery}
@@ -735,14 +740,17 @@ export default function AppShell() {
               className="org-switch"
               type="button"
               title="切换组织"
-              aria-haspopup="listbox"
               aria-expanded={orgOpen}
+              aria-controls="desktop-org-menu"
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') {
+                  setOrgOpen(false)
+                  orgSwitchRef.current?.focus()
+                }
+              }}
               onClick={() => {
                 setOrgQuery('')
                 setOrgOpen((value) => !value)
-              }}
-              onKeyDown={(event) => {
-                if (event.key === 'Escape') setOrgOpen(false)
               }}
             >
               <span className="org-ava">{current.name.slice(0, 1).toUpperCase()}</span>
@@ -762,7 +770,16 @@ export default function AppShell() {
             {orgOpen ? (
               <>
                 <div className="org-scrim" onClick={() => setOrgOpen(false)} />
-                <div className="org-menu">
+                <div
+                  id="desktop-org-menu"
+                  className="org-menu"
+                  onKeyDown={(event) => {
+                    if (event.key === 'Escape') {
+                      setOrgOpen(false)
+                      orgSwitchRef.current?.focus()
+                    }
+                  }}
+                >
                   <div className="input" style={{ margin: '2px 2px 4px' }}>
                     <input
                       value={orgQuery}
