@@ -8,10 +8,11 @@ const FOCUSABLE =
  * the previously focused element on unmount. Escape stays with the caller —
  * a sheet and a modal close differently.
  */
-export function useFocusTrap<T extends HTMLElement>() {
+export function useFocusTrap<T extends HTMLElement>(active = true) {
   const ref = useRef<T>(null)
 
   useEffect(() => {
+    if (!active) return
     const previouslyFocused = document.activeElement as HTMLElement | null
     const node = ref.current
     const focusables = () =>
@@ -19,7 +20,7 @@ export function useFocusTrap<T extends HTMLElement>() {
         (el) => el.offsetParent !== null,
       )
 
-    focusables()[0]?.focus({ preventScroll: true })
+    ;(focusables()[0] ?? node)?.focus({ preventScroll: true })
 
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Tab') return
@@ -54,7 +55,7 @@ export function useFocusTrap<T extends HTMLElement>() {
       document.removeEventListener('keydown', onKey)
       previouslyFocused?.focus?.({ preventScroll: true })
     }
-  }, [])
+  }, [active])
 
   return ref
 }

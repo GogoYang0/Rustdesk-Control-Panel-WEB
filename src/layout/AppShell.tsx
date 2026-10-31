@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { Navigate, Outlet, useLocation, useNavigate, useParams } from 'react-router'
 
 import StateBlock from '../components/StateBlock'
+import { useFocusTrap } from '../components/useFocusTrap'
 import { logout, setLogoutHandler } from '../lib/session'
 import { closeTabFrom, evictionCandidate, pushTab } from '../lib/tabs'
 import { store } from '../store'
@@ -352,6 +353,11 @@ export default function AppShell() {
   const { data: me, isLoading, error } = useGetMeQuery()
   const [collapsed, setCollapsed] = useState(false)
   const [sideOpen, setSideOpen] = useState(false)
+  const isMobile = useIsMobile()
+  const drawerHidden = isMobile && !sideOpen
+  // On mobile the side bar is a modal drawer: trap focus while open, restore
+  // it to the hamburger on close, and keep the closed drawer out of tab order.
+  const drawerRef = useFocusTrap<HTMLElement>(isMobile && sideOpen)
   const [orgOpen, setOrgOpen] = useState(false)
   // Open tabs, least-recently-used first (design D3: tabs are route handles).
   const [tabs, setTabs] = useState<string[]>([])
@@ -453,8 +459,15 @@ export default function AppShell() {
     <div className="shell">
       <aside
         id="app-side"
+        ref={drawerRef}
         className={`side${sideOpen ? ' open' : ''}`}
         data-collapsed={collapsed ? 'true' : 'false'}
+        role={isMobile ? 'dialog' : undefined}
+        aria-modal={isMobile && sideOpen ? true : undefined}
+        aria-label={isMobile ? '主导航菜单' : undefined}
+        aria-hidden={drawerHidden ? true : undefined}
+        inert={drawerHidden ? true : undefined}
+        tabIndex={isMobile ? -1 : undefined}
       >
         <div className="side-head">
           <div className="brand-logo">R</div>
@@ -788,4 +801,15 @@ export default function AppShell() {
       </nav>
     </div>
   )
+}
+
+// Kept in sync with the 767px breakpoint in prototype.css.
+function useIsMobile(): boolean {
+  const [mobile, setMobile] = useState(() => window.innerWidth <= 767)
+  useEffect(() => {
+    const onResize = () => setMobile(window.innerWidth <= 767)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  return mobile
 }

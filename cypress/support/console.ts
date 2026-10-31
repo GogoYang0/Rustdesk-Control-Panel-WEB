@@ -14,7 +14,9 @@ const LANDING_PATH = /^\/orgs\/\d+\/overview$/
 function attemptLogin(email: string, password: string, retriesLeft: number) {
   cy.get('.login-card input').eq(0).clear().type(email)
   cy.get('.login-card input').eq(1).clear().type(password, { log: false })
-  cy.get('.login-card button[type="submit"]').click()
+  // The submit button stays disabled until the captcha challenge resolves,
+  // even when the deployment disables captcha.
+  cy.get('.login-card button[type="submit"]').should('not.be.disabled').click()
   cy.wait('@loginAttempt', { timeout: 15000 }).then(({ response }) => {
     if (response?.statusCode === 429 && retriesLeft > 0) {
       cy.wait(15000)
@@ -35,8 +37,12 @@ export function signIn() {
     const password = String(consolePassword ?? 'admin12345')
 
     cy.clearLocalStorage()
-    cy.visit('/login')
+    cy.intercept('GET', '**/api/v1/auth/captcha').as('captchaProbe')
     cy.intercept('POST', '**/api/v1/auth/login').as('loginAttempt')
+    cy.visit('/login')
+    // Rsbuild compiles the login chunk on the first request; the default 5s
+    // wait can expire before the app has even mounted.
+    cy.wait('@captchaProbe', { timeout: 15000 })
     attemptLogin(email, password, 2)
   })
 }

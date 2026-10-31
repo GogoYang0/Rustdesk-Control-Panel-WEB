@@ -61,8 +61,14 @@ import type {
   IdentityList,
   IdentityUnlinkRequest,
   AuthProviders,
+  CaptchaChallenge,
+  CaptchaProof,
   ProvisioningStatus,
   AuditRetention,
+  OidcStartRequest,
+  OidcStart,
+  OidcExchangeRequest,
+  LdapLoginRequest,
 } from '../api/generated'
 import {
   accessTokenExpiresSoon,
@@ -301,24 +307,25 @@ export interface TwoFactorChallenge {
   methods?: string[]
 }
 
-export interface CaptchaInfo {
-  enabled: boolean
-  provider?: string
-}
+export type { CaptchaChallenge, CaptchaProof }
 
-export function login(email: string, password: string): Promise<TokenPair> {
+export function login(email: string, password: string, captcha?: CaptchaProof): Promise<TokenPair> {
   return apiFetch<TokenPair>('/api/v1/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, captcha }),
     retryOn401: false,
   })
 }
 
 /** Second login step for accounts with TOTP enabled. */
-export function verifyTwoFactor(challengeToken: string, code: string): Promise<TokenPair> {
+export function verifyTwoFactor(
+  challengeToken: string,
+  code: string,
+  captcha?: CaptchaProof,
+): Promise<TokenPair> {
   return apiFetch<TokenPair>('/api/v1/auth/2fa/verify', {
     method: 'POST',
-    body: JSON.stringify({ challenge_token: challengeToken, code }),
+    body: JSON.stringify({ challenge_token: challengeToken, code, captcha }),
     retryOn401: false,
   })
 }
@@ -327,8 +334,74 @@ export function fetchProviders(): Promise<AuthProviders> {
   return apiFetch<AuthProviders>('/api/v1/auth/providers')
 }
 
-export function fetchCaptcha(): Promise<CaptchaInfo> {
-  return apiFetch('/api/v1/auth/captcha')
+export function fetchCaptchaChallenge(): Promise<CaptchaChallenge> {
+  return apiFetch<CaptchaChallenge>('/api/v1/auth/captcha', {
+    retryOn401: false,
+    // A stalled proxy must not leave the form stuck in `loading` (submit is
+    // blocked and there is no retry until the request settles).
+    signal: AbortSignal.timeout(10_000),
+    // The page may still carry an OIDC ticket or invitation token when this
+    // runs; a default Referer would copy it into proxy/API access logs.
+    referrerPolicy: 'no-referrer',
+  })
+}
+
+export function startOidcLogin(input: OidcStartRequest): Promise<OidcStart> {
+  return apiFetch<OidcStart>('/api/v1/auth/oidc/start', {
+    method: 'POST',
+    body: JSON.stringify(input),
+    retryOn401: false,
+  })
+}
+
+export function exchangeOidcLogin(input: OidcExchangeRequest): Promise<TokenPair> {
+  return apiFetch<TokenPair>('/api/v1/auth/oidc/exchange', {
+    method: 'POST',
+    body: JSON.stringify(input),
+    retryOn401: false,
+  })
+}
+
+export function ldapLogin(input: LdapLoginRequest): Promise<TokenPair> {
+  return apiFetch<TokenPair>('/api/v1/auth/ldap/login', {
+    method: 'POST',
+    body: JSON.stringify(input),
+    retryOn401: false,
+  })
+}
+
+// Public onboarding endpoints. 401 is a credential/ticket answer, never an
+// expired session, so none of them may refresh and replay the request.
+export async function verifyEmail(token: string): Promise<void> {
+  await apiFetch<unknown>('/api/v1/auth/verify-email', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+    retryOn401: false,
+    // The token may still be in the address bar when this fires; a same-origin
+    // Referer would copy it into proxy/API access logs.
+    referrerPolicy: 'no-referrer',
+  })
+}
+
+export async function resendVerification(email: string): Promise<void> {
+  await apiFetch<unknown>('/api/v1/auth/resend-verification', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+    retryOn401: false,
+  })
+}
+
+export function acceptInvitation(
+  token: string,
+  password: string,
+  captcha?: CaptchaProof,
+): Promise<Member> {
+  return apiFetch<Member>('/api/v1/invitations/accept', {
+    method: 'POST',
+    body: JSON.stringify({ token, password, captcha }),
+    retryOn401: false,
+    referrerPolicy: 'no-referrer',
+  })
 }
 
 export function fetchMe(): Promise<Me> {
@@ -341,6 +414,10 @@ export type {
   ApiToken,
   IssuedApiToken,
   TokenCreateRequest,
+  OidcStartRequest,
+  OidcStart,
+  OidcExchangeRequest,
+  LdapLoginRequest,
   Identity,
   IdentityList,
   IdentityUnlinkRequest,

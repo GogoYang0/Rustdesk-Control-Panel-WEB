@@ -17,17 +17,26 @@ vi.mock('./session', () => ({
 
 const {
   ApiError,
+  acceptInvitation,
   apiBlob,
   apiFetch,
   createToken,
   enableTotp,
+  resendVerification,
+  verifyEmail,
+  fetchCaptchaChallenge,
   fetchClientBuildArtifact,
   fetchCsv,
   fetchAuditRetention,
+  login,
+  verifyTwoFactor,
   fetchIdentities,
   fetchProvisioning,
   fetchProviders,
   fetchTokens,
+  exchangeOidcLogin,
+  ldapLogin,
+  startOidcLogin,
   updateAuditRetention,
   updateProvisioning,
   renamePasskey,
@@ -234,6 +243,220 @@ describe('personal tokens and identities', () => {
       identity_id: 5,
       stepup_token: 'step-token',
     })
+  })
+})
+
+describe('external login endpoints', () => {
+  beforeEach(() => {
+    refreshAccessToken.mockReset()
+    logout.mockReset()
+    sessionMock.expiresSoon = false
+    sessionMock.refreshToken = 'refresh-1'
+  })
+  afterEach(() => vi.restoreAllMocks())
+
+  it('starts OIDC with the login redirect path and no session', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        code: 'ok',
+        message: 'ok',
+        data: { authorization_url: 'https://idp.example.com/auth', state: 'state-1' },
+      }),
+    )
+    await expect(startOidcLogin({ redirect_path: '/login' })).resolves.toMatchObject({
+      state: 'state-1',
+    })
+    const call = fetchMock.mock.calls[0]
+    expect(String(call[0])).toBe('/api/v1/auth/oidc/start')
+    expect(String((call[1] as RequestInit).method)).toBe('POST')
+    expect(JSON.parse(String((call[1] as RequestInit).body))).toEqual({
+      redirect_path: '/login',
+    })
+  })
+
+  it('does not refresh or replay a rejected OIDC ticket', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(jsonResponse({ code: 'unauthorized', message: 'ticket rejected' }, 401))
+    await expect(exchangeOidcLogin({ ticket: 'ticket-1' })).rejects.toMatchObject({
+      status: 401,
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(refreshAccessToken).not.toHaveBeenCalled()
+    expect(JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body))).toEqual({
+      ticket: 'ticket-1',
+    })
+  })
+
+  it('does not refresh or replay a rejected LDAP password', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(
+        jsonResponse({ code: 'unauthorized', message: 'invalid credentials' }, 401),
+      )
+    await expect(ldapLogin({ username: 'alice', password: 'wrong' })).rejects.toMatchObject({
+      status: 401,
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(refreshAccessToken).not.toHaveBeenCalled()
+    expect(String(fetchMock.mock.calls[0][0])).toBe('/api/v1/auth/ldap/login')
+    expect(JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body))).toEqual({
+      username: 'alice',
+      password: 'wrong',
+    })
+  })
+})
+
+describe('captcha endpoints', () => {
+  const proof = { response: { payload: 'solved-payload' } }
+
+  beforeEach(() => {
+    refreshAccessToken.mockReset()
+    logout.mockReset()
+    sessionMock.refreshToken = 'refresh-1'
+  })
+  afterEach(() => vi.restoreAllMocks())
+
+  it('fetches the full challenge, including provider params, without refreshing', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        code: 'ok',
+        message: 'ok',
+        data: {
+          enabled: true,
+          provider: 'altcha',
+          challenge: { params: { challenge: 'c1', salt: 's1', signature: 'sig1' } },
+        },
+      }),
+    )
+    await expect(fetchCaptchaChallenge()).resolves.toMatchObject({
+      provider: 'altcha',
+      challenge: { params: { challenge: 'c1' } },
+    })
+    expect(String(fetchMock.mock.calls[0][0])).toBe('/api/v1/auth/captcha')
+    const init = fetchMock.mock.calls[0][1] as RequestInit
+    expect(init.referrerPolicy).toBe('no-referrer')
+    expect(init.signal).toBeInstanceOf(AbortSignal)
+
+    fetchMock.mockResolvedValueOnce(jsonResponse({ code: 'unauthorized', message: 'no' }, 401))
+    await expect(fetchCaptchaChallenge()).rejects.toMatchObject({ status: 401 })
+    expect(refreshAccessToken).not.toHaveBeenCalled()
+  })
+
+  it('omits captcha when no proof was solved and includes it otherwise', async () => {
+    const pair = {
+      code: 'ok',
+      message: 'ok',
+      data: { access_token: 'a', refresh_token: 'r', expires_in: 900 },
+    }
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async () => jsonResponse(pair))
+
+    await login('alice@example.com', 'password-1')
+    expect(JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body))).toEqual({
+      email: 'alice@example.com',
+      password: 'password-1',
+    })
+
+    await login('alice@example.com', 'password-1', proof)
+    expect(JSON.parse(String((fetchMock.mock.calls[1][1] as RequestInit).body))).toEqual({
+      email: 'alice@example.com',
+      password: 'password-1',
+      captcha: proof,
+    })
+
+    await verifyTwoFactor('challenge-1', '123456', proof)
+    expect(JSON.parse(String((fetchMock.mock.calls[2][1] as RequestInit).body))).toEqual({
+      challenge_token: 'challenge-1',
+      code: '123456',
+      captcha: proof,
+    })
+
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        code: 'ok',
+        message: 'ok',
+        data: { id: 1, user_id: 2, email: 'new@example.com', role: 'member' },
+      }),
+    )
+    await acceptInvitation('invite-1', 'password-1', proof)
+    expect(JSON.parse(String((fetchMock.mock.calls[3][1] as RequestInit).body))).toEqual({
+      token: 'invite-1',
+      password: 'password-1',
+      captcha: proof,
+    })
+  })
+})
+
+describe('onboarding endpoints', () => {
+  beforeEach(() => {
+    refreshAccessToken.mockReset()
+    logout.mockReset()
+    sessionMock.refreshToken = 'refresh-1'
+  })
+  afterEach(() => vi.restoreAllMocks())
+
+  it('posts the verification token and returns void', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(jsonResponse({ code: 'ok', message: 'ok' }))
+    await expect(verifyEmail('verify-token-1')).resolves.toBeUndefined()
+    expect(String(fetchMock.mock.calls[0][0])).toBe('/api/v1/auth/verify-email')
+    const init = fetchMock.mock.calls[0][1] as RequestInit
+    expect(JSON.parse(String(init.body))).toEqual({ token: 'verify-token-1' })
+    expect(init.referrerPolicy).toBe('no-referrer')
+  })
+
+  it('posts the resend address and never refreshes a 429', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(jsonResponse({ code: 'rate_limited', message: 'too many' }, 429))
+    await expect(resendVerification('alice@example.com')).rejects.toMatchObject({ status: 429 })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(refreshAccessToken).not.toHaveBeenCalled()
+    expect(String(fetchMock.mock.calls[0][0])).toBe('/api/v1/auth/resend-verification')
+    expect(JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body))).toEqual({
+      email: 'alice@example.com',
+    })
+  })
+
+  it('does not refresh a 401 from verify or resend', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async () =>
+        jsonResponse({ code: 'unauthorized', message: 'rejected' }, 401),
+      )
+
+    await expect(verifyEmail('verify-token-1')).rejects.toMatchObject({ status: 401 })
+    await expect(resendVerification('alice@example.com')).rejects.toMatchObject({ status: 401 })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(refreshAccessToken).not.toHaveBeenCalled()
+  })
+
+  it('accepts an invitation without refreshing and returns the member', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      jsonResponse({
+        code: 'ok',
+        message: 'ok',
+        data: { id: 3, user_id: 4, email: 'new@example.com', role: 'member' },
+      }),
+    )
+    await expect(acceptInvitation('invite-1', 'password-1')).resolves.toMatchObject({ id: 3 })
+    expect(String(fetchMock.mock.calls[0][0])).toBe('/api/v1/invitations/accept')
+    const init = fetchMock.mock.calls[0][1] as RequestInit
+    expect(JSON.parse(String(init.body))).toEqual({
+      token: 'invite-1',
+      password: 'password-1',
+    })
+    expect(init.referrerPolicy).toBe('no-referrer')
+
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ code: 'unauthorized', message: 'invalid credentials' }, 401),
+    )
+    await expect(acceptInvitation('invite-1', 'wrong')).rejects.toMatchObject({ status: 401 })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(refreshAccessToken).not.toHaveBeenCalled()
   })
 })
 

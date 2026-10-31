@@ -114,6 +114,22 @@
   width: min(980px, 100%);
   min-height: min(620px, calc(100vh - 48px));
 }
+.login-page .login-wrap.onboarding-wrap {
+  width: min(460px, 100%);
+  min-height: 0;
+}
+.captcha-field {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  background: var(--bg-card);
+}
+.captcha-field altcha-widget,
+.captcha-field cap-widget {
+  display: block;
+  margin-top: 4px;
+}
 
 /* 会话详情侧滑：原型 #sheet 的组件化版本（遮罩 + 432px 面板）。
    面板内的 .sheet-head/.sheet-title/.sheet-body 沿用 prototype.css。 */
@@ -284,6 +300,10 @@ button.switch:focus-visible {
 /* 移动端抽屉遮罩（原型侧栏抽屉本身不含遮罩，控制台补充点击外部关闭） */
 .side-scrim {
   display: none;
+}
+/* 原型用 text-3（约 2.2:1）；底部导航文字较小，未选中项提到 text-2 以满足可读性 */
+.shell .mobtab button {
+  color: var(--text-2);
 }
 @media (max-width: 767px) {
   .side-scrim {

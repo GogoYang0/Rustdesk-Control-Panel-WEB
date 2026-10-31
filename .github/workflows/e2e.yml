@@ -113,6 +113,54 @@ jobs:
           --expose consoleE2E=true
           --env "consoleEmail=$PANEL_SEED_EMAIL,consolePassword=$PANEL_SEED_PASSWORD"
 
+      - name: enable Altcha captcha for the dedicated spec
+        working-directory: rustdesk-control-panel-api
+        run: |
+          kill "$(cat /tmp/panel.pid)" 2>/dev/null || true
+          for _ in $(seq 1 20); do
+            if ! curl -fsS http://localhost:8080/healthz > /dev/null 2>&1; then break; fi
+            sleep 0.5
+          done
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('configs/config.yaml')
+          lines = path.read_text(encoding='utf-8').splitlines(keepends=True)
+          inside = False
+          changed = 0
+          for i, line in enumerate(lines):
+              if line.startswith('captcha:'):
+                  inside = True
+                  continue
+              if inside and line and not line.startswith((' ', '\t')):
+                  break
+              if inside and line.strip() == 'enabled: false':
+                  lines[i] = line.replace('false', 'true')
+                  changed += 1
+          if changed != 1:
+              raise SystemExit(f'expected one captcha.enabled line, changed {changed}')
+          path.write_text(''.join(lines), encoding='utf-8')
+          PY
+          ALTCHA_KEY="$(openssl rand -hex 32)"
+          PANEL_CAPTCHA_ALTCHA_KEY="$ALTCHA_KEY" nohup /tmp/panel > /tmp/panel-captcha.log 2>&1 &
+          echo $! > /tmp/panel.pid
+          for _ in $(seq 1 60); do
+            if curl -fsS http://localhost:8080/healthz > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "captcha-enabled panel API did not become healthy" >&2
+          cat /tmp/panel-captcha.log
+          exit 1
+
+      - name: run captcha Cypress spec
+        run: >-
+          pnpm exec cypress run
+          --spec cypress/captcha/captcha.cy.ts
+          --config "specPattern=cypress/captcha/**/*.cy.ts"
+          --expose consoleE2E=true
+          --env "consoleEmail=$PANEL_SEED_EMAIL,consolePassword=$PANEL_SEED_PASSWORD"
+
       - name: upload Cypress screenshots
         if: failure()
         uses: actions/upload-artifact@v4
@@ -126,6 +174,8 @@ jobs:
         run: |
           echo '--- panel API ---'
           cat /tmp/panel.log || true
+          echo '--- captcha panel API ---'
+          cat /tmp/panel-captcha.log || true
           echo '--- web dev server ---'
           cat /tmp/web.log || true
 

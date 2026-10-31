@@ -41,10 +41,24 @@ import { consoleE2EEnabled, openConsole, signIn } from '../support/console'
 
   it('opens the mobile drawer and mobile tab navigation', () => {
     cy.viewport(589, 472)
+    cy.get('.side').should('have.attr', 'role', 'dialog')
+    cy.get('.side').should('have.attr', 'aria-hidden', 'true').and('have.attr', 'inert')
+
     cy.get('.hamburger').should('be.visible').click()
     cy.get('.side').should('have.class', 'open')
+    cy.get('.side').should('have.attr', 'aria-modal', 'true')
+    cy.get('.side').should('not.have.attr', 'inert')
+    // Focus moves into the dialog and returns to the trigger on Escape.
+    cy.get('.side .nav-item').first().should('be.focused').type('{esc}')
+    cy.get('.side').should('not.have.class', 'open')
+    cy.get('.hamburger').should('be.focused')
+    cy.get('.side').should('have.attr', 'inert')
+
+    cy.get('.hamburger').click()
+    cy.get('.side .nav-item').first().should('be.focused')
     cy.get('.side-scrim').should('be.visible').click()
     cy.get('.side').should('not.have.class', 'open')
+    cy.get('.hamburger').should('be.focused')
 
     cy.get('.mobtab button').should('have.length', 5)
     cy.contains('.mobtab button', '设备').click()
@@ -61,6 +75,24 @@ import { consoleE2EEnabled, openConsole, signIn } from '../support/console'
         expect(style.borderTopWidth).to.eq('0px')
       })
     cy.viewport(1280, 720)
+    cy.get('.side').should('not.have.attr', 'inert')
+    cy.get('.side').should('not.have.attr', 'aria-hidden')
+    cy.get('.hamburger').should('not.be.visible')
+  })
+
+  it('forwards an OIDC ticket from the root and clears it afterwards', () => {
+    cy.visit('/?ticket=invalid-e2e-ticket')
+    cy.location('pathname', { timeout: 10000 }).should('eq', '/login')
+    cy.location('search').should('not.contain', 'ticket=')
+    cy.contains(/SSO (回调已失效|尚未启用)/).should('be.visible')
+    cy.get('.login-card input').should('have.length.at.least', 2)
+  })
+
+  it('forwards an OIDC callback error from the root to the login page', () => {
+    cy.visit('/?error=oidc_failed')
+    cy.location('pathname', { timeout: 10000 }).should('eq', '/login')
+    cy.contains('SSO 登录失败，请重试或联系管理员').should('be.visible')
+    cy.location('search').should('not.contain', 'error=')
   })
 
   it('keeps one tab per page and closes the inactive one', () => {
