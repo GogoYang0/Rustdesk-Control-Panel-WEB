@@ -193,6 +193,28 @@ describe('ConnectDialog', () => {
     expect(bodies).toHaveLength(2)
   })
 
+  it('shows a retry failure inside the approval stage', async () => {
+    const { bodies } = setup({
+      replies: [
+        {
+          status: 409,
+          body: {
+            code: 'approval_required',
+            message: 'approval required',
+            data: { approval_id: 7 },
+          },
+        },
+        { status: 409, body: { code: 'conflict', message: 'expired', data: null } },
+      ],
+    })
+    fireEvent.click(await screen.findByRole('button', { name: '签发票据' }))
+    await screen.findByTestId('ticket-approval')
+    fireEvent.click(screen.getByRole('button', { name: '重试签发' }))
+    expect((await screen.findByRole('alert')).textContent).toContain('审批已失效')
+    expect(screen.getByTestId('ticket-approval')).toBeTruthy()
+    expect(bodies).toHaveLength(2)
+  })
+
   it('maps a conflict without leaving the form', async () => {
     setup({
       replies: [{ status: 409, body: { code: 'conflict', message: 'outside window', data: null } }],

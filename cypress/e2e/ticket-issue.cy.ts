@@ -19,7 +19,7 @@ const stamp = Date.now().toString().slice(-6)
     cy.get('input[aria-label="名称"]').clear().type(`E2E ticket ${stamp}`)
     cy.get('input[aria-label="RustDesk ID"]').clear().type('999000123')
     cy.contains('#modalRoot button', '登记').click()
-    cy.contains('#modalRoot .mask').should('not.exist')
+    cy.get('#modalRoot .mask').should('not.exist')
 
     cy.get('input[aria-label="搜索设备"]').clear().type('999000123')
     cy.contains('button', '查询').click()

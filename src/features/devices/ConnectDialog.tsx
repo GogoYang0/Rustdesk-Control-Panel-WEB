@@ -207,6 +207,11 @@ export default function ConnectDialog({ orgId, device, onClose }: Props) {
           </>
         }
       >
+        {error ? (
+          <div className="banner danger mb-14" role="alert" style={{ padding: '9px 11px' }}>
+            <div>{error}</div>
+          </div>
+        ) : null}
         <div
           className="banner warning mb-14"
           style={{ padding: '9px 11px' }}
