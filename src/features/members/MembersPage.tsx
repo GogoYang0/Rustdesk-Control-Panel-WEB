@@ -1,9 +1,10 @@
 import { Banner, Empty, Toast } from '@douyinfe/semi-ui'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useDispatch } from 'react-redux'
 import { useParams } from 'react-router'
 
 import Modal from '../../components/Modal'
-import { ApiError, type Member, type Role } from '../../lib/api'
+import { ApiError, type Invitation, type Member, type Role } from '../../lib/api'
 import { formatTime } from '../../lib/format'
 import {
   MEMBER_SECURITY_ACTIONS,
@@ -11,6 +12,14 @@ import {
   type MemberSecurityAction,
 } from '../../lib/member-security'
 import {
+  invitationRoleLabel,
+  revokeInvitationError,
+  revokeInvitationNeedsRefresh,
+} from '../../lib/invitations'
+import type { AppDispatch } from '../../store'
+import {
+  panelApi,
+  useGetInvitationsQuery,
   useGetMeQuery,
   useGetMembersQuery,
   useGetRolesQuery,
@@ -19,6 +28,7 @@ import {
   useResetMemberIdentityMutation,
   useResetMemberPasskeysMutation,
   useResetMemberTotpMutation,
+  useRevokeInvitationMutation,
   useUpdateMemberMutation,
 } from '../../store/api'
 
@@ -28,6 +38,7 @@ type Dialog =
   | { kind: 'disable'; member: Member }
   | { kind: 'remove'; member: Member }
   | { kind: 'security'; member: Member; instance: number }
+  | { kind: 'revoke'; invitation: Invitation; instance: number }
   | null
 
 // Member carries the role *name* (builtin names are owner/admin/member), not a
@@ -72,6 +83,15 @@ export default function MembersPage() {
   const current = me?.orgs.find((org) => org.id === id)
   const perms = new Set(current?.permissions ?? [])
   const canManage = perms.has('member.manage')
+  const {
+    currentData: invitations,
+    isLoading: invitationsLoading,
+    isFetching: invitationsFetching,
+    error: invitationsError,
+    refetch: refetchInvitations,
+  } = useGetInvitationsQuery(id, { skip: !id || !canManage })
+  const loadingInvitations =
+    invitationsLoading || (invitationsFetching && invitations === undefined)
   const isOwner = current?.role_kind === 'owner'
   const [dialog, setDialog] = useState<Dialog>(null)
   const securitySeq = useRef(0)
@@ -309,6 +329,87 @@ export default function MembersPage() {
         </div>
       )}
 
+      {canManage ? (
+        <div className="card mb-14" data-testid="invitation-card">
+          <div className="card-head">
+            <div className="card-title">
+              待接受邀请<span className="hint">有效期 7 天 · 只显示未接受</span>
+            </div>
+            <button
+              className="btn borderless sm"
+              type="button"
+              disabled={loadingInvitations || invitationsFetching}
+              onClick={() => void refetchInvitations()}
+            >
+              刷新
+            </button>
+          </div>
+          <div className="card-body tight" style={{ overflowX: 'auto' }}>
+            {invitationsError && !invitations ? (
+              <div className="banner danger mb-14" role="alert" style={{ padding: '9px 11px' }}>
+                <div>加载待接受邀请失败，请稍后重试。</div>
+                <button
+                  className="btn tertiary sm"
+                  type="button"
+                  onClick={() => void refetchInvitations()}
+                >
+                  重试
+                </button>
+              </div>
+            ) : null}
+            {loadingInvitations ? (
+              <div className="help" style={{ padding: '14px 0' }}>
+                正在加载待接受邀请…
+              </div>
+            ) : invitationsError && !invitations ? null : !invitations ||
+              invitations.length === 0 ? (
+              <Empty title="没有待接受的邀请" description="邀请成员后，未接受的邀请会显示在这里" />
+            ) : (
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>邮箱</th>
+                    <th style={{ width: 140 }}>角色</th>
+                    <th style={{ width: 180 }}>有效期至</th>
+                    <th style={{ width: 120 }} />
+                  </tr>
+                </thead>
+                <tbody>
+                  {invitations.map((invitation) => (
+                    <tr key={invitation.id}>
+                      <td>{invitation.email}</td>
+                      <td>
+                        <span className={`tag ${invitation.role === 'admin' ? 'blue' : 'green'}`}>
+                          {invitationRoleLabel(invitation.role)}
+                        </span>
+                      </td>
+                      <td className="mono">{formatTime(invitation.expires_at)}</td>
+                      <td>
+                        <div className="hstack" style={{ gap: 4, justifyContent: 'flex-end' }}>
+                          <button
+                            className="btn danger sm"
+                            type="button"
+                            onClick={() =>
+                              setDialog({
+                                kind: 'revoke',
+                                invitation,
+                                instance: ++securitySeq.current,
+                              })
+                            }
+                          >
+                            撤销
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      ) : null}
+
       <p className="help" style={{ marginTop: 12 }}>
         停用/移除会撤销该成员的 compat 会话；面板会话按每请求会籍复核。最后一个 owner 不可被移除。
       </p>
@@ -344,6 +445,17 @@ export default function MembersPage() {
           onClose={() =>
             setDialog((prev) =>
               prev?.kind === 'security' && prev.instance === dialog.instance ? null : prev,
+            )
+          }
+        />
+      ) : null}
+      {dialog?.kind === 'revoke' ? (
+        <RevokeInvitationDialog
+          orgId={id}
+          invitation={dialog.invitation}
+          onClose={() =>
+            setDialog((prev) =>
+              prev?.kind === 'revoke' && prev.instance === dialog.instance ? null : prev,
             )
           }
         />
@@ -580,6 +692,73 @@ function InviteDialog({ orgId, onClose }: { orgId: number; onClose: () => void }
           </label>
         </div>
         <div className="help">Owner 不通过邀请授予。</div>
+      </div>
+    </Modal>
+  )
+}
+
+function RevokeInvitationDialog({
+  orgId,
+  invitation,
+  onClose,
+}: {
+  orgId: number
+  invitation: Invitation
+  onClose: () => void
+}) {
+  const dispatch = useDispatch<AppDispatch>()
+  const [revoke, { isLoading }] = useRevokeInvitationMutation()
+  const [error, setError] = useState<string | null>(null)
+  const mountedRef = useRef(true)
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
+
+  async function submit() {
+    setError(null)
+    try {
+      await revoke({ orgId, invitationId: invitation.id }).unwrap()
+      if (!mountedRef.current) return
+      Toast.success('已撤销邀请')
+      onClose()
+    } catch (err) {
+      if (!mountedRef.current) return
+      setError(revokeInvitationError(err))
+      if (revokeInvitationNeedsRefresh(err)) {
+        dispatch(panelApi.util.invalidateTags([{ type: 'Invitations', id: orgId }]))
+      }
+    }
+  }
+
+  return (
+    <Modal
+      title="撤销邀请"
+      onClose={isLoading ? () => undefined : onClose}
+      footer={
+        <>
+          <button className="btn tertiary" type="button" disabled={isLoading} onClick={onClose}>
+            取消
+          </button>
+          <button className="btn danger" type="button" disabled={isLoading} onClick={submit}>
+            {isLoading ? '撤销中…' : '撤销邀请'}
+          </button>
+        </>
+      }
+    >
+      {error ? (
+        <div className="banner danger mb-14" role="alert" style={{ padding: '9px 11px' }}>
+          <div>{error}</div>
+        </div>
+      ) : null}
+      <div className="banner warning" style={{ padding: '9px 11px' }}>
+        <div>
+          撤销 <b>{invitation.email}</b>（{invitationRoleLabel(invitation.role)}）的邀请后，
+          邮件中的链接将立即失效；如需重新邀请，请回到成员页再次发送。
+        </div>
       </div>
     </Modal>
   )

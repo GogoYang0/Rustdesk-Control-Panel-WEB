@@ -1283,6 +1283,12 @@ export type InvitationResponse = {
     data: Invitation;
 };
 
+export type InvitationListResponse = {
+    code: ErrorCode;
+    message: string;
+    data: Array<Invitation>;
+};
+
 export type InvitationAcceptRequest = {
     token: string;
     password: string;
@@ -5223,6 +5229,49 @@ export type UpdateProvisioningResponses = {
 
 export type UpdateProvisioningResponse = UpdateProvisioningResponses[keyof UpdateProvisioningResponses];
 
+export type ListInvitationsData = {
+    body?: never;
+    path: {
+        orgId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/invitations';
+};
+
+export type ListInvitationsErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 服务端错误（如邀请邮件投递失败）
+     */
+    500: ErrorResponse;
+};
+
+export type ListInvitationsError = ListInvitationsErrors[keyof ListInvitationsErrors];
+
+export type ListInvitationsResponses = {
+    /**
+     * 待接受邀请
+     */
+    200: InvitationListResponse;
+};
+
+export type ListInvitationsResponse = ListInvitationsResponses[keyof ListInvitationsResponses];
+
 export type CreateInvitationData = {
     body: InvitationCreateRequest;
     path: {
@@ -5265,6 +5314,54 @@ export type CreateInvitationResponses = {
 };
 
 export type CreateInvitationResponse = CreateInvitationResponses[keyof CreateInvitationResponses];
+
+export type RevokeInvitationData = {
+    body?: never;
+    path: {
+        orgId: number;
+        invitationId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/invitations/{invitationId}';
+};
+
+export type RevokeInvitationErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+    /**
+     * 服务端错误（如邀请邮件投递失败）
+     */
+    500: ErrorResponse;
+};
+
+export type RevokeInvitationError = RevokeInvitationErrors[keyof RevokeInvitationErrors];
+
+export type RevokeInvitationResponses = {
+    /**
+     * 已撤销或已处于撤销状态
+     */
+    200: OkResponse;
+};
+
+export type RevokeInvitationResponse = RevokeInvitationResponses[keyof RevokeInvitationResponses];
 
 export type AcceptInvitationData = {
     body: InvitationAcceptRequest;
