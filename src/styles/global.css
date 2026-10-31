@@ -286,3 +286,51 @@ button.switch:focus-visible {
   border-color: var(--primary);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 18%, transparent);
 }
+
+/* 顶部页签的关闭是真实 button；原型用 span，需重置原生按钮外观 */
+.tab-item .tx {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* 移动端抽屉遮罩（原型侧栏抽屉本身不含遮罩，控制台补充点击外部关闭） */
+.side-scrim {
+  display: none;
+}
+/* 原型用 text-3（约 2.2:1）；底部导航文字较小，未选中项提到 text-2 以满足可读性 */
+.shell .mobtab button {
+  color: var(--text-2);
+}
+/* 移动端模态抽屉内部的关闭控件（仅移动端渲染） */
+.side-close {
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.side-close:hover {
+  background: var(--fill-0);
+  color: var(--text-1);
+}
+@media (max-width: 767px) {
+  .side-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 110;
+    border: 0;
+    background: rgba(10, 16, 24, 0.45);
+    backdrop-filter: blur(1.5px);
+  }
+}

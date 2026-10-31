@@ -8,18 +8,24 @@ const FOCUSABLE =
  * the previously focused element on unmount. Escape stays with the caller —
  * a sheet and a modal close differently.
  */
-export function useFocusTrap<T extends HTMLElement>() {
+export function useFocusTrap<T extends HTMLElement>(
+  active = true,
+  restoreTarget?: HTMLElement | null,
+) {
   const ref = useRef<T>(null)
 
   useEffect(() => {
-    const previouslyFocused = document.activeElement as HTMLElement | null
+    if (!active) return
+    // Safari does not focus a button on click, so the trigger must be passed
+    // explicitly rather than inferred from document.activeElement.
+    const previouslyFocused = restoreTarget ?? (document.activeElement as HTMLElement | null)
     const node = ref.current
     const focusables = () =>
       Array.from(node?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? []).filter(
         (el) => el.offsetParent !== null,
       )
 
-    focusables()[0]?.focus({ preventScroll: true })
+    ;(focusables()[0] ?? node)?.focus({ preventScroll: true })
 
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Tab') return
@@ -54,7 +60,7 @@ export function useFocusTrap<T extends HTMLElement>() {
       document.removeEventListener('keydown', onKey)
       previouslyFocused?.focus?.({ preventScroll: true })
     }
-  }, [])
+  }, [active, restoreTarget])
 
   return ref
 }

@@ -39,6 +39,54 @@ import { consoleE2EEnabled, openConsole, signIn } from '../support/console'
     cy.get('#modalRoot .mask').should('not.exist')
   })
 
+  it('opens the mobile drawer and mobile tab navigation', () => {
+    cy.viewport(589, 472)
+    cy.get('.side').should('have.attr', 'role', 'dialog')
+    cy.get('.side').should('have.attr', 'aria-hidden', 'true').and('have.attr', 'inert')
+
+    cy.get('.hamburger').should('be.visible').click()
+    cy.get('.side').should('have.class', 'open')
+    cy.get('.side').should('have.attr', 'aria-modal', 'true')
+    cy.get('.side').should('not.have.attr', 'inert')
+    // Focus moves into the dialog; the in-drawer close button needs no route change.
+    cy.get('.side .side-close').should('be.focused').click()
+    cy.get('.side').should('not.have.class', 'open')
+    cy.get('.hamburger').should('be.focused')
+    cy.get('.side').should('have.attr', 'inert')
+
+    // Escape also restores focus to the hamburger.
+    cy.get('.hamburger').click()
+    cy.get('.side .side-close').should('be.focused').type('{esc}')
+    cy.get('.side').should('not.have.class', 'open')
+    cy.get('.hamburger').should('be.focused')
+
+    // Scrim click closes and restores focus too.
+    cy.get('.hamburger').click()
+    cy.get('.side .side-close').should('be.focused')
+    cy.get('.side-scrim').should('be.visible').click()
+    cy.get('.side').should('not.have.class', 'open')
+    cy.get('.hamburger').should('be.focused')
+
+    cy.get('.mobtab button').should('have.length', 5)
+    cy.contains('.mobtab button', '设备').click()
+    cy.location('pathname', { timeout: 10000 }).should('match', /\/devices$/)
+    cy.get('.mobtab button.on').should('contain', '设备')
+    cy.get('.page-title').should('have.text', '设备')
+
+    // The close control is a real button but must look like the prototype's span.
+    cy.get('.tab-item .tx')
+      .first()
+      .should(($tx) => {
+        const style = getComputedStyle($tx[0])
+        expect(style.backgroundColor).to.eq('rgba(0, 0, 0, 0)')
+        expect(style.borderTopWidth).to.eq('0px')
+      })
+    cy.viewport(1280, 720)
+    cy.get('.side').should('not.have.attr', 'inert')
+    cy.get('.side').should('not.have.attr', 'aria-hidden')
+    cy.get('.hamburger').should('not.be.visible')
+  })
+
   it('forwards an OIDC ticket from the root and clears it afterwards', () => {
     cy.visit('/?ticket=invalid-e2e-ticket')
     cy.location('pathname', { timeout: 10000 }).should('eq', '/login')
