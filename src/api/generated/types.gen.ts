@@ -5770,6 +5770,10 @@ export type RestoreAddressBookPeerData = {
 
 export type RestoreAddressBookPeerErrors = {
     /**
+     * 地址簿已达单簿 2000 个 live peer 上限，无法恢复
+     */
+    400: ErrorResponse;
+    /**
      * 未认证或令牌无效
      */
     401: ErrorResponse;
