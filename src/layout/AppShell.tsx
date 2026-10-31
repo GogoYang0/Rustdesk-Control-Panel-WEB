@@ -362,6 +362,8 @@ export default function AppShell() {
   // it to the hamburger on close, and keep the closed drawer out of tab order.
   const drawerRef = useFocusTrap<HTMLElement>(isMobile && sideOpen, hamburgerRef.current)
   const [orgOpen, setOrgOpen] = useState(false)
+  const [mobileOrgOpen, setMobileOrgOpen] = useState(false)
+  const [orgQuery, setOrgQuery] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
   const [createFrom, setCreateFrom] = useState<'org' | 'menu'>('org')
   const orgSwitchRef = useRef<HTMLButtonElement>(null)
@@ -408,6 +410,13 @@ export default function AppShell() {
       ? me?.orgs[0]
       : me?.orgs.find((org) => Number.isInteger(requestedOrgId) && org.id === requestedOrgId)
   const perms = useMemo(() => new Set(current?.permissions ?? []), [current])
+  const orgNeedle = orgQuery.trim().toLowerCase()
+  const visibleOrgs = (me?.orgs ?? []).filter(
+    (org) =>
+      !orgNeedle ||
+      org.name.toLowerCase().includes(orgNeedle) ||
+      String(org.id).includes(orgNeedle),
+  )
   // `includes` keeps the tab highlighted on detail routes such as
   // /address-books/12, which do not end with the page key.
   const activeKey = PAGE_KEYS.find((key) => location.pathname.includes(`/${key}`)) ?? 'overview'
@@ -501,18 +510,86 @@ export default function AppShell() {
         </div>
 
         {isMobile ? (
-          <button
-            className="nav-item"
-            type="button"
-            style={{ margin: '0 8px 6px', width: 'calc(100% - 16px)' }}
-            onClick={() => {
-              setSideOpen(false)
-              openCreate('menu')
-            }}
-          >
-            <span className="ic">＋</span>
-            <span className="txt">创建组织</span>
-          </button>
+          <>
+            <button
+              className="side-org"
+              type="button"
+              title="切换组织"
+              aria-haspopup="listbox"
+              aria-expanded={mobileOrgOpen}
+              onClick={() => {
+                setOrgQuery('')
+                setMobileOrgOpen((value) => !value)
+              }}
+            >
+              <span className="org-ava" style={{ width: 28, height: 28, fontSize: 12 }}>
+                {current.name.slice(0, 1).toUpperCase()}
+              </span>
+              <span className="nm" style={{ flex: 1, minWidth: 0 }}>
+                <b>{current.name}</b>
+                <span>
+                  #{current.id} · {current.role_kind}
+                </span>
+              </span>
+              <svg
+                className="chev"
+                viewBox="0 0 12 12"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              >
+                <path d="M3 4.5L6 7.5l3-3" />
+              </svg>
+            </button>
+            {mobileOrgOpen ? (
+              <div className="org-menu side-org-menu" role="group" aria-label="组织列表">
+                <div className="input" style={{ margin: '2px 2px 4px' }}>
+                  <input
+                    value={orgQuery}
+                    aria-label="搜索组织"
+                    placeholder="搜索组织名称 / ID"
+                    onChange={(event) => setOrgQuery(event.target.value)}
+                  />
+                </div>
+                {visibleOrgs.length === 0 ? (
+                  <div className="help" style={{ padding: '8px 4px' }}>
+                    没有匹配的组织
+                  </div>
+                ) : (
+                  visibleOrgs.map((org) => (
+                    <button
+                      key={org.id}
+                      type="button"
+                      className={`org-menu-item ${org.id === current.id ? 'on' : ''}`}
+                      aria-current={org.id === current.id ? 'true' : undefined}
+                      onClick={() => {
+                        setMobileOrgOpen(false)
+                        setSideOpen(false)
+                        navigate(`/orgs/${org.id}/overview`)
+                      }}
+                    >
+                      <span className="org-ava">{org.name.slice(0, 1).toUpperCase()}</span>
+                      <span className="nm">{org.name}</span>
+                      <span className="tag primary">{org.role_kind}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            ) : null}
+            <button
+              className="nav-item"
+              type="button"
+              style={{ margin: '0 8px 6px', width: 'calc(100% - 16px)' }}
+              onClick={() => {
+                setSideOpen(false)
+                openCreate('menu')
+              }}
+            >
+              <span className="ic">＋</span>
+              <span className="txt">创建组织</span>
+            </button>
+          </>
         ) : null}
 
         <nav className="side-nav">
@@ -655,7 +732,10 @@ export default function AppShell() {
               title="切换组织"
               aria-haspopup="listbox"
               aria-expanded={orgOpen}
-              onClick={() => setOrgOpen((v) => !v)}
+              onClick={() => {
+                setOrgQuery('')
+                setOrgOpen((value) => !value)
+              }}
               onKeyDown={(event) => {
                 if (event.key === 'Escape') setOrgOpen(false)
               }}
@@ -678,22 +758,36 @@ export default function AppShell() {
               <>
                 <div className="org-scrim" onClick={() => setOrgOpen(false)} />
                 <div className="org-menu">
-                  {me.orgs.map((org) => (
-                    <button
-                      key={org.id}
-                      type="button"
-                      className={`org-menu-item ${org.id === current.id ? 'on' : ''}`}
-                      onClick={() => {
-                        setOrgOpen(false)
-                        setSideOpen(false)
-                        navigate(`/orgs/${org.id}/overview`)
-                      }}
-                    >
-                      <span className="org-ava">{org.name.slice(0, 1).toUpperCase()}</span>
-                      <span className="nm">{org.name}</span>
-                      <span className="tag primary">{org.role_kind}</span>
-                    </button>
-                  ))}
+                  <div className="input" style={{ margin: '2px 2px 4px' }}>
+                    <input
+                      value={orgQuery}
+                      aria-label="搜索组织"
+                      placeholder="搜索组织名称 / ID"
+                      onChange={(event) => setOrgQuery(event.target.value)}
+                    />
+                  </div>
+                  {visibleOrgs.length === 0 ? (
+                    <div className="help" style={{ padding: '8px 4px' }}>
+                      没有匹配的组织
+                    </div>
+                  ) : (
+                    visibleOrgs.map((org) => (
+                      <button
+                        key={org.id}
+                        type="button"
+                        className={`org-menu-item ${org.id === current.id ? 'on' : ''}`}
+                        onClick={() => {
+                          setOrgOpen(false)
+                          setSideOpen(false)
+                          navigate(`/orgs/${org.id}/overview`)
+                        }}
+                      >
+                        <span className="org-ava">{org.name.slice(0, 1).toUpperCase()}</span>
+                        <span className="nm">{org.name}</span>
+                        <span className="tag primary">{org.role_kind}</span>
+                      </button>
+                    ))
+                  )}
                   <button type="button" className="org-menu-item" onClick={() => openCreate('org')}>
                     <span className="org-ava">＋</span>
                     <span className="nm">创建组织</span>

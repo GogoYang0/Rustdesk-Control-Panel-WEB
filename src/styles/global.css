@@ -65,6 +65,16 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* 移动抽屉内的组织选择：复用菜单条目，但按文档流放在抽屉里。 */
+.side-org-menu {
+  position: static;
+  width: calc(100% - 16px);
+  min-width: 0;
+  margin: 0 8px 6px;
+  max-height: 280px;
+  overflow-y: auto;
+  box-shadow: none;
+}
 
 /* 弹窗浮层：原型的样式挂在 #modalRoot 下，组件用 portal 渲染进该容器。
    原型把遮罩与 scrim 分开；这里合并成一层半透明遮罩，避免再引入一个全局节点。 */
