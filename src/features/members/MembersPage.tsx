@@ -361,7 +361,8 @@ export default function MembersPage() {
               <div className="help" style={{ padding: '14px 0' }}>
                 正在加载待接受邀请…
               </div>
-            ) : !invitations || invitations.length === 0 ? (
+            ) : invitationsError && !invitations ? null : !invitations ||
+              invitations.length === 0 ? (
               <Empty title="没有待接受的邀请" description="邀请成员后，未接受的邀请会显示在这里" />
             ) : (
               <table className="table">

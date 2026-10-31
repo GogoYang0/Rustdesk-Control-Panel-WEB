@@ -150,6 +150,7 @@ describe('MembersPage invitations', () => {
     const card = await screen.findByTestId('invitation-card')
     expect(await within(card).findByText(/加载待接受邀请失败/)).toBeTruthy()
     expect(within(card).getByRole('button', { name: '重试' })).toBeTruthy()
+    expect(within(card).queryByText('没有待接受的邀请')).toBeNull()
   })
 
   it('revokes an invitation after confirmation and refreshes the list', async () => {
