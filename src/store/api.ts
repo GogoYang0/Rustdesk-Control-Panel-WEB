@@ -17,6 +17,13 @@ import {
   fetchAuditRetention,
   listPasskeys,
   fetchRoles,
+  fetchPermissions,
+  createRole,
+  updateRole,
+  deleteRole,
+  resetMemberTotp,
+  resetMemberPasskeys,
+  resetMemberIdentity,
   fetchSession,
   fetchSessionAlerts,
   fetchSessions,
@@ -108,6 +115,9 @@ import {
   type ControlPermissionStates,
   type ControlRoleUpdateRequest,
   type PasskeyList,
+  type Permission,
+  type RoleCreateRequest,
+  type RoleUpdateRequest,
   type ApiToken,
   type IdentityList,
   type AuthProviders,
@@ -200,6 +210,28 @@ export const panelApi = createApi({
       queryFn: (orgId) => wrap(() => fetchRoles(orgId)),
       providesTags: (_result, _error, orgId) => [{ type: 'Members', id: `roles-${orgId}` }],
     }),
+    getPermissions: build.query<Permission[], void>({
+      queryFn: () => wrap(fetchPermissions),
+    }),
+    createRole: build.mutation<Role, { orgId: number; input: RoleCreateRequest }>({
+      queryFn: ({ orgId, input }) => wrap(() => createRole(orgId, input)),
+      invalidatesTags: (_result, _error, { orgId }) => [{ type: 'Members', id: `roles-${orgId}` }],
+    }),
+    updateRole: build.mutation<Role, { orgId: number; roleId: number; input: RoleUpdateRequest }>({
+      queryFn: ({ orgId, roleId, input }) => wrap(() => updateRole(orgId, roleId, input)),
+      // A rename changes role_name on every member row and the role summary.
+      invalidatesTags: (_result, _error, { orgId }) => [
+        { type: 'Members', id: `roles-${orgId}` },
+        { type: 'Members', id: orgId },
+      ],
+    }),
+    deleteRole: build.mutation<void, { orgId: number; roleId: number }>({
+      queryFn: async ({ orgId, roleId }) => {
+        const result = await wrap(() => deleteRole(orgId, roleId))
+        return 'data' in result ? { data: undefined } : result
+      },
+      invalidatesTags: (_result, _error, { orgId }) => [{ type: 'Members', id: `roles-${orgId}` }],
+    }),
     inviteMember: build.mutation<
       Invitation,
       { orgId: number; email: string; role: 'admin' | 'member' }
@@ -220,6 +252,24 @@ export const panelApi = createApi({
         { type: 'Members', id: orgId },
         { type: 'UserGroups', id: orgId },
       ],
+    }),
+    resetMemberTotp: build.mutation<void, { orgId: number; userId: number }>({
+      queryFn: async ({ orgId, userId }) => {
+        const result = await wrap(() => resetMemberTotp(orgId, userId))
+        return 'data' in result ? { data: undefined } : result
+      },
+    }),
+    resetMemberPasskeys: build.mutation<void, { orgId: number; userId: number }>({
+      queryFn: async ({ orgId, userId }) => {
+        const result = await wrap(() => resetMemberPasskeys(orgId, userId))
+        return 'data' in result ? { data: undefined } : result
+      },
+    }),
+    resetMemberIdentity: build.mutation<void, { orgId: number; userId: number }>({
+      queryFn: async ({ orgId, userId }) => {
+        const result = await wrap(() => resetMemberIdentity(orgId, userId))
+        return 'data' in result ? { data: undefined } : result
+      },
     }),
     getSessions: build.query<SessionPage, { orgId: number; queryString: string }>({
       queryFn: ({ orgId, queryString }) =>
@@ -753,9 +803,16 @@ export const {
   useGetMeQuery,
   useGetMembersQuery,
   useGetRolesQuery,
+  useGetPermissionsQuery,
+  useCreateRoleMutation,
+  useUpdateRoleMutation,
+  useDeleteRoleMutation,
   useInviteMemberMutation,
   useUpdateMemberMutation,
   useRemoveMemberMutation,
+  useResetMemberTotpMutation,
+  useResetMemberPasskeysMutation,
+  useResetMemberIdentityMutation,
   useGetSessionsQuery,
   useGetSessionQuery,
   useGetSessionAlertsQuery,

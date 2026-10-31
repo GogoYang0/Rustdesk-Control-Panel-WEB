@@ -28,6 +28,13 @@ const {
   fetchClientBuildArtifact,
   fetchCsv,
   fetchAuditRetention,
+  fetchPermissions,
+  createRole,
+  updateRole,
+  deleteRole,
+  resetMemberTotp,
+  resetMemberPasskeys,
+  resetMemberIdentity,
   login,
   verifyTwoFactor,
   fetchIdentities,
@@ -749,5 +756,61 @@ describe('apiFetch', () => {
       code: 'two_factor_required',
       detail: { challenge_token: 'c1' },
     })
+  })
+})
+
+describe('roles and member security endpoints', () => {
+  it('lists permissions and sends full role create/update/delete payloads', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.endsWith('/permissions')) {
+        return jsonResponse({ code: 'ok', message: 'ok', data: [{ code: 'device.read' }] })
+      }
+      if (url.includes('/roles/9')) {
+        return jsonResponse({ code: 'ok', message: 'ok', data: { id: 9 } })
+      }
+      if (url.endsWith('/roles')) {
+        return jsonResponse({ code: 'ok', message: 'ok', data: { id: 9 } }, 201)
+      }
+      return jsonResponse({ code: 'ok', message: 'ok' })
+    })
+
+    await expect(fetchPermissions()).resolves.toEqual([{ code: 'device.read' }])
+    await createRole(3, { name: 'ops', permissions: ['device.read'], audit_scope: 'individual' })
+    await updateRole(3, 9, { name: 'ops2', permissions: ['device.read'], audit_scope: 'global' })
+    await expect(deleteRole(3, 9)).resolves.toBeUndefined()
+
+    expect(String(fetchMock.mock.calls[1][0])).toBe('/api/v1/orgs/3/roles')
+    expect((fetchMock.mock.calls[1][1] as RequestInit).method).toBe('POST')
+    expect(JSON.parse(String((fetchMock.mock.calls[1][1] as RequestInit).body))).toEqual({
+      name: 'ops',
+      permissions: ['device.read'],
+      audit_scope: 'individual',
+    })
+    expect((fetchMock.mock.calls[2][1] as RequestInit).method).toBe('PUT')
+    expect(JSON.parse(String((fetchMock.mock.calls[2][1] as RequestInit).body))).toEqual({
+      name: 'ops2',
+      permissions: ['device.read'],
+      audit_scope: 'global',
+    })
+    expect((fetchMock.mock.calls[3][1] as RequestInit).method).toBe('DELETE')
+  })
+
+  it('posts the three member security resets', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async () => jsonResponse({ code: 'ok', message: 'ok' }))
+
+    await resetMemberTotp(3, 7)
+    await resetMemberPasskeys(3, 7)
+    await resetMemberIdentity(3, 7)
+    expect(fetchMock.mock.calls.map((call) => String(call[0]))).toEqual([
+      '/api/v1/orgs/3/members/7/2fa/reset',
+      '/api/v1/orgs/3/members/7/passkeys/reset',
+      '/api/v1/orgs/3/members/7/identity/reset',
+    ])
+    expect(fetchMock.mock.calls.every((call) => (call[1] as RequestInit).method === 'POST')).toBe(
+      true,
+    )
   })
 })

@@ -69,6 +69,9 @@ import type {
   OidcStart,
   OidcExchangeRequest,
   LdapLoginRequest,
+  Permission,
+  RoleCreateRequest,
+  RoleUpdateRequest,
 } from '../api/generated'
 import {
   accessTokenExpiresSoon,
@@ -79,7 +82,7 @@ import {
   type TokenPair,
 } from './session'
 
-export type { Member, Me, Role }
+export type { Member, Me, Permission, Role, RoleCreateRequest, RoleUpdateRequest }
 export type RoleKind = Role['kind']
 export type MeUser = Me['user']
 export type MeOrg = Me['orgs'][number]
@@ -641,6 +644,28 @@ export function fetchRoles(orgId: number): Promise<Role[]> {
   return apiFetch<Role[]>(`/api/v1/orgs/${orgId}/roles`)
 }
 
+export function fetchPermissions(): Promise<Permission[]> {
+  return apiFetch<Permission[]>('/api/v1/permissions')
+}
+
+export function createRole(orgId: number, input: RoleCreateRequest): Promise<Role> {
+  return apiFetch<Role>(`/api/v1/orgs/${orgId}/roles`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function updateRole(orgId: number, roleId: number, input: RoleUpdateRequest): Promise<Role> {
+  return apiFetch<Role>(`/api/v1/orgs/${orgId}/roles/${roleId}`, {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  })
+}
+
+export async function deleteRole(orgId: number, roleId: number): Promise<void> {
+  await apiFetch<unknown>(`/api/v1/orgs/${orgId}/roles/${roleId}`, { method: 'DELETE' })
+}
+
 export function inviteMember(
   orgId: number,
   email: string,
@@ -665,6 +690,24 @@ export function updateMember(
 
 export function removeMember(orgId: number, userId: number): Promise<MemberMutation> {
   return apiFetch<MemberMutation>(`/api/v1/orgs/${orgId}/members/${userId}`, { method: 'DELETE' })
+}
+
+export async function resetMemberTotp(orgId: number, userId: number): Promise<void> {
+  await apiFetch<unknown>(`/api/v1/orgs/${orgId}/members/${userId}/2fa/reset`, {
+    method: 'POST',
+  })
+}
+
+export async function resetMemberPasskeys(orgId: number, userId: number): Promise<void> {
+  await apiFetch<unknown>(`/api/v1/orgs/${orgId}/members/${userId}/passkeys/reset`, {
+    method: 'POST',
+  })
+}
+
+export async function resetMemberIdentity(orgId: number, userId: number): Promise<void> {
+  await apiFetch<unknown>(`/api/v1/orgs/${orgId}/members/${userId}/identity/reset`, {
+    method: 'POST',
+  })
 }
 
 // ── sessions ────────────────────────────────────────────────────────────────

@@ -87,6 +87,38 @@ import { consoleE2EEnabled, openConsole, signIn } from '../support/console'
     cy.get('.hamburger').should('not.be.visible')
   })
 
+  it('opens the member security dialog without resetting shared credentials', () => {
+    // Stub the destructive endpoints: a regression must fail the zero-request
+    // assertion without wiping the shared ops credentials.
+    cy.intercept('POST', '**/members/*/2fa/reset', { statusCode: 503 }).as('resetTotp')
+    cy.intercept('POST', '**/members/*/passkeys/reset', { statusCode: 503 }).as('resetPasskeys')
+    cy.intercept('POST', '**/members/*/identity/reset', { statusCode: 503 }).as('resetIdentity')
+    cy.viewport(589, 472)
+    cy.get('.hamburger').should('be.visible').click()
+    cy.contains('.nav-item', '组织与成员').click()
+    cy.location('pathname', { timeout: 10000 }).should('match', /\/members$/)
+
+    cy.env(['consoleEmail']).then(({ consoleEmail }) => {
+      const email = String(consoleEmail ?? 'admin@acme.local')
+      cy.contains('tbody tr', email).find('button').contains('安全').should('be.disabled')
+    })
+    cy.contains('tbody tr', 'ops@acme.local').within(() => {
+      cy.contains('button', '安全').should('be.enabled').click()
+    })
+    cy.get('.modal').within(() => {
+      cy.get('.modal-head').should('have.text', '安全重置')
+      cy.contains('重置两步验证').should('exist')
+      cy.contains('重置 Passkey').should('exist')
+      cy.contains('解绑外部身份').should('exist')
+      cy.contains('button', '关闭').click()
+    })
+    cy.get('.modal').should('not.exist')
+    cy.get('@resetTotp.all').should('have.length', 0)
+    cy.get('@resetPasskeys.all').should('have.length', 0)
+    cy.get('@resetIdentity.all').should('have.length', 0)
+    cy.viewport(1280, 720)
+  })
+
   it('forwards an OIDC ticket from the root and clears it afterwards', () => {
     cy.visit('/?ticket=invalid-e2e-ticket')
     cy.location('pathname', { timeout: 10000 }).should('eq', '/login')
