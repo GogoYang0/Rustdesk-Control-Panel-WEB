@@ -15,7 +15,9 @@ export function retentionText(deletedAt: string, now: Date): string {
   if (Number.isNaN(deleted)) return '—'
   const remaining = deleted + RECYCLE_RETENTION_DAYS * DAY_MS - now.getTime()
   if (remaining <= 0) return '等待清扫'
-  return `剩 ${Math.ceil(remaining / DAY_MS)} 天`
+  // A browser clock behind the server can put deleted_at slightly in the
+  // future; never claim more than the retention window.
+  return `剩 ${Math.min(RECYCLE_RETENTION_DAYS, Math.ceil(remaining / DAY_MS))} 天`
 }
 
 export function deletedByLabel(id: number, emails: Map<number, string>): string {

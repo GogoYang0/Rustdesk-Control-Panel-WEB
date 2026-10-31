@@ -21,6 +21,7 @@ describe('retentionText', () => {
   it('counts the 30-day window from the deletion time', () => {
     expect(retentionText('2026-10-30T00:00:00.000Z', now)).toBe('剩 29 天')
     expect(retentionText('2026-10-01T00:00:00.000Z', now)).toBe('等待清扫')
+    expect(retentionText(new Date(now.getTime() + 5_000).toISOString(), now)).toBe('剩 30 天')
   })
 
   it('treats a malformed timestamp as unknown', () => {
