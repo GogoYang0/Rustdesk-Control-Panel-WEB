@@ -46,6 +46,7 @@ import type {
   DeviceUpdateRequest,
   Member,
   Me,
+  Org,
   Policy,
   PolicyRequest,
   Role,
@@ -88,7 +89,7 @@ import {
   type TokenPair,
 } from './session'
 
-export type { Member, Me, Permission, Role, RoleCreateRequest, RoleUpdateRequest }
+export type { Member, Me, Org, Permission, Role, RoleCreateRequest, RoleUpdateRequest }
 export type RoleKind = Role['kind']
 export type MeUser = Me['user']
 export type MeOrg = Me['orgs'][number]
@@ -415,6 +416,14 @@ export function acceptInvitation(
 
 export function fetchMe(): Promise<Me> {
   return apiFetch<Me>('/api/v1/me')
+}
+
+/** Creates an organization; the caller becomes its owner. Names may repeat. */
+export function createOrg(name: string): Promise<Org> {
+  return apiFetch<Org>('/api/v1/orgs', {
+    method: 'POST',
+    body: JSON.stringify({ name }),
+  })
 }
 
 // ── account security ───────────────────────────────────────────────────────

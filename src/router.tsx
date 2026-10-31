@@ -1,9 +1,11 @@
-import { Banner, Spin, Typography } from '@douyinfe/semi-ui'
-import { createBrowserRouter, Navigate, useSearchParams } from 'react-router'
+import { Spin, Typography } from '@douyinfe/semi-ui'
+import { useRef, useState } from 'react'
+import { createBrowserRouter, Navigate, useNavigate, useSearchParams } from 'react-router'
 
 import LoginPage from './features/auth/LoginPage'
 import AcceptInvitationPage from './features/onboarding/AcceptInvitationPage'
 import VerifyEmailPage from './features/onboarding/VerifyEmailPage'
+import CreateOrgDialog from './features/orgs/CreateOrgDialog'
 import OverviewPage from './features/overview/OverviewPage'
 import AccountPage from './features/account/AccountPage'
 import MembersPage from './features/members/MembersPage'
@@ -28,8 +30,11 @@ import { useGetMeQuery } from './store/api'
 
 const { Title, Text } = Typography
 
-function RootRedirect() {
+export function RootRedirect() {
   const [params] = useSearchParams()
+  const navigate = useNavigate()
+  const [createOpen, setCreateOpen] = useState(false)
+  const createButtonRef = useRef<HTMLButtonElement>(null)
   const ticket = params.get('ticket')
   const oidcError = params.get('error')
   const { data, isLoading, error } = useGetMeQuery(undefined, {
@@ -52,20 +57,38 @@ function RootRedirect() {
   const first = data.orgs[0]
   if (!first) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-6">
-        <div className="w-full max-w-[520px]">
-          <Title heading={4}>还没有组织</Title>
-          <Text type="tertiary" size="small">
-            当前账号 {data.user.email} 尚未加入任何组织。
-          </Text>
-          <Banner
-            className="mt-4"
-            type="info"
-            closeIcon={null}
-            description="创建组织与邀请成员将在后续波次接入；后端可用 POST /api/v1/orgs 先建立组织。"
-          />
+      <>
+        <div className="flex min-h-screen items-center justify-center p-6">
+          <div className="w-full max-w-[520px]">
+            <Title heading={4}>还没有组织</Title>
+            <Text type="tertiary" size="small">
+              当前账号 {data.user.email} 尚未加入任何组织。
+            </Text>
+            <div className="mt-4">
+              <button
+                ref={createButtonRef}
+                className="btn primary"
+                type="button"
+                onClick={() => setCreateOpen(true)}
+              >
+                创建组织
+              </button>
+            </div>
+            <Text type="tertiary" size="small">
+              创建后你自动成为该组织的 Owner；组织名称可以重复，数据完全隔离。
+            </Text>
+          </div>
         </div>
-      </div>
+        {createOpen ? (
+          <CreateOrgDialog
+            onClose={() => {
+              setCreateOpen(false)
+              createButtonRef.current?.focus()
+            }}
+            onCreated={(org) => navigate(`/orgs/${org.id}/overview`)}
+          />
+        ) : null}
+      </>
     )
   }
   return <Navigate to={`/orgs/${first.id}/overview`} replace />
