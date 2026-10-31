@@ -14,6 +14,7 @@ import {
 } from '../../store/api'
 import { ConfirmDelete, PeerDialog } from './AddressBookDialogs'
 import BookGrantsPanel from './BookGrantsPanel'
+import BookRecyclePanel from './BookRecyclePanel'
 
 export default function AddressBookPage() {
   const { orgId, bookId } = useParams()
@@ -38,15 +39,23 @@ export default function AddressBookPage() {
   const canManageGroups = perms.has('access.manage')
   const [searchParams, setSearchParams] = useSearchParams()
   const showGrants = book?.scope === 'shared' && editable
-  const tab: 'peers' | 'grants' =
-    showGrants && searchParams.get('tab') === 'grants' ? 'grants' : 'peers'
+  // The recycle bin requires write access, so an editable book always has a
+  // Peers/回收站 tab pair; only shared books add the grants tab.
+  const showTabs = editable
+  const requestedTab = searchParams.get('tab')
+  const tab: 'peers' | 'grants' | 'recycle' =
+    requestedTab === 'grants' && showGrants
+      ? 'grants'
+      : requestedTab === 'recycle' && editable
+        ? 'recycle'
+        : 'peers'
 
   const {
     currentData: members,
     isFetching: membersFetching,
     isError: membersError,
     refetch: refetchMembers,
-  } = useGetMembersQuery(id, { skip: !id || !showGrants })
+  } = useGetMembersQuery(id, { skip: !id || !(showGrants || tab === 'recycle') })
   const {
     currentData: groups,
     isFetching: groupsFetching,
@@ -60,10 +69,10 @@ export default function AddressBookPage() {
     return map
   }, [members])
 
-  function switchTab(next: 'peers' | 'grants') {
+  function switchTab(next: 'peers' | 'grants' | 'recycle') {
     const params = new URLSearchParams(searchParams)
-    if (next === 'grants') params.set('tab', 'grants')
-    else params.delete('tab')
+    if (next === 'peers') params.delete('tab')
+    else params.set('tab', next)
     setSearchParams(params, { replace: true })
   }
 
@@ -155,7 +164,7 @@ export default function AddressBookPage() {
         </div>
       </div>
 
-      {showGrants ? (
+      {showTabs ? (
         <div className="tabs" role="tablist" aria-label="地址簿视图">
           <button
             type="button"
@@ -171,14 +180,27 @@ export default function AddressBookPage() {
           <button
             type="button"
             role="tab"
-            id="book-tab-grants"
-            aria-controls={tab === 'grants' ? 'book-tabpanel' : undefined}
-            aria-selected={tab === 'grants'}
-            className={`tab ${tab === 'grants' ? 'on' : ''}`}
-            onClick={() => switchTab('grants')}
+            id="book-tab-recycle"
+            aria-controls={tab === 'recycle' ? 'book-tabpanel' : undefined}
+            aria-selected={tab === 'recycle'}
+            className={`tab ${tab === 'recycle' ? 'on' : ''}`}
+            onClick={() => switchTab('recycle')}
           >
-            授权
+            回收站
           </button>
+          {showGrants ? (
+            <button
+              type="button"
+              role="tab"
+              id="book-tab-grants"
+              aria-controls={tab === 'grants' ? 'book-tabpanel' : undefined}
+              aria-selected={tab === 'grants'}
+              className={`tab ${tab === 'grants' ? 'on' : ''}`}
+              onClick={() => switchTab('grants')}
+            >
+              授权
+            </button>
+          ) : null}
         </div>
       ) : null}
 
@@ -200,11 +222,13 @@ export default function AddressBookPage() {
       ) : null}
 
       <div
-        role={showGrants ? 'tabpanel' : undefined}
-        id={showGrants ? 'book-tabpanel' : undefined}
-        aria-labelledby={showGrants ? `book-tab-${tab}` : undefined}
+        role={showTabs ? 'tabpanel' : undefined}
+        id={showTabs ? 'book-tabpanel' : undefined}
+        aria-labelledby={showTabs ? `book-tab-${tab}` : undefined}
       >
-        {tab === 'grants' && book ? (
+        {tab === 'recycle' && book ? (
+          <BookRecyclePanel orgId={id} bookId={bid} emails={emails} />
+        ) : tab === 'grants' && book ? (
           <BookGrantsPanel
             orgId={id}
             book={book}
@@ -355,7 +379,7 @@ export default function AddressBookPage() {
           body={
             <>
               即将从本地址簿删除 peer <b>{deleting.peer_id}</b>（{deleting.alias || '无别名'}）。
-              该记录会进入服务端回收站，本版本控制台暂不提供恢复入口。
+              该记录会进入回收站，可在「回收站」页签恢复（保留 30 天）。
             </>
           }
         />
