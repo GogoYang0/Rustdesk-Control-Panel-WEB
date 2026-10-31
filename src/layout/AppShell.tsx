@@ -354,10 +354,11 @@ export default function AppShell() {
   const [collapsed, setCollapsed] = useState(false)
   const [sideOpen, setSideOpen] = useState(false)
   const isMobile = useIsMobile()
+  const hamburgerRef = useRef<HTMLButtonElement>(null)
   const drawerHidden = isMobile && !sideOpen
   // On mobile the side bar is a modal drawer: trap focus while open, restore
   // it to the hamburger on close, and keep the closed drawer out of tab order.
-  const drawerRef = useFocusTrap<HTMLElement>(isMobile && sideOpen)
+  const drawerRef = useFocusTrap<HTMLElement>(isMobile && sideOpen, hamburgerRef.current)
   const [orgOpen, setOrgOpen] = useState(false)
   // Open tabs, least-recently-used first (design D3: tabs are route handles).
   const [tabs, setTabs] = useState<string[]>([])
@@ -475,6 +476,16 @@ export default function AppShell() {
             <b>RustDesk Panel</b>
             <span>C O N T R O L · P A N E L</span>
           </div>
+          {isMobile ? (
+            <button
+              className="side-close"
+              type="button"
+              aria-label="关闭菜单"
+              onClick={() => setSideOpen(false)}
+            >
+              ✕
+            </button>
+          ) : null}
         </div>
 
         <nav className="side-nav">
@@ -570,6 +581,7 @@ export default function AppShell() {
       <div className="main">
         <header className="topbar">
           <button
+            ref={hamburgerRef}
             className="hamburger"
             type="button"
             title={sideOpen ? '关闭菜单' : '打开菜单'}

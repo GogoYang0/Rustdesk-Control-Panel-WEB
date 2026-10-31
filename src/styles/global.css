@@ -305,6 +305,24 @@ button.switch:focus-visible {
 .shell .mobtab button {
   color: var(--text-2);
 }
+/* 移动端模态抽屉内部的关闭控件（仅移动端渲染） */
+.side-close {
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.side-close:hover {
+  background: var(--fill-0);
+  color: var(--text-1);
+}
 @media (max-width: 767px) {
   .side-scrim {
     display: block;

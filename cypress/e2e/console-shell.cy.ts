@@ -48,14 +48,21 @@ import { consoleE2EEnabled, openConsole, signIn } from '../support/console'
     cy.get('.side').should('have.class', 'open')
     cy.get('.side').should('have.attr', 'aria-modal', 'true')
     cy.get('.side').should('not.have.attr', 'inert')
-    // Focus moves into the dialog and returns to the trigger on Escape.
-    cy.get('.side .nav-item').first().should('be.focused').type('{esc}')
+    // Focus moves into the dialog; the in-drawer close button needs no route change.
+    cy.get('.side .side-close').should('be.focused').click()
     cy.get('.side').should('not.have.class', 'open')
     cy.get('.hamburger').should('be.focused')
     cy.get('.side').should('have.attr', 'inert')
 
+    // Escape also restores focus to the hamburger.
     cy.get('.hamburger').click()
-    cy.get('.side .nav-item').first().should('be.focused')
+    cy.get('.side .side-close').should('be.focused').type('{esc}')
+    cy.get('.side').should('not.have.class', 'open')
+    cy.get('.hamburger').should('be.focused')
+
+    // Scrim click closes and restores focus too.
+    cy.get('.hamburger').click()
+    cy.get('.side .side-close').should('be.focused')
     cy.get('.side-scrim').should('be.visible').click()
     cy.get('.side').should('not.have.class', 'open')
     cy.get('.hamburger').should('be.focused')
