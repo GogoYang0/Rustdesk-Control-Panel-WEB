@@ -30,6 +30,7 @@ import {
   createAccessRule,
   createAddressBook,
   createAddressBookGrant,
+  createApproval,
   cancelClientBuild,
   createClientBuild,
   createClientBuildProfile,
@@ -130,6 +131,7 @@ import {
   type FileLogPage,
   type LogEvent,
   type Approval,
+  type ApprovalCreateRequest,
   type ApprovalDecisionRequest,
   type ApprovalPage,
   type Device,
@@ -771,6 +773,10 @@ export const panelApi = createApi({
         { type: 'Approval', id: `${orgId}-${approvalId}` },
       ],
     }),
+    createApproval: build.mutation<Approval, { orgId: number; request: ApprovalCreateRequest }>({
+      queryFn: ({ orgId, request }) => wrap(() => createApproval(orgId, request)),
+      invalidatesTags: (_result, _error, { orgId }) => [{ type: 'Approvals', id: orgId }],
+    }),
     decideApproval: build.mutation<
       Approval,
       { orgId: number; approvalId: number; request: ApprovalDecisionRequest }
@@ -886,5 +892,6 @@ export const {
   useCancelClientBuildMutation,
   useGetApprovalPageQuery,
   useGetApprovalQuery,
+  useCreateApprovalMutation,
   useDecideApprovalMutation,
 } = panelApi
