@@ -27,6 +27,7 @@ import {
   useRemoveMemberMutation,
   useResetMemberIdentityMutation,
   useResetMemberPasskeysMutation,
+  useRequestMemberPasswordResetMutation,
   useResetMemberTotpMutation,
   useRevokeInvitationMutation,
   useUpdateMemberMutation,
@@ -501,11 +502,13 @@ export function MemberSecurityDialog({
   const [resetTotp, { isLoading: totpBusy }] = useResetMemberTotpMutation()
   const [resetPasskeys, { isLoading: passkeyBusy }] = useResetMemberPasskeysMutation()
   const [resetIdentity, { isLoading: identityBusy }] = useResetMemberIdentityMutation()
+  const [requestPasswordReset, { isLoading: passwordBusy }] =
+    useRequestMemberPasswordResetMutation()
   const scopeRef = useRef(orgId)
   useLayoutEffect(() => {
     scopeRef.current = orgId
   }, [orgId])
-  const busy = totpBusy || passkeyBusy || identityBusy
+  const busy = totpBusy || passkeyBusy || identityBusy || passwordBusy
   const action = MEMBER_SECURITY_ACTIONS.find((item) => item.action === pending)
 
   async function run() {
@@ -515,12 +518,15 @@ export function MemberSecurityDialog({
       const args = { orgId, userId: member.user_id }
       if (pending === 'totp') await resetTotp(args).unwrap()
       else if (pending === 'passkey') await resetPasskeys(args).unwrap()
-      else await resetIdentity(args).unwrap()
+      else if (pending === 'identity') await resetIdentity(args).unwrap()
+      else await requestPasswordReset(args).unwrap()
       if (scopeRef.current !== orgId) return
       Toast.success(
-        pending === 'identity'
-          ? `已解绑 ${member.email} 的外部身份`
-          : `已重置 ${member.email} 的${pending === 'totp' ? '两步验证' : ' Passkey'}`,
+        pending === 'password'
+          ? `已向 ${member.email} 发送密码重置邮件`
+          : pending === 'identity'
+            ? `已解绑 ${member.email} 的外部身份`
+            : `已重置 ${member.email} 的${pending === 'totp' ? '两步验证' : ' Passkey'}`,
       )
       onClose()
     } catch (err) {
@@ -550,7 +556,7 @@ export function MemberSecurityDialog({
               返回
             </button>
             <button
-              className="btn danger solid"
+              className={pending === 'password' ? 'btn primary' : 'btn danger solid'}
               type="button"
               disabled={busy}
               onClick={() => void run()}
@@ -579,7 +585,11 @@ export function MemberSecurityDialog({
           <div className="banner warning mb-14">
             <div>{action.confirm}</div>
           </div>
-          <p className="help">请确认该成员仍能通过其他方式登录；此操作不可撤销。</p>
+          <p className="help">
+            {pending === 'password'
+              ? '链接 1 小时内有效；成员设置新密码后，其全部登录会话会被撤销。'
+              : '请确认该成员仍能通过其他方式登录；此操作不可撤销。'}
+          </p>
         </>
       ) : (
         <div className="vstack" style={{ gap: 10 }}>
@@ -594,7 +604,9 @@ export function MemberSecurityDialog({
                   <b style={{ fontSize: 13 }}>{item.label}</b>
                   <div className="spacer" />
                   <button
-                    className={`btn sm ${item.action === 'totp' ? 'outline' : 'danger'}`}
+                    className={`btn sm ${
+                      item.action === 'totp' || item.action === 'password' ? 'outline' : 'danger'
+                    }`}
                     type="button"
                     disabled={busy}
                     onClick={() => {
