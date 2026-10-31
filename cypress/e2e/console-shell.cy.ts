@@ -39,6 +39,16 @@ import { consoleE2EEnabled, openConsole, signIn } from '../support/console'
     cy.get('#modalRoot .mask').should('not.exist')
   })
 
+  it('switches organizations from the mobile drawer', () => {
+    cy.viewport(589, 472)
+    cy.get('.hamburger').click()
+    cy.get('.side .side-org').should('be.visible').click()
+    cy.get('.side-org-menu input[aria-label="搜索组织"]').type('Acme')
+    cy.contains('.side-org-menu .org-menu-item', 'Acme').click()
+    cy.get('.side').should('not.have.class', 'open')
+    cy.location('pathname').should('match', /\/overview$/)
+  })
+
   it('opens the mobile drawer and mobile tab navigation', () => {
     cy.viewport(589, 472)
     cy.get('.side').should('have.attr', 'role', 'dialog')
