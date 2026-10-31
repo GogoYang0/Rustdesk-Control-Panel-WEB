@@ -400,6 +400,11 @@ export default function AppShell() {
     return () => window.removeEventListener('keydown', onKey)
   }, [sideOpen])
 
+  // A closed drawer must not remember an expanded organization picker.
+  useEffect(() => {
+    if (!sideOpen) setMobileOrgOpen(false)
+  }, [sideOpen])
+
   // A wrong organization id in the URL must not silently render the first org:
   // that made 404s look like a successful load of somebody else's scope.
   // `Number("abc")` is NaN, which is falsy: selecting on it explicitly (rather
