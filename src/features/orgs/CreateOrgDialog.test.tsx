@@ -148,6 +148,17 @@ describe('CreateOrgDialog', () => {
     expect(meCalls()).toBe(2)
   })
 
+  it('invalidates the stale /me cache when closing after a refresh failure', async () => {
+    const { onClose } = setup({ meStatus: 500 })
+    const invalidate = vi.spyOn(panelApi.util, 'invalidateTags')
+    fireEvent.change(screen.getByLabelText('组织名称'), { target: { value: '新组织' } })
+    fireEvent.click(screen.getByRole('button', { name: '创建组织' }))
+    await screen.findByText(/组织列表刷新失败/)
+    fireEvent.click(screen.getByRole('button', { name: '关闭' }))
+    expect(invalidate).toHaveBeenCalledWith(['Me'])
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
   it('cannot be dismissed while the create request is in flight', async () => {
     const { onClose, release } = setup({ deferredCreate: true })
     fireEvent.change(screen.getByLabelText('组织名称'), { target: { value: '新组织' } })

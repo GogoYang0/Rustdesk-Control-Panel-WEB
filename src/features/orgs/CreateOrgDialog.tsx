@@ -78,7 +78,14 @@ export default function CreateOrgDialog({ onClose, onCreated }: Props) {
   }
 
   const locked = submitting || refreshing
-  const close = locked ? () => undefined : onClose
+  const close = locked
+    ? () => undefined
+    : () => {
+        // The org exists but /me may still be stale; make the shell refetch so
+        // the old organization list cannot invite a duplicate creation.
+        if (created) dispatch(panelApi.util.invalidateTags(['Me']))
+        onClose()
+      }
 
   if (created) {
     return (
@@ -149,7 +156,6 @@ export default function CreateOrgDialog({ onClose, onCreated }: Props) {
           <input
             id="org-name"
             value={name}
-            maxLength={ORG_NAME_MAX}
             aria-label="组织名称"
             placeholder="例如：北辰医疗"
             onChange={(event) => {
