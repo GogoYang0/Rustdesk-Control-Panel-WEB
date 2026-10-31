@@ -82,7 +82,7 @@ function setup({
   })
   render(
     <Provider store={store}>
-      <BookRecyclePanel orgId={1} bookId={5} emails={emails} />
+      <BookRecyclePanel orgId={1} bookId={5} emails={emails} tagColors={new Map()} />
     </Provider>,
   )
   return { calls, listRequests: () => listRequests }

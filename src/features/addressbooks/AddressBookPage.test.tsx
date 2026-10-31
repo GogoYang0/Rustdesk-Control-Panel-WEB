@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { Provider } from 'react-redux'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -72,6 +72,14 @@ describe('AddressBookPage recycle tab', () => {
     expect(await screen.findByRole('tab', { name: 'Peers' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: '回收站' })).toBeTruthy()
     expect(screen.queryByRole('tab', { name: '授权' })).toBeNull()
+    expect(screen.getByRole('button', { name: '标签' })).toBeTruthy()
+  })
+
+  it('opens the tag palette from an editable book', async () => {
+    setup('/orgs/1/address-books/5', 'personal', ['addressbook.write'])
+    fireEvent.click(await screen.findByRole('button', { name: '标签' }))
+    expect(await screen.findByRole('dialog', { name: '管理标签' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '添加标签' })).toBeTruthy()
   })
 
   it('adds the grants tab for a writable shared book', async () => {
@@ -86,7 +94,7 @@ describe('AddressBookPage recycle tab', () => {
     expect(await screen.findByText('E2E Book')).toBeTruthy()
     expect(await screen.findByText(/当前为只读视图/)).toBeTruthy()
     expect(screen.queryByRole('tab')).toBeNull()
-    expect(screen.queryByLabelText('搜索回收站')).toBeNull()
+    expect(screen.queryByRole('button', { name: '标签' })).toBeNull()
   })
 
   it('loads the recycle panel when the tab is active', async () => {
