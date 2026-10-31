@@ -31,6 +31,9 @@ import type {
   ApprovalCreateRequest,
   ApprovalDecisionRequest,
   ApprovalPage,
+  IssuedTicket,
+  Ticket,
+  TicketCreateRequest,
   Device,
   DeviceCreateRequest,
   DeviceDisconnect,
@@ -1028,6 +1031,8 @@ export type {
   ApprovalStatus,
 } from '../api/generated'
 
+export type { IssuedTicket, Ticket, TicketCreateRequest } from '../api/generated'
+
 export type { AlertSeverity } from '../api/generated'
 
 /** Alerts are records: the API has no detail, disposition or export endpoint. */
@@ -1350,6 +1355,26 @@ export function submitApprovalDecision(
     method: 'POST',
     body: JSON.stringify(request),
   })
+}
+
+// ── connection tickets ──────────────────────────────────────────────────────
+
+/**
+ * Issues a one-shot ticket. The plaintext token exists only in this response:
+ * no cache may keep it, and callers must not hand it to RTK Query.
+ */
+export function issueTicket(orgId: number, request: TicketCreateRequest): Promise<IssuedTicket> {
+  return apiFetch<IssuedTicket>(`/api/v1/orgs/${orgId}/tickets`, {
+    method: 'POST',
+    body: JSON.stringify(request),
+    cache: 'no-store',
+    referrerPolicy: 'no-referrer',
+  })
+}
+
+/** Bookkeeping view; the server never returns the token here. */
+export function fetchTicket(orgId: number, ticketId: number): Promise<Ticket> {
+  return apiFetch<Ticket>(`/api/v1/orgs/${orgId}/tickets/${ticketId}`)
 }
 
 // ── connection policies ─────────────────────────────────────────────────────

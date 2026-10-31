@@ -17,6 +17,7 @@ import type { Device } from '../../lib/api'
 import { totalPages } from '../../lib/paging'
 import { useGetDevicePageQuery, useGetMeQuery, useGetMembersQuery } from '../../store/api'
 import RequestApprovalDialog from '../approvals/RequestApprovalDialog'
+import ConnectDialog from './ConnectDialog'
 import {
   NoteDialog,
   OwnerDialog,
@@ -33,6 +34,7 @@ type DialogKind =
   | { kind: 'rebind'; device: Device }
   | { kind: 'disconnect'; device: Device }
   | { kind: 'approval'; device: Device }
+  | { kind: 'connect'; device: Device }
 
 type Dialog = (DialogKind & { generation: number; instance: number }) | null
 
@@ -439,6 +441,13 @@ export default function DevicesPage() {
           onClose={() => closeDialog(activeDialog.instance)}
         />
       ) : null}
+      {activeDialog?.kind === 'connect' ? (
+        <ConnectDialog
+          orgId={id}
+          device={activeDialog.device}
+          onClose={() => closeDialog(activeDialog.instance)}
+        />
+      ) : null}
     </section>
   )
 }
@@ -456,7 +465,9 @@ function DeviceSheet({
   canDisconnect: boolean
   membersReady: boolean
   onClose: () => void
-  onAction: (kind: 'toggle' | 'owner' | 'note' | 'rebind' | 'disconnect' | 'approval') => void
+  onAction: (
+    kind: 'toggle' | 'owner' | 'note' | 'rebind' | 'disconnect' | 'approval' | 'connect',
+  ) => void
 }) {
   return (
     <SideSheet title={`设备 #${device.id}`} onClose={onClose}>
@@ -535,6 +546,15 @@ function DeviceSheet({
           onClick={() => onAction('note')}
         >
           备注
+        </button>
+        <button
+          className="btn primary sm"
+          type="button"
+          disabled={device.disabled}
+          title={device.disabled ? '设备已停用：恢复后才能签发' : undefined}
+          onClick={() => onAction('connect')}
+        >
+          发起连接
         </button>
         <button
           className="btn outline sm"
