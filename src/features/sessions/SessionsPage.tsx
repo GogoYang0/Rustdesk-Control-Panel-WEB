@@ -1,6 +1,6 @@
 import { Banner, Empty } from '@douyinfe/semi-ui'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useParams, useSearchParams } from 'react-router'
+import { Link, useParams, useSearchParams } from 'react-router'
 
 import SideSheet from '../../components/SideSheet'
 import { formatDuration, formatTime } from '../../lib/format'
@@ -16,11 +16,18 @@ import {
   type SessionRange,
 } from '../../lib/session-query'
 import {
+  TICKET_STATUS_LABELS,
+  ticketDetailError,
+  ticketStatus,
+  type TicketState,
+} from '../../lib/ticket'
+import {
   useGetDevicesQuery,
   useGetMembersQuery,
   useGetSessionAlertsQuery,
   useGetSessionQuery,
   useGetSessionsQuery,
+  useGetTicketQuery,
 } from '../../store/api'
 import RequestApprovalDialog from '../approvals/RequestApprovalDialog'
 
@@ -542,6 +549,15 @@ function SessionDetailSheet({
               </button>
             </div>
           ) : null}
+          {data.session.ticket_id != null ? (
+            <>
+              <div className="card-title" style={{ margin: '18px 0 10px' }}>
+                票据
+                <span className="hint">记账信息；读取一次票据详情会记入请求审计</span>
+              </div>
+              <TicketFacts orgId={orgId} ticketId={data.session.ticket_id} emails={emails} />
+            </>
+          ) : null}
           <div className="card-title" style={{ margin: '18px 0 10px' }}>
             事件时间线
           </div>
@@ -668,5 +684,123 @@ function SessionFacts({
         <span className="help"> （位图；native 恒为 0）</span>
       </dd>
     </dl>
+  )
+}
+
+function ticketStatusColor(status: TicketState): string {
+  if (status === 'used') return 'green'
+  if (status === 'revoked') return 'red'
+  if (status === 'expired') return 'grey'
+  return 'orange'
+}
+
+function TicketFacts({
+  orgId,
+  ticketId,
+  emails,
+}: {
+  orgId: number
+  ticketId: number
+  emails: Map<number, string>
+}) {
+  // Opening the sheet must not fetch this: GET ticket is audited as an
+  // investigation visit, so the read waits for an explicit click.
+  const [open, setOpen] = useState(false)
+  const {
+    currentData: ticket,
+    isLoading,
+    error,
+    refetch,
+  } = useGetTicketQuery({ orgId, ticketId }, { skip: !open })
+
+  if (!open) {
+    return (
+      <div className="row-end">
+        <button className="btn outline sm" type="button" onClick={() => setOpen(true)}>
+          查看票据详情
+        </button>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <>
+        <div className="banner danger" role="alert" style={{ padding: '9px 11px' }}>
+          <div>{ticketDetailError(error)}</div>
+        </div>
+        <div className="row-end" style={{ marginTop: 8 }}>
+          <button className="btn outline sm" type="button" onClick={() => void refetch()}>
+            重试
+          </button>
+        </div>
+      </>
+    )
+  }
+
+  if (isLoading || !ticket) {
+    return (
+      <div className="help" role="status">
+        正在加载票据…
+      </div>
+    )
+  }
+
+  const status = ticketStatus(ticket, new Date())
+  const actor = ticket.actor_user_id
+    ? (emails.get(ticket.actor_user_id) ?? `用户 #${ticket.actor_user_id}`)
+    : '—'
+  return (
+    <>
+      <dl className="desc" data-testid="ticket-facts">
+        <dt>状态</dt>
+        <dd>
+          <span className={`tag ${ticketStatusColor(status)}`}>{TICKET_STATUS_LABELS[status]}</span>
+        </dd>
+        <dt>签发人</dt>
+        <dd>{actor}</dd>
+        <dt>创建</dt>
+        <dd className="mono">{formatTime(ticket.created_at)}</dd>
+        <dt>过期</dt>
+        <dd className="mono">{formatTime(ticket.expires_at)}</dd>
+        <dt>兑换</dt>
+        <dd className="mono">{formatTime(ticket.used_at)}</dd>
+        <dt>撤销</dt>
+        <dd className="mono">{formatTime(ticket.revoked_at)}</dd>
+        <dt>审批</dt>
+        <dd className="mono">
+          {ticket.approval_id ? (
+            <Link to={`/orgs/${orgId}/approvals?approvalId=${ticket.approval_id}`}>
+              #{ticket.approval_id}
+            </Link>
+          ) : (
+            '—'
+          )}
+        </dd>
+        <dt>控制角色</dt>
+        <dd className="mono">{ticket.control_role_id ? `#${ticket.control_role_id}` : '—'}</dd>
+        <dt>控制权限</dt>
+        <dd className="mono">
+          {ticket.control_permissions}
+          <span className="help"> （签发时位图）</span>
+        </dd>
+      </dl>
+      {ticket.policy_snapshot ? (
+        <details style={{ marginTop: 8 }}>
+          <summary className="help">策略快照</summary>
+          <pre
+            className="mono cell-wrap"
+            style={{
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-all',
+              margin: '6px 0 0',
+              fontSize: 12,
+            }}
+          >
+            {JSON.stringify(ticket.policy_snapshot, null, 2)}
+          </pre>
+        </details>
+      ) : null}
+    </>
   )
 }

@@ -19,17 +19,45 @@ const me = {
   ],
 }
 
-function json(body: unknown) {
+function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
-    status: 200,
+    status,
     headers: { 'Content-Type': 'application/json' },
   })
 }
 
-function setup(sessionId: string, origin: 'native' | 'panel' = 'native') {
+function setup(
+  sessionId: string,
+  origin: 'native' | 'panel' = 'native',
+  ticketId: number | null = null,
+  ticketStatus = 200,
+) {
   const approvalBodies: string[] = []
+  const ticketRequests: string[] = []
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
     const url = String(input)
+    if (url.includes('/tickets/')) {
+      ticketRequests.push(url)
+      if (ticketStatus >= 400) {
+        return json({ code: 'not_found', message: 'missing' }, ticketStatus)
+      }
+      return json({
+        code: 'ok',
+        message: 'ok',
+        data: {
+          id: 12,
+          organization_id: 1,
+          device_id: 1,
+          actor_user_id: 1,
+          approval_id: 3,
+          control_role_id: 2,
+          control_permissions: 5,
+          policy_snapshot: { max_concurrent_sessions: 2, requires_approval: true },
+          created_at: '2026-10-28T16:20:00.000Z',
+          expires_at: '2099-01-01T00:00:00.000Z',
+        },
+      })
+    }
     if (url.endsWith('/approvals') && String(init?.method).toUpperCase() === 'POST') {
       approvalBodies.push(String(init?.body ?? ''))
       return json({
@@ -63,6 +91,7 @@ function setup(sessionId: string, origin: 'native' | 'panel' = 'native') {
             ended_at: '2026-10-28T17:25:00.000Z',
             last_activity_at: '2026-10-28T17:25:00.000Z',
             control_permissions: 0,
+            ...(ticketId ? { ticket_id: ticketId } : {}),
           },
           events: [],
           truncated: false,
@@ -101,7 +130,7 @@ function setup(sessionId: string, origin: 'native' | 'panel' = 'native') {
       </MemoryRouter>
     </Provider>,
   )
-  return { approvalBodies }
+  return { approvalBodies, ticketRequests }
 }
 
 describe('sessions deep link', () => {
@@ -135,5 +164,36 @@ describe('sessions deep link', () => {
     setup('2', 'panel')
     await waitFor(() => expect(screen.getByText('会话 #2')).toBeTruthy())
     expect(screen.queryByRole('button', { name: '申请追认' })).toBeNull()
+  })
+
+  it('loads ticket bookkeeping only after an explicit click', async () => {
+    const { ticketRequests } = setup('2', 'native', 12)
+    expect(await screen.findByText('会话 #2')).toBeTruthy()
+    expect(ticketRequests).toHaveLength(0)
+
+    fireEvent.click(screen.getByRole('button', { name: '查看票据详情' }))
+    expect(await screen.findByTestId('ticket-facts')).toBeTruthy()
+    expect(ticketRequests).toHaveLength(1)
+    expect(ticketRequests[0]).toContain('/tickets/12')
+    expect(screen.getByText('待兑换')).toBeTruthy()
+    expect(screen.getByText('用户 #1')).toBeTruthy()
+    expect(screen.getByText(/签发时位图/)).toBeTruthy()
+    const link = screen.getByRole('link', { name: '#3' }) as HTMLAnchorElement
+    expect(link.getAttribute('href')).toBe('/orgs/1/approvals?approvalId=3')
+    expect(screen.getByText(/"max_concurrent_sessions": 2/)).toBeTruthy()
+  })
+
+  it('shows the ticket detail error and retries', async () => {
+    const { ticketRequests } = setup('2', 'native', 12, 404)
+    fireEvent.click(await screen.findByRole('button', { name: '查看票据详情' }))
+    expect(await screen.findByText(/票据记录不存在/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '重试' }))
+    await waitFor(() => expect(ticketRequests).toHaveLength(2))
+  })
+
+  it('does not render ticket facts without a ticket id', async () => {
+    setup('2')
+    await screen.findByText('会话 #2')
+    expect(screen.queryByRole('button', { name: '查看票据详情' })).toBeNull()
   })
 })

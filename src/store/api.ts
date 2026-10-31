@@ -65,6 +65,7 @@ import {
   fetchDeviceGroups,
   fetchApproval,
   fetchApprovalPage,
+  fetchTicket,
   fetchAuditLogPage,
   fetchConnectionLogPage,
   fetchFileLogPage,
@@ -134,6 +135,7 @@ import {
   type ApprovalCreateRequest,
   type ApprovalDecisionRequest,
   type ApprovalPage,
+  type Ticket,
   type Device,
   type DeviceDisconnect,
   type DevicePage,
@@ -177,6 +179,7 @@ export const panelApi = createApi({
     'Policies',
     'Approvals',
     'Approval',
+    'Ticket',
     'Alerts',
     'AddressBooks',
     'AddressBook',
@@ -777,6 +780,12 @@ export const panelApi = createApi({
       queryFn: ({ orgId, request }) => wrap(() => createApproval(orgId, request)),
       invalidatesTags: (_result, _error, { orgId }) => [{ type: 'Approvals', id: orgId }],
     }),
+    getTicket: build.query<Ticket, { orgId: number; ticketId: number }>({
+      queryFn: ({ orgId, ticketId }) => wrap(() => fetchTicket(orgId, ticketId)),
+      providesTags: (_result, _error, { orgId, ticketId }) => [
+        { type: 'Ticket', id: `${orgId}-${ticketId}` },
+      ],
+    }),
     decideApproval: build.mutation<
       Approval,
       { orgId: number; approvalId: number; request: ApprovalDecisionRequest }
@@ -892,6 +901,7 @@ export const {
   useCancelClientBuildMutation,
   useGetApprovalPageQuery,
   useGetApprovalQuery,
+  useGetTicketQuery,
   useCreateApprovalMutation,
   useDecideApprovalMutation,
 } = panelApi
