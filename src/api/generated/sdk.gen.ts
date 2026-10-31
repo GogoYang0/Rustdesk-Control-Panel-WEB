@@ -1509,6 +1509,8 @@ export const listAddressBookRecycleBin = <ThrowOnError extends boolean = false>(
  * 从回收站恢复条目
  *
  * 恢复一个软删除的 peer（v0.8.0，需 `write` 及以上），并 bump revision。
+ * 恢复会增长 live 列表；若该簿已有 2000 个 live peer（不含回收站中的软删除条目），返回 `400 invalid_request`。
+ *
  */
 export const restoreAddressBookPeer = <ThrowOnError extends boolean = false>(options: Options<RestoreAddressBookPeerData, ThrowOnError>): RequestResult<RestoreAddressBookPeerResponses, RestoreAddressBookPeerErrors, ThrowOnError> => (options.client ?? client).post<RestoreAddressBookPeerResponses, RestoreAddressBookPeerErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
