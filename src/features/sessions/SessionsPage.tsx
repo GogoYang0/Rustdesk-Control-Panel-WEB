@@ -22,6 +22,7 @@ import {
   useGetSessionQuery,
   useGetSessionsQuery,
 } from '../../store/api'
+import RequestApprovalDialog from '../approvals/RequestApprovalDialog'
 
 const ORIGINS: { value: SessionFilters['origin']; label: string }[] = [
   { value: '', label: '全部来源' },
@@ -152,6 +153,17 @@ export default function SessionsPage() {
   // The open session lives in the URL (`?sessionId=`), so alerts can deep-link
   // into a session and one source of truth drives the sheet.
   const selected = orgChanged ? null : filters.sessionId
+  // The ratification dialog replaces the sheet rather than stacking a Modal on
+  // top of it; the target row is captured before the URL is cleared.
+  const [ratifyTarget, setRatifyTarget] = useState<{
+    id: number
+    deviceName: string
+    startedAt: string
+  } | null>(null)
+  // The switching render still holds the previous organization's target; the
+  // effect below clears it, but that render must not paint the dialog under the
+  // new orgId either.
+  const activeRatifyTarget = orgChanged ? null : ratifyTarget
   // The page instance survives an in-place organization change (a hand-edited
   // URL, or a future in-page switcher): drop the filters, which describe the
   // previous organization. The page correction below must not write the
@@ -159,6 +171,7 @@ export default function SessionsPage() {
   useEffect(() => {
     if (!orgChanged) return
     previousOrg.current = id
+    setRatifyTarget(null)
     if (searchParams.toString()) setSearchParams(new URLSearchParams(), { replace: true })
   }, [id, orgChanged, searchParams, setSearchParams])
 
@@ -208,6 +221,15 @@ export default function SessionsPage() {
     },
     [filters, setSearchParams],
   )
+
+  function openRatify(session: Session) {
+    setRatifyTarget({
+      id: session.id,
+      deviceName: deviceName(devices, session),
+      startedAt: session.started_at,
+    })
+    change({ sessionId: null })
+  }
 
   // A stale URL (page past the last one) is corrected once the server answers,
   // instead of showing an empty page under a valid pager.
@@ -439,6 +461,16 @@ export default function SessionsPage() {
           devices={devices}
           emails={emails}
           onClose={() => change({ sessionId: null })}
+          onRatify={openRatify}
+        />
+      ) : null}
+
+      {activeRatifyTarget ? (
+        <RequestApprovalDialog
+          orgId={id}
+          kind="ratification"
+          session={activeRatifyTarget}
+          onClose={() => setRatifyTarget(null)}
         />
       ) : null}
     </section>
@@ -463,12 +495,14 @@ function SessionDetailSheet({
   devices,
   emails,
   onClose,
+  onRatify,
 }: {
   orgId: number
   sessionId: number
   devices: Map<number, Device>
   emails: Map<number, string>
   onClose: () => void
+  onRatify: (session: Session) => void
 }) {
   const { data, isLoading, error } = useGetSessionQuery({ orgId, sessionId })
   const alerts = useGetSessionAlertsQuery({ orgId, sessionId })
@@ -497,6 +531,17 @@ function SessionDetailSheet({
       {data ? (
         <>
           <SessionFacts detail={data} devices={devices} emails={emails} />
+          {data.session.origin === 'native' ? (
+            <div className="row-end" style={{ marginTop: 12 }}>
+              <button
+                className="btn outline sm"
+                type="button"
+                onClick={() => onRatify(data.session)}
+              >
+                申请追认
+              </button>
+            </div>
+          ) : null}
           <div className="card-title" style={{ margin: '18px 0 10px' }}>
             事件时间线
           </div>

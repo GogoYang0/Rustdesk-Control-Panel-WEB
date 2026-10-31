@@ -28,6 +28,7 @@ import type {
   UserGroupDeleteData,
   UserGroupMemberMutation,
   Approval,
+  ApprovalCreateRequest,
   ApprovalDecisionRequest,
   ApprovalPage,
   Device,
@@ -1019,6 +1020,7 @@ export async function deleteAddressBookPeer(
 
 export type {
   Approval,
+  ApprovalCreateRequest,
   ApprovalDecision,
   ApprovalDecisionRequest,
   ApprovalKind,
@@ -1329,6 +1331,14 @@ export function fetchApprovalPage(orgId: number, query: URLSearchParams): Promis
 
 export function fetchApproval(orgId: number, approvalId: number): Promise<Approval> {
   return apiFetch<Approval>(`/api/v1/orgs/${orgId}/approvals/${approvalId}`)
+}
+
+/** Creates or reuses a pending request; both answer 200/201 with the row. */
+export function createApproval(orgId: number, request: ApprovalCreateRequest): Promise<Approval> {
+  return apiFetch<Approval>(`/api/v1/orgs/${orgId}/approvals`, {
+    method: 'POST',
+    body: JSON.stringify(request),
+  })
 }
 
 export function submitApprovalDecision(
