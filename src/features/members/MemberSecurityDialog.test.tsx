@@ -67,7 +67,7 @@ describe('MemberSecurityDialog', () => {
 
     await waitFor(() => expect(requests).toHaveLength(1))
     expect(requests[0]).toBe('/api/v1/orgs/1/members/7/2fa/reset')
-    expect(onClose).toHaveBeenCalled()
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
   })
 
   it('shows the passkey lockout refusal and keeps the dialog open', async () => {
