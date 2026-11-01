@@ -155,13 +155,12 @@ export default function RulesTab({ orgId }: { orgId: number }) {
             )}
           </div>
         ) : null}
+        <div className="card-note">
+          规则只允许、取并集；owner/admin
+          不受规则限制；有效成员可访问本人未停用设备；停用设备对所有人不可达。 user 级限制不足以表达
+          deny——需要收紧时删除或重建规则。
+        </div>
       </div>
-
-      <p className="help" style={{ marginTop: 12 }}>
-        规则只允许、取并集；owner/admin
-        不受规则限制；有效成员可访问本人未停用设备；停用设备对所有人不可达。 user 级限制不足以表达
-        deny——需要收紧时删除或重建规则。
-      </p>
 
       {creating ? (
         <CreateRuleDialog

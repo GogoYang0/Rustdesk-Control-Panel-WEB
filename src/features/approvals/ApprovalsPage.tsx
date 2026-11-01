@@ -451,14 +451,13 @@ export default function ApprovalsPage() {
               </div>
             ) : null}
           </div>
+          <div className="card-note">
+            每 30
+            秒刷新列表；详情读取会写审计，因此不自动轮询。超期未处理的请求由后台任务每分钟标记为已过期。
+            审批不签发任何东西：事前批准只是允许申请人重试一次签发，追认只确认已发生的原生会话。
+          </div>
         </div>
       )}
-
-      <p className="help" style={{ marginTop: 12 }}>
-        每 30
-        秒刷新列表；详情读取会写审计，因此不自动轮询。超期未处理的请求由后台任务每分钟标记为已过期。
-        审批不签发任何东西：事前批准只是允许申请人重试一次签发，追认只确认已发生的原生会话。
-      </p>
 
       {shownSheet !== null ? (
         <ApprovalSheet

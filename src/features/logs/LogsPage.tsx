@@ -337,16 +337,15 @@ export default function LogsPage() {
               </table>
             )}
           </div>
+          <div className="card-note">
+            仅显示最近 {effective.limit} 条（上限 200），不分页。事件由部署侧采集，面板只能查看；
+            device_id 为空表示未能关联到本组织设备。
+            {canReadDevices
+              ? ' 设备筛选最多加载前 200 台设备，其余设备仍以 ID 显示。'
+              : ' 设备筛选需要 device.read，当前仅展示设备 ID。'}
+          </div>
         </div>
       )}
-
-      <p className="help" style={{ marginTop: 12 }}>
-        仅显示最近 {effective.limit} 条（上限 200），不分页。事件由部署侧采集，面板只能查看；
-        device_id 为空表示未能关联到本组织设备。
-        {canReadDevices
-          ? ' 设备筛选最多加载前 200 台设备，其余设备仍以 ID 显示。'
-          : ' 设备筛选需要 device.read，当前仅展示设备 ID。'}
-      </p>
 
       {selectedRow ? (
         <LogDetailSheet

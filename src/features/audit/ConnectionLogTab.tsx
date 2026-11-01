@@ -174,6 +174,9 @@ export default function ConnectionLogTab({
               </div>
             ) : null}
           </div>
+          <div className="card-note">
+            RustDesk ID 为精确匹配；原生直连只做记录与告警，不会主动断连；查看列表不产生审计记录。
+          </div>
         </div>
       )}
 

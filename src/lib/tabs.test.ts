@@ -8,11 +8,11 @@ describe('tab strip', () => {
     expect(pushTab(['members', 'roles'], 'roles')).toEqual(['members', 'roles'])
   })
 
-  it('re-activating a tab moves it to the tail (most recent last)', () => {
+  it('keeps the first-open order when a tab is re-activated', () => {
     expect(pushTab(['members', 'roles', 'devices'], 'members')).toEqual([
+      'members',
       'roles',
       'devices',
-      'members',
     ])
   })
 

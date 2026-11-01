@@ -164,6 +164,7 @@ export default function FileLogTab({
               </div>
             ) : null}
           </div>
+          <div className="card-note">RustDesk ID 为精确匹配；查看列表不产生审计记录。</div>
         </div>
       )}
 

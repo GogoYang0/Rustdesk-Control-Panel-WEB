@@ -133,6 +133,7 @@ export default function AddressBooksPage() {
           <BookGroup
             title="共享地址簿"
             hint="组织成员可读"
+            note="共享簿的 peers 用「全量替换」保存：多人同时编辑时以最后保存者为准，控制台会在保存前校验内容版本。只持有 full 授权时写操作按钮不会显示，请管理员授予 addressbook.write。"
             books={groups.shared}
             me={me?.user.id}
             perms={perms}
@@ -142,12 +143,6 @@ export default function AddressBooksPage() {
           />
         </>
       )}
-
-      <p className="help" style={{ marginTop: 12 }}>
-        共享簿的 peers
-        用「全量替换」保存：多人同时编辑时以最后保存者为准；控制台会在保存前校验内容版本。
-        若你只持有某共享簿的 full 授权而按钮不可用，请管理员授予 addressbook.write。
-      </p>
 
       {creating || renaming ? (
         <BookDialog
@@ -186,6 +181,7 @@ export default function AddressBooksPage() {
 function BookGroup({
   title,
   hint,
+  note,
   books,
   me,
   perms,
@@ -195,6 +191,7 @@ function BookGroup({
 }: {
   title: string
   hint: string
+  note?: string
   books: AddressBook[]
   me?: number
   perms: Set<string>
@@ -209,6 +206,7 @@ function BookGroup({
         {title}
         <span className="hint">{hint}</span>
       </div>
+      {note ? <div className="help book-group-note">{note}</div> : null}
       <div className="grid-2">
         {books.map((book) => {
           const editable = canEditBook(book, me, perms)
@@ -234,24 +232,24 @@ function BookGroup({
                   <button className="btn outline sm" type="button" onClick={() => onOpen(book)}>
                     打开
                   </button>
-                  <button
-                    className="btn outline sm"
-                    type="button"
-                    disabled={!editable}
-                    title={editable ? undefined : '没有该地址簿的写权限'}
-                    onClick={() => onRename(book)}
-                  >
-                    重命名
-                  </button>
-                  <button
-                    className="btn danger sm"
-                    type="button"
-                    disabled={!editable}
-                    title={editable ? undefined : '没有该地址簿的写权限'}
-                    onClick={() => onDelete(book)}
-                  >
-                    删除
-                  </button>
+                  {editable ? (
+                    <>
+                      <button
+                        className="btn outline sm"
+                        type="button"
+                        onClick={() => onRename(book)}
+                      >
+                        重命名
+                      </button>
+                      <button
+                        className="btn danger sm"
+                        type="button"
+                        onClick={() => onDelete(book)}
+                      >
+                        删除
+                      </button>
+                    </>
+                  ) : null}
                 </div>
               </div>
             </div>

@@ -95,6 +95,7 @@ describe('AddressBookPage recycle tab', () => {
     expect(await screen.findByText(/当前为只读视图/)).toBeTruthy()
     expect(screen.queryByRole('tab')).toBeNull()
     expect(screen.queryByRole('button', { name: '标签' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '添加 peer' })).toBeNull()
   })
 
   it('loads the recycle panel when the tab is active', async () => {

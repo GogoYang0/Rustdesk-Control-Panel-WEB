@@ -130,15 +130,15 @@ export default function MembersPage() {
         </div>
         <div className="spacer" />
         <div className="head-actions">
-          <button
-            className="btn primary sm"
-            type="button"
-            disabled={!canManage}
-            title={canManage ? '邀请成员' : '需要 member.manage 权限'}
-            onClick={() => setDialog({ kind: 'invite' })}
-          >
-            邀请成员
-          </button>
+          {canManage ? (
+            <button
+              className="btn primary sm"
+              type="button"
+              onClick={() => setDialog({ kind: 'invite' })}
+            >
+              邀请成员
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -249,75 +249,39 @@ export default function MembersPage() {
                         <td className="mono">{formatTime(member.created_at)}</td>
                         <td>
                           <div className="hstack" style={{ gap: 4, justifyContent: 'flex-end' }}>
-                            <ActionButton
-                              label="改角色"
-                              disabled={!isOwner || self || memberKind(member) === 'owner'}
-                              title={
-                                !isOwner
-                                  ? '仅 owner 可改角色'
-                                  : self
-                                    ? '不能修改自己的角色'
-                                    : memberKind(member) === 'owner'
-                                      ? 'owner 角色不可通过此端点变更'
-                                      : '变更角色'
-                              }
-                              onClick={() => setDialog({ kind: 'role', member })}
-                            />
-                            <ActionButton
-                              label={member.disabled ? '恢复' : '停用'}
-                              disabled={
-                                !canManage || self || (memberKind(member) === 'owner' && !isOwner)
-                              }
-                              title={
-                                !canManage
-                                  ? '需要 member.manage'
-                                  : self
-                                    ? '不能停用自己'
-                                    : '停用会撤销其 compat 会话'
-                              }
-                              onClick={() =>
-                                member.disabled
-                                  ? void toggleDisabled(member, false)
-                                  : setDialog({ kind: 'disable', member })
-                              }
-                            />
-                            <ActionButton
-                              label="安全"
-                              disabled={
-                                !canManage || self || (memberKind(member) === 'owner' && !isOwner)
-                              }
-                              title={
-                                !canManage
-                                  ? '需要 member.manage'
-                                  : self
-                                    ? '不能重置自己的凭据'
-                                    : memberKind(member) === 'owner' && !isOwner
-                                      ? '仅 owner 可重置 owner 的凭据'
-                                      : 'TOTP / Passkey / 外部身份重置'
-                              }
-                              onClick={() =>
-                                setDialog({
-                                  kind: 'security',
-                                  member,
-                                  instance: ++securitySeq.current,
-                                })
-                              }
-                            />
-                            <ActionButton
-                              label="移除"
-                              danger
-                              disabled={
-                                !canManage || self || (memberKind(member) === 'owner' && !isOwner)
-                              }
-                              title={
-                                !canManage
-                                  ? '需要 member.manage'
-                                  : self
-                                    ? '不能移除自己'
-                                    : '移除成员'
-                              }
-                              onClick={() => setDialog({ kind: 'remove', member })}
-                            />
+                            {isOwner && !self && memberKind(member) !== 'owner' ? (
+                              <ActionButton
+                                label="改角色"
+                                onClick={() => setDialog({ kind: 'role', member })}
+                              />
+                            ) : null}
+                            {canManage && !self && !(memberKind(member) === 'owner' && !isOwner) ? (
+                              <>
+                                <ActionButton
+                                  label={member.disabled ? '恢复' : '停用'}
+                                  onClick={() =>
+                                    member.disabled
+                                      ? void toggleDisabled(member, false)
+                                      : setDialog({ kind: 'disable', member })
+                                  }
+                                />
+                                <ActionButton
+                                  label="安全"
+                                  onClick={() =>
+                                    setDialog({
+                                      kind: 'security',
+                                      member,
+                                      instance: ++securitySeq.current,
+                                    })
+                                  }
+                                />
+                                <ActionButton
+                                  label="移除"
+                                  danger
+                                  onClick={() => setDialog({ kind: 'remove', member })}
+                                />
+                              </>
+                            ) : null}
                           </div>
                         </td>
                       </tr>
@@ -326,6 +290,10 @@ export default function MembersPage() {
                 </tbody>
               </table>
             )}
+          </div>
+          <div className="card-note">
+            停用/移除会撤销该成员的 compat 会话；面板会话按每请求会籍复核。最后一个 owner
+            不可被移除。
           </div>
         </div>
       )}
@@ -410,10 +378,6 @@ export default function MembersPage() {
           </div>
         </div>
       ) : null}
-
-      <p className="help" style={{ marginTop: 12 }}>
-        停用/移除会撤销该成员的 compat 会话；面板会话按每请求会籍复核。最后一个 owner 不可被移除。
-      </p>
 
       {dialog?.kind === 'invite' ? (
         <InviteDialog orgId={id} onClose={() => setDialog(null)} />

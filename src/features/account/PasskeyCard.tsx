@@ -132,7 +132,10 @@ export default function PasskeyCard({
     <>
       <div className="card" data-testid="passkey-card">
         <div className="card-head">
-          <div className="card-title">Passkey</div>
+          <div className="card-title">
+            Passkey
+            <span className="hint">需安全上下文（HTTPS 或 localhost）与兼容浏览器</span>
+          </div>
           <span className="tag grey">{passkeys.length} 个</span>
         </div>
         <div className="card-body">

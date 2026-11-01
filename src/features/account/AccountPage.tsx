@@ -182,14 +182,6 @@ export default function AccountPage() {
           />
         )}
       </div>
-
-      <p className="help" style={{ marginTop: 12 }}>
-        {tab === 'credentials'
-          ? 'Passkey 操作需要安全上下文（HTTPS 或 localhost）与兼容浏览器；TOTP 使用验证器 App。'
-          : tab === 'tokens'
-            ? '令牌明文只显示一次；其权限始终与当前角色取交集。'
-            : '解绑必须用当前密码或 Passkey 验证；绑定与重置由管理员处理。'}
-      </p>
     </section>
   )
 }

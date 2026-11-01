@@ -162,11 +162,10 @@ export default function UserGroupsTab({ orgId }: { orgId: number }) {
             )}
           </div>
         ) : null}
+        <div className="card-note">
+          成员变更即时影响规则评估；停用会籍可保留在组内，但不会贡献访问。
+        </div>
       </div>
-
-      <p className="help" style={{ marginTop: 12 }}>
-        成员变更即时影响规则评估；停用会籍可保留在组内，但不会贡献访问。
-      </p>
 
       {creating ? (
         <GroupNameDialog

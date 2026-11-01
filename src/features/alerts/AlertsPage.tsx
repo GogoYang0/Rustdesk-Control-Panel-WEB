@@ -336,13 +336,12 @@ export default function AlertsPage() {
               </div>
             ) : null}
           </div>
+          <div className="card-note">
+            面板不在信令链路上：告警只记录违规事实，不掐断连接。原生直连的告警来自日志推断，
+            事前审批被阻断属于受控流程，不产生告警。
+          </div>
         </div>
       )}
-
-      <p className="help" style={{ marginTop: 12 }}>
-        面板不在信令链路上：告警只记录违规事实，不掐断连接。原生直连的告警来自日志推断，
-        事前审批被阻断属于受控流程，不产生告警。
-      </p>
 
       {selected && !orgChanged ? (
         <AlertSheet

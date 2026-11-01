@@ -133,15 +133,15 @@ export default function PoliciesPage() {
         </div>
         <div className="spacer" />
         <div className="head-actions">
-          <button
-            className="btn primary sm"
-            type="button"
-            disabled={!canWrite}
-            title={canWrite ? '新建策略' : '需要 policy.write 权限'}
-            onClick={() => openOverlay({ kind: 'create' })}
-          >
-            新建策略
-          </button>
+          {canWrite ? (
+            <button
+              className="btn primary sm"
+              type="button"
+              onClick={() => openOverlay({ kind: 'create' })}
+            >
+              新建策略
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -159,6 +159,7 @@ export default function PoliciesPage() {
           多条启用策略同时生效，各维度取最严：并发与时长取最小、时段取交集、任一要求审批即需审批；
           <b>交集为空表示该时段完全禁止</b>。时间按浏览器本地时区（{formatOffset(offset)}）
           展示与编辑，服务端以 UTC 分钟存储。
+          策略是面板侧的事前约束：票据签发与兑换时强制，原生直连无法事前阻断，只会产生告警；已签发的票据保留签发时的策略快照。
         </div>
       </div>
 
@@ -275,11 +276,6 @@ export default function PoliciesPage() {
           ))}
         </div>
       )}
-
-      <p className="help" style={{ marginTop: 12 }}>
-        策略是面板侧的事前约束：票据签发与兑换时强制，原生直连无法事前阻断，只会产生告警。
-        已签发的票据保留签发时的策略快照。
-      </p>
 
       {shown && (shown.kind === 'create' || shown.kind === 'edit') ? (
         <PolicyDialog

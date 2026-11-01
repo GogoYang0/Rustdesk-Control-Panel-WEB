@@ -168,15 +168,15 @@ export default function DevicesPage() {
         </div>
         <div className="spacer" />
         <div className="head-actions">
-          <button
-            className="btn primary sm"
-            type="button"
-            disabled={!canWrite}
-            title={canWrite ? '登记设备' : '需要 device.write 权限'}
-            onClick={() => openDialog({ kind: 'register' })}
-          >
-            登记设备
-          </button>
+          {canWrite ? (
+            <button
+              className="btn primary sm"
+              type="button"
+              onClick={() => openDialog({ kind: 'register' })}
+            >
+              登记设备
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -313,26 +313,26 @@ export default function DevicesPage() {
                           >
                             详情
                           </button>
-                          <button
-                            className="btn borderless sm"
-                            type="button"
-                            style={device.disabled ? undefined : { color: 'var(--danger)' }}
-                            disabled={!canWrite}
-                            title={canWrite ? undefined : '需要 device.write 权限'}
-                            onClick={() => openDialog({ kind: 'toggle', device })}
-                          >
-                            {device.disabled ? '恢复' : '停用'}
-                          </button>
-                          <button
-                            className="btn borderless sm"
-                            type="button"
-                            style={{ color: 'var(--danger)' }}
-                            disabled={!canWrite}
-                            title={canWrite ? undefined : '需要 device.write 权限'}
-                            onClick={() => openDialog({ kind: 'delete', device })}
-                          >
-                            删除
-                          </button>
+                          {canWrite ? (
+                            <>
+                              <button
+                                className="btn borderless sm"
+                                type="button"
+                                style={device.disabled ? undefined : { color: 'var(--danger)' }}
+                                onClick={() => openDialog({ kind: 'toggle', device })}
+                              >
+                                {device.disabled ? '恢复' : '停用'}
+                              </button>
+                              <button
+                                className="btn borderless sm"
+                                type="button"
+                                style={{ color: 'var(--danger)' }}
+                                onClick={() => openDialog({ kind: 'delete', device })}
+                              >
+                                删除
+                              </button>
+                            </>
+                          ) : null}
                         </div>
                       </td>
                     </tr>
@@ -370,13 +370,12 @@ export default function DevicesPage() {
               </div>
             ) : null}
           </div>
+          <div className="card-note">
+            停用会拒绝新的认领、compat 登录与心跳，并在同一事务撤销该设备的活跃 compat
+            会话；绑定重置让旧客户端立即失去驱动能力；断连请求由客户端下次心跳消费，不是即时断线。
+          </div>
         </div>
       )}
-
-      <p className="help" style={{ marginTop: 12 }}>
-        停用会拒绝新的认领、compat 登录与心跳，并在同一事务撤销该设备的活跃 compat
-        会话；绑定重置让旧客户端立即失去驱动能力；断连请求由客户端下次心跳消费，不是即时断线。
-      </p>
 
       {activeSelected ? (
         <DeviceSheet
@@ -534,39 +533,27 @@ function DeviceSheet({
       </dl>
 
       <div className="row-end" style={{ flexWrap: 'wrap' }}>
-        <button
-          className="btn outline sm"
-          type="button"
-          disabled={!canWrite}
-          title={canWrite ? undefined : '需要 device.write 权限'}
-          onClick={() => onAction('toggle')}
-        >
-          {device.disabled ? '恢复设备' : '停用设备'}
-        </button>
-        <button
-          className="btn outline sm"
-          type="button"
-          disabled={!canWrite || !membersReady}
-          title={
-            !canWrite
-              ? '需要 device.write 权限'
-              : !membersReady
-                ? '成员列表未就绪（加载中或加载失败）：暂不能改归属'
-                : undefined
-          }
-          onClick={() => onAction('owner')}
-        >
-          归属
-        </button>
-        <button
-          className="btn outline sm"
-          type="button"
-          disabled={!canWrite}
-          title={canWrite ? undefined : '需要 device.write 权限'}
-          onClick={() => onAction('note')}
-        >
-          备注
-        </button>
+        {canWrite ? (
+          <button className="btn outline sm" type="button" onClick={() => onAction('toggle')}>
+            {device.disabled ? '恢复设备' : '停用设备'}
+          </button>
+        ) : null}
+        {canWrite ? (
+          <button
+            className="btn outline sm"
+            type="button"
+            disabled={!membersReady}
+            title={membersReady ? undefined : '成员列表未就绪（加载中或加载失败）：暂不能改归属'}
+            onClick={() => onAction('owner')}
+          >
+            归属
+          </button>
+        ) : null}
+        {canWrite ? (
+          <button className="btn outline sm" type="button" onClick={() => onAction('note')}>
+            备注
+          </button>
+        ) : null}
         <button
           className="btn primary sm"
           type="button"
@@ -584,39 +571,31 @@ function DeviceSheet({
         >
           申请审批
         </button>
-        <button
-          className="btn outline sm"
-          type="button"
-          disabled={!canWrite}
-          title={canWrite ? undefined : '需要 device.write 权限'}
-          onClick={() => onAction('rebind')}
-        >
-          重置绑定
-        </button>
-        <button
-          className="btn danger sm"
-          type="button"
-          disabled={!canWrite}
-          title={canWrite ? undefined : '需要 device.write 权限'}
-          onClick={() => onAction('delete')}
-        >
-          删除设备
-        </button>
-        <button
-          className="btn danger sm"
-          type="button"
-          disabled={!canDisconnect || device.status === 'offline'}
-          title={
-            !canDisconnect
-              ? '需要 device.disconnect 权限'
-              : device.status === 'offline'
+        {canWrite ? (
+          <button className="btn outline sm" type="button" onClick={() => onAction('rebind')}>
+            重置绑定
+          </button>
+        ) : null}
+        {canWrite ? (
+          <button className="btn danger sm" type="button" onClick={() => onAction('delete')}>
+            删除设备
+          </button>
+        ) : null}
+        {canDisconnect ? (
+          <button
+            className="btn danger sm"
+            type="button"
+            disabled={device.status === 'offline'}
+            title={
+              device.status === 'offline'
                 ? '设备当前离线：请求会保持 pending，直到 15 分钟过期'
                 : undefined
-          }
-          onClick={() => onAction('disconnect')}
-        >
-          断连请求
-        </button>
+            }
+            onClick={() => onAction('disconnect')}
+          >
+            断连请求
+          </button>
+        ) : null}
       </div>
     </SideSheet>
   )

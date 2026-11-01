@@ -111,6 +111,7 @@ export default function RoleEditor({
         <span className="form-label">会话内动作（14 项）</span>
         <div className="help mb-14">
           继承 = 不覆盖被控端本地设置；允许/拒绝会随票据下发给 panel 会话。原生会话不受此约束。
+          已发票据保留签发时的权限快照；修改只影响之后签发的票据。
         </div>
         <div className="stack" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {CONTROL_PERMISSION_KEYS.map((key) => (
@@ -148,11 +149,6 @@ export default function RoleEditor({
           ))}
         </div>
       </div>
-      {role ? (
-        <div className="help" style={{ marginTop: 12 }}>
-          已发票据保留签发时的权限快照；修改只影响之后签发的票据。
-        </div>
-      ) : null}
     </Modal>
   )
 }

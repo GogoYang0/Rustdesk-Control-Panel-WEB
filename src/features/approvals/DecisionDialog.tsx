@@ -149,21 +149,21 @@ export default function DecisionDialog({
           <button className="btn tertiary" type="button" disabled={submitting} onClick={onClose}>
             取消
           </button>
-          {needsRecheck ? (
+          {canDecide && needsRecheck ? (
             <button className="btn outline" type="button" onClick={recheck}>
               核对最新状态
             </button>
-          ) : (
+          ) : null}
+          {canDecide && !needsRecheck ? (
             <button
               className={`btn ${decision === 'deny' ? 'danger' : 'primary'}`}
               type="button"
               disabled={!allowed || submitting}
-              title={!canDecide ? '需要 approval.decide 权限' : undefined}
               onClick={() => void submit()}
             >
               {submitting ? '提交中…' : `确认${labels[decision]}`}
             </button>
-          )}
+          ) : null}
         </>
       }
     >

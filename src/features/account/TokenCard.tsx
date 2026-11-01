@@ -129,7 +129,7 @@ export default function TokenCard({
         <div className="card-head">
           <div className="card-title">
             个人 API Token
-            <span className="hint">仅用于当前组织；明文只显示一次</span>
+            <span className="hint">仅用于当前组织；明文只显示一次；权限与当前角色取交集</span>
           </div>
           <div className="hstack" style={{ gap: 8 }}>
             <span className="help" data-testid="token-activity">

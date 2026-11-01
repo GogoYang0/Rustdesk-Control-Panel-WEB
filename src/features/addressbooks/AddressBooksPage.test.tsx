@@ -72,7 +72,7 @@ describe('AddressBooksPage', () => {
     expect(screen.getByText('总部共享')).toBeTruthy()
   })
 
-  it('disables writes on a shared book without addressbook.write but keeps the owner book editable', async () => {
+  it('hides writes on a shared book without addressbook.write but keeps the owner book editable', async () => {
     setup([
       book({ id: 1, name: '我的笔记' }),
       book({ id: 2, name: '总部共享', scope: 'shared', owner_id: null }),
@@ -84,7 +84,7 @@ describe('AddressBooksPage', () => {
     const deleteOf = (card: HTMLElement) =>
       [...card.querySelectorAll('.row-end button')].find((b) => b.textContent === '删除') as
         HTMLButtonElement | undefined
-    expect(deleteOf(shared)?.disabled).toBe(true)
+    expect(deleteOf(shared)).toBeUndefined()
     expect(deleteOf(personal)?.disabled).toBe(false)
   })
 })
