@@ -35,14 +35,3 @@ export function passwordResetError(err: unknown): string {
   if (err.status >= 500) return '服务异常，请稍后重试'
   return '重置失败，请稍后重试'
 }
-
-/** Admin request failures keep the member dialog open with actionable copy. */
-export function passwordResetRequestError(err: unknown): string {
-  if (!(err instanceof ApiError) || err.status === 0) return '网络异常，请稍后重试'
-  if (err.status === 403) return '没有权限，或该成员属于其他组织/目标为 owner；需线下处理'
-  if (err.status === 404) return '成员不存在或已离开组织，请刷新后重试'
-  if (err.status === 409) return '该成员没有本地密码、已停用，或不能重置自己'
-  if (err.status === 429) return '操作过于频繁，请 15 分钟后再试'
-  if (err.status >= 500) return '服务异常，请稍后重试'
-  return '发送重置邮件失败，请稍后重试'
-}

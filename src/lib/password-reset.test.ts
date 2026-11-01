@@ -1,12 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { ApiError } from './api'
-import {
-  passwordResetError,
-  passwordResetProblem,
-  passwordResetRequestError,
-  readHashToken,
-} from './password-reset'
+import { passwordResetError, passwordResetProblem, readHashToken } from './password-reset'
 
 afterEach(() => {
   window.history.replaceState(null, '', '/')
@@ -41,19 +36,5 @@ describe('passwordResetError', () => {
     expect(passwordResetError(new ApiError(409, 'conflict', 'used'))).toContain('无效')
     expect(passwordResetError(new ApiError(503, 'internal', 'boom'))).toContain('服务异常')
     expect(passwordResetError(new TypeError('Failed to fetch'))).toContain('网络异常')
-  })
-})
-
-describe('passwordResetRequestError', () => {
-  it('maps member guards and cooldown', () => {
-    expect(passwordResetRequestError(new ApiError(403, 'forbidden', 'no'))).toContain('权限')
-    expect(passwordResetRequestError(new ApiError(404, 'not_found', 'gone'))).toContain('不存在')
-    expect(passwordResetRequestError(new ApiError(409, 'conflict', 'nopass'))).toContain(
-      '没有本地密码',
-    )
-    expect(passwordResetRequestError(new ApiError(429, 'rate_limited', 'slow'))).toContain('频繁')
-    expect(passwordResetRequestError(new ApiError(418, 'teapot', 'english'))).not.toContain(
-      'english',
-    )
   })
 })
