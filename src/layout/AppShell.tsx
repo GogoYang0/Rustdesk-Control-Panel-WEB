@@ -434,30 +434,40 @@ export default function AppShell() {
       Math.max(x, window.innerWidth - x),
       Math.max(y, window.innerHeight - y),
     )
-    if (!doc.startViewTransition) {
+    const mobile = window.matchMedia?.('(max-width: 767px)').matches ?? false
+    if (!doc.startViewTransition || mobile) {
       setTheme(next)
       circularThemeFallback(x, y, radius)
       return
     }
     themeRevealRef.current = true
     const root = document.documentElement
+    root.style.setProperty('--theme-x', `${x}px`)
+    root.style.setProperty('--theme-y', `${y}px`)
     let transition: { ready: Promise<void>; finished: Promise<void> }
     try {
-      root.classList.add('theme-transitioning')
       transition = doc.startViewTransition(() => {
+        // Add the pause class after the old snapshot is captured, so the
+        // outgoing frame is exactly what the user saw.
+        root.classList.add('theme-transitioning')
         flushSync(() => setTheme(next))
       })
     } catch {
       themeRevealRef.current = false
       root.classList.remove('theme-transitioning')
+      root.style.removeProperty('--theme-x')
+      root.style.removeProperty('--theme-y')
       setTheme(next)
       circularThemeFallback(x, y, radius)
       return
     }
     transition.finished
-      .then(() => root.classList.remove('theme-transitioning'))
+      .then(() => {
+        root.classList.remove('theme-transitioning')
+        root.style.removeProperty('--theme-x')
+        root.style.removeProperty('--theme-y')
+      })
       .catch(() => root.classList.remove('theme-transitioning'))
-    const mobile = window.matchMedia?.('(max-width: 767px)').matches ?? false
     transition.ready
       .then(() => {
         document.documentElement.animate(

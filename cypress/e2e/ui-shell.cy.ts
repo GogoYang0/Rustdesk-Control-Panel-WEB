@@ -99,6 +99,17 @@ import { consoleE2EEnabled, openConsole, signIn } from '../support/console'
     cy.get('html').should('have.attr', 'data-theme', 'light')
   })
 
+  it('uses the composited circle fallback on mobile', () => {
+    cy.viewport(589, 472)
+    cy.get('.theme-switch button[title="深色"]').click()
+    cy.get('.theme-circle').should('exist')
+    cy.get('html').should('have.attr', 'data-theme', 'dark')
+    cy.get('.theme-switch button[title="浅色"]').click()
+    cy.get('.theme-circle').should('exist')
+    cy.get('html').should('have.attr', 'data-theme', 'light')
+    cy.viewport(1280, 720)
+  })
+
   it('wraps the user email and emphasizes the role', () => {
     cy.viewport(1280, 720)
     cy.get('.user-chip .nm').should(($email) => {

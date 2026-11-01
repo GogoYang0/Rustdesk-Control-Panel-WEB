@@ -773,6 +773,7 @@ h1.page-title {
   mix-blend-mode: normal;
 }
 ::view-transition-new(root) {
+  clip-path: circle(0px at var(--theme-x, 50%) var(--theme-y, 50%));
   will-change: clip-path;
 }
 
@@ -873,21 +874,18 @@ html.theme-transitioning body *::after {
   opacity: 0;
   background: radial-gradient(
     circle,
-    color-mix(in srgb, var(--bg-app) 52%, var(--primary) 14%) 0%,
-    transparent 68%
+    transparent 0% 48%,
+    color-mix(in srgb, var(--primary) 24%, transparent) 60%,
+    color-mix(in srgb, var(--secondary) 12%, transparent) 70%,
+    transparent 80%
   );
 }
 .theme-circle.run {
-  opacity: 0.9;
+  opacity: 0.85;
   transform: translate(-50%, -50%) scale(1);
   transition:
-    transform 0.55s var(--ease),
-    opacity 0.55s ease;
-}
-@media (max-width: 767px) {
-  .theme-circle.run {
-    transition-duration: 0.4s;
-  }
+    transform 0.42s var(--ease),
+    opacity 0.3s ease;
 }
 @media (prefers-reduced-motion: reduce) {
   .theme-circle.run {
