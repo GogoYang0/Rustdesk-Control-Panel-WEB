@@ -199,9 +199,13 @@ describe('OverviewPage', () => {
     }
     fireEvent.pointerEnter(device)
     expect(device.getAttribute('data-flow')).toBe('on')
-    fireEvent.pointerMove(device, { clientX: 40, clientY: 30 })
+    const rect = vi
+      .spyOn(device, 'getBoundingClientRect')
+      .mockReturnValue(new DOMRect(10, 20, 100, 50))
+    fireEvent.pointerMove(device, { clientX: 50, clientY: 50 })
     expect(device.style.getPropertyValue('--stat-x')).toBe('40px')
     expect(device.style.getPropertyValue('--stat-y')).toBe('30px')
+    rect.mockRestore()
     fireEvent.pointerLeave(device)
     expect(device.getAttribute('data-flow')).toBeNull()
   })

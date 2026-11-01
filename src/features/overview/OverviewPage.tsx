@@ -130,7 +130,11 @@ function StatCard({
         </span>
         <div className="lbl">{label}</div>
       </div>
-      <div className="val" role={loading ? 'status' : undefined}>
+      <div
+        className="val"
+        role={loading ? 'status' : undefined}
+        aria-label={loading ? '正在加载' : undefined}
+      >
         {locked || errorText ? (
           '—'
         ) : loading ? (
