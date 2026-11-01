@@ -56,6 +56,7 @@ import {
   deleteControlRole,
   deleteDevice,
   deleteDeviceGroup,
+  deleteOrg,
   endSession,
   deletePolicy,
   deleteUserGroup,
@@ -594,6 +595,13 @@ export const panelApi = createApi({
       queryFn: ({ orgId, deviceId, reason }) => wrap(() => rebindDevice(orgId, deviceId, reason)),
       invalidatesTags: (_result, _error, { orgId }) => [{ type: 'Devices', id: orgId }],
     }),
+    deleteOrg: build.mutation<void, { orgId: number; confirmName: string }>({
+      queryFn: async ({ orgId, confirmName }) => {
+        const result = await wrap(() => deleteOrg(orgId, confirmName))
+        return 'data' in result ? { data: undefined } : result
+      },
+      invalidatesTags: ['Me'],
+    }),
     deleteDevice: build.mutation<void, { orgId: number; deviceId: number }>({
       queryFn: async ({ orgId, deviceId }) => {
         const result = await wrap(() => deleteDevice(orgId, deviceId))
@@ -940,6 +948,7 @@ export const {
   useRebindDeviceMutation,
   useRequestDeviceDisconnectMutation,
   useDeleteDeviceMutation,
+  useDeleteOrgMutation,
   useEndSessionMutation,
   useGetPoliciesQuery,
   useCreatePolicyMutation,

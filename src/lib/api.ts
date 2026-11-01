@@ -427,6 +427,14 @@ export function createOrg(name: string): Promise<Org> {
   })
 }
 
+/** Soft-deletes an organization; `confirmName` must match the current name. */
+export async function deleteOrg(orgId: number, confirmName: string): Promise<void> {
+  await apiFetch<unknown>(`/api/v1/orgs/${orgId}`, {
+    method: 'DELETE',
+    body: JSON.stringify({ confirm_name: confirmName }),
+  })
+}
+
 /** Renames an organization. Only an owner holds the required org.admin. */
 export function renameOrg(orgId: number, name: string): Promise<Org> {
   return apiFetch<Org>(`/api/v1/orgs/${orgId}`, {
