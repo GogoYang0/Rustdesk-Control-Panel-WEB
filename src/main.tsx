@@ -9,6 +9,8 @@ import { RouterProvider } from 'react-router/dom'
 import './styles/global.css'
 // Prototype baseline last so its tokens win over Tailwind/Semi resets.
 import './styles/prototype.css'
+import { initLanguage } from './i18n/core'
+import { installToastTranslation } from './i18n/toast'
 import { bootstrapSession, watchSessionAcrossTabs } from './lib/session'
 import { applyThemeMode, getStoredTheme } from './lib/theme'
 import { router } from './router'
@@ -20,6 +22,8 @@ if (!container) {
 }
 
 applyThemeMode(getStoredTheme())
+initLanguage()
+installToastTranslation()
 watchSessionAcrossTabs()
 
 // Refresh first (if a refresh token exists) so the first data request carries an

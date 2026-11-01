@@ -1,8 +1,10 @@
+import { getLang } from '../i18n/core'
+
 export function formatTime(value: string | null | undefined): string {
   if (!value) return '—'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
-  return new Intl.DateTimeFormat('zh-CN', {
+  return new Intl.DateTimeFormat(getLang(), {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

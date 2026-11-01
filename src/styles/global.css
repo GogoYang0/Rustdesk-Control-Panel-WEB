@@ -883,3 +883,123 @@ h1.page-title {
     animation-play-state: paused !important;
   }
 }
+
+/* ── Language switcher and locale transition ────────────────────────────── */
+.lang-switch {
+  position: relative;
+  flex: none;
+}
+.lang-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 13px;
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+.lang-trigger:hover {
+  background: var(--fill-0);
+  color: var(--text-1);
+}
+.lang-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 46;
+  min-width: 168px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-pop);
+  animation: lang-pop 0.16s var(--ease) both;
+}
+.lang-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 9px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-1);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.lang-menu-item:hover {
+  background: var(--fill-0);
+}
+.lang-menu-item.on {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+.lang-code {
+  font-size: 10px;
+  color: var(--text-3);
+}
+.lang-switch.floating {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 120;
+}
+html.lang-switching .shell,
+html.lang-switching .login-page {
+  animation: lang-fade 0.32s var(--ease) both;
+}
+@keyframes lang-fade {
+  from {
+    opacity: 0.4;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes lang-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.lang-switching .shell,
+  html.lang-switching .login-page,
+  .lang-menu {
+    animation: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .lang-trigger {
+    width: 28px;
+    padding: 0;
+    justify-content: center;
+  }
+  .lang-trigger span {
+    display: none;
+  }
+  .lang-menu {
+    right: -36px;
+  }
+}

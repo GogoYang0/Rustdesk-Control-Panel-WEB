@@ -37,6 +37,7 @@ import { setTokens, type TokenPair } from '../../lib/session'
 import { panelApi } from '../../store/api'
 import CaptchaField from './captcha/CaptchaField'
 import { useCaptchaChallenge } from './captcha/useCaptchaChallenge'
+import LanguageSwitcher from '../../i18n/LanguageSwitcher'
 
 type Step = 'credentials' | 'totp'
 type LoginMode = 'local' | 'ldap'
@@ -306,6 +307,7 @@ export default function LoginPage() {
 
   return (
     <div className="login-page">
+      <LanguageSwitcher floating />
       <div className="login-wrap">
         <div className="login-brand">
           <div className="hstack" style={{ gap: 11 }}>
@@ -556,7 +558,7 @@ export default function LoginPage() {
                     disabled={submitting}
                     onClick={() => void onOidcLogin()}
                   >
-                    使用 {providers.oidc?.name ?? 'OIDC'} 登录
+                    {`使用 ${providers.oidc?.name ?? 'OIDC'} 登录`}
                   </button>
                 </>
               ) : null}

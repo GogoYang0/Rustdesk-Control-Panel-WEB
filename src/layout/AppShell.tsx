@@ -14,6 +14,7 @@ import { Navigate, Outlet, useLocation, useNavigate, useParams } from 'react-rou
 import CreateOrgDialog from '../features/orgs/CreateOrgDialog'
 
 import ProfileDialog from '../components/ProfileDialog'
+import LanguageSwitcher from '../i18n/LanguageSwitcher'
 import StateBlock from '../components/StateBlock'
 import { useFocusTrap } from '../components/useFocusTrap'
 import { logout, setLogoutHandler } from '../lib/session'
@@ -971,6 +972,7 @@ export default function AppShell() {
             ) : null}
           </div>
 
+          <LanguageSwitcher />
           <div className="theme-switch" title="配色模式">
             <button
               type="button"

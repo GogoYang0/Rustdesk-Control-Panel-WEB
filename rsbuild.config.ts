@@ -4,7 +4,7 @@ import { defineConfig } from '@rsbuild/core'
 import { pluginReact } from '@rsbuild/plugin-react'
 
 export default defineConfig({
-  plugins: [pluginReact()],
+  plugins: [pluginReact({ swcReactOptions: { importSource: '@i18n' } })],
   source: {
     entry: { index: './src/main.tsx' },
   },
@@ -25,6 +25,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      '@i18n': path.resolve('src/i18n'),
       // Semi 2.x 的 exports 字段未暴露 dist/css/*，这里直接指向实际文件以引入全量样式
       '@douyinfe/semi-ui/dist/css/semi.min.css': path.resolve(
         'node_modules/@douyinfe/semi-ui/dist/css/semi.min.css',
