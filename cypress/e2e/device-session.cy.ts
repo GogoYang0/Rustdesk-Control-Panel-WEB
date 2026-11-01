@@ -36,15 +36,17 @@ import { consoleE2EEnabled, openConsole, signIn } from '../support/console'
   })
 
   it('ends the seeded open session', () => {
+    cy.intercept('GET', '**/api/v1/orgs/*/sessions*').as('listSessions')
     cy.intercept('POST', '**/api/v1/orgs/*/sessions/*/end').as('endSession')
     cy.contains('.nav-item', '会话').click()
     cy.location('pathname', { timeout: 10000 }).should('match', /\/sessions$/)
     cy.get('select[aria-label="会话状态"]').select('open')
+    cy.wait('@listSessions')
     cy.contains('tbody tr', 'E2E 会话设备')
       .should('exist')
-      .within(() => {
-        cy.contains('button', '结束').click()
-      })
+      .find('button')
+      .contains('结束')
+      .click({ force: true })
     cy.get('.modal').within(() => {
       cy.contains('结束会话').should('exist')
       cy.contains('button', '结束会话').click()
