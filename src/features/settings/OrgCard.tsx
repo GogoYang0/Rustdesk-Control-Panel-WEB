@@ -1,10 +1,12 @@
 import { useState } from 'react'
 
 import type { MeOrg } from '../../lib/api'
+import DeleteOrgDialog from './DeleteOrgDialog'
 import RenameOrgDialog from './RenameOrgDialog'
 
 export default function OrgCard({ org }: { org: MeOrg }) {
   const [renaming, setRenaming] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const canRename = org.permissions.includes('org.admin')
   return (
     <div className="card" data-testid="org-card">
@@ -13,9 +15,14 @@ export default function OrgCard({ org }: { org: MeOrg }) {
         <div className="hstack" style={{ gap: 8 }}>
           <span className="tag grey">{org.role_kind}</span>
           {canRename ? (
-            <button className="btn outline sm" type="button" onClick={() => setRenaming(true)}>
-              重命名
-            </button>
+            <>
+              <button className="btn outline sm" type="button" onClick={() => setRenaming(true)}>
+                重命名
+              </button>
+              <button className="btn danger sm" type="button" onClick={() => setDeleting(true)}>
+                删除组织
+              </button>
+            </>
           ) : null}
         </div>
       </div>
@@ -47,6 +54,7 @@ export default function OrgCard({ org }: { org: MeOrg }) {
         </div>
       </div>
       {renaming ? <RenameOrgDialog org={org} onClose={() => setRenaming(false)} /> : null}
+      {deleting ? <DeleteOrgDialog org={org} onClose={() => setDeleting(false)} /> : null}
     </div>
   )
 }
