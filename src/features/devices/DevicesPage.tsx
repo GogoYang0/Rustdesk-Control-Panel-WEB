@@ -19,6 +19,7 @@ import { useGetDevicePageQuery, useGetMeQuery, useGetMembersQuery } from '../../
 import RequestApprovalDialog from '../approvals/RequestApprovalDialog'
 import ConnectDialog from './ConnectDialog'
 import {
+  DeleteDeviceDialog,
   NoteDialog,
   OwnerDialog,
   ReasonDialog,
@@ -35,6 +36,7 @@ type DialogKind =
   | { kind: 'disconnect'; device: Device }
   | { kind: 'approval'; device: Device }
   | { kind: 'connect'; device: Device }
+  | { kind: 'delete'; device: Device }
 
 type Dialog = (DialogKind & { generation: number; instance: number }) | null
 
@@ -321,6 +323,16 @@ export default function DevicesPage() {
                           >
                             {device.disabled ? '恢复' : '停用'}
                           </button>
+                          <button
+                            className="btn borderless sm"
+                            type="button"
+                            style={{ color: 'var(--danger)' }}
+                            disabled={!canWrite}
+                            title={canWrite ? undefined : '需要 device.write 权限'}
+                            onClick={() => openDialog({ kind: 'delete', device })}
+                          >
+                            删除
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -441,6 +453,14 @@ export default function DevicesPage() {
           onClose={() => closeDialog(activeDialog.instance)}
         />
       ) : null}
+      {activeDialog?.kind === 'delete' ? (
+        <DeleteDeviceDialog
+          orgId={id}
+          device={activeDialog.device}
+          onClose={() => closeDialog(activeDialog.instance)}
+          onDone={() => afterWrite(activeDialog.instance, activeDialog.generation)}
+        />
+      ) : null}
       {activeDialog?.kind === 'connect' ? (
         <ConnectDialog
           orgId={id}
@@ -466,7 +486,7 @@ function DeviceSheet({
   membersReady: boolean
   onClose: () => void
   onAction: (
-    kind: 'toggle' | 'owner' | 'note' | 'rebind' | 'disconnect' | 'approval' | 'connect',
+    kind: 'toggle' | 'owner' | 'note' | 'rebind' | 'disconnect' | 'approval' | 'connect' | 'delete',
   ) => void
 }) {
   return (
@@ -572,6 +592,15 @@ function DeviceSheet({
           onClick={() => onAction('rebind')}
         >
           重置绑定
+        </button>
+        <button
+          className="btn danger sm"
+          type="button"
+          disabled={!canWrite}
+          title={canWrite ? undefined : '需要 device.write 权限'}
+          onClick={() => onAction('delete')}
+        >
+          删除设备
         </button>
         <button
           className="btn danger sm"

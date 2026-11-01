@@ -853,6 +853,22 @@ export function rebindDevice(orgId: number, deviceId: number, reason: string): P
   })
 }
 
+/** Soft-deletes a device; history stays. Open sessions must be ended first. */
+export async function deleteDevice(orgId: number, deviceId: number): Promise<void> {
+  await apiFetch<unknown>(`/api/v1/orgs/${orgId}/devices/${deviceId}`, { method: 'DELETE' })
+}
+
+/** Closes the session record and queues a best-effort device disconnect. */
+export function endSession(
+  orgId: number,
+  sessionId: number,
+): Promise<{ disconnect_requested: boolean }> {
+  return apiFetch<{ disconnect_requested: boolean }>(
+    `/api/v1/orgs/${orgId}/sessions/${sessionId}/end`,
+    { method: 'POST' },
+  )
+}
+
 /** Records a request the client consumes on its next heartbeat — not an
  * immediate disconnect. */
 export function requestDeviceDisconnect(

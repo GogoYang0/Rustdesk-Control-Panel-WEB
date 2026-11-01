@@ -54,7 +54,9 @@ import {
   deleteClientBuildProfile,
   deleteClientBuildProfileLogo,
   deleteControlRole,
+  deleteDevice,
   deleteDeviceGroup,
+  endSession,
   deletePolicy,
   deleteUserGroup,
   fetchAddressBook,
@@ -592,6 +594,26 @@ export const panelApi = createApi({
       queryFn: ({ orgId, deviceId, reason }) => wrap(() => rebindDevice(orgId, deviceId, reason)),
       invalidatesTags: (_result, _error, { orgId }) => [{ type: 'Devices', id: orgId }],
     }),
+    deleteDevice: build.mutation<void, { orgId: number; deviceId: number }>({
+      queryFn: async ({ orgId, deviceId }) => {
+        const result = await wrap(() => deleteDevice(orgId, deviceId))
+        return 'data' in result ? { data: undefined } : result
+      },
+      invalidatesTags: (_result, _error, { orgId }) => [
+        { type: 'Devices', id: orgId },
+        { type: 'AccessDevices', id: orgId },
+      ],
+    }),
+    endSession: build.mutation<
+      { disconnect_requested: boolean },
+      { orgId: number; sessionId: number }
+    >({
+      queryFn: ({ orgId, sessionId }) => wrap(() => endSession(orgId, sessionId)),
+      invalidatesTags: (_result, _error, { orgId, sessionId }) => [
+        { type: 'Sessions', id: orgId },
+        { type: 'Session', id: `${orgId}-${sessionId}` },
+      ],
+    }),
     requestDeviceDisconnect: build.mutation<
       DeviceDisconnect,
       { orgId: number; deviceId: number; reason: string }
@@ -917,6 +939,8 @@ export const {
   useUpdateDeviceMutation,
   useRebindDeviceMutation,
   useRequestDeviceDisconnectMutation,
+  useDeleteDeviceMutation,
+  useEndSessionMutation,
   useGetPoliciesQuery,
   useCreatePolicyMutation,
   useUpdatePolicyMutation,

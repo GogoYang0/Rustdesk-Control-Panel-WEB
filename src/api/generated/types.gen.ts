@@ -1676,6 +1676,7 @@ export type Session = {
      * - `idle_timeout`：空闲超时（默认 10 分钟无关联事件）
      * - `policy_exceeded`：超过 `max_session_minutes`（后置关闭，不断连）
      * - `policy_denied`：签发阶段被策略拒绝（仅 `denied` 会话）
+     * - `admin_ended`：管理员主动结束会话记录
      *
      */
     end_reason?: string | null;
@@ -1696,7 +1697,7 @@ export type SessionEvent = {
     id: number;
     /**
      * 事件类型（自由字符串）。已知取值：`started`、`ticket_issued`、`approved`、
-     * `denied`、`disconnected`（日志中识别的连接结束）、`closed`。
+     * `denied`、`disconnected`（日志中识别的连接结束）、`closed`、`admin_ended`。
      *
      */
     kind: string;
@@ -1724,6 +1725,19 @@ export type SessionDetailResponse = {
     code: ErrorCode;
     message: string;
     data: SessionDetail;
+};
+
+export type SessionEndResult = {
+    /**
+     * 是否已有断连请求在队列中（false 表示会话记录已结束但请求未排队）
+     */
+    disconnect_requested: boolean;
+};
+
+export type SessionEndResponse = {
+    code: ErrorCode;
+    message: string;
+    data: SessionEndResult;
 };
 
 export type SessionListResponse = {
@@ -6371,6 +6385,54 @@ export type AssignDeviceStrategyResponses = {
 
 export type AssignDeviceStrategyResponse = AssignDeviceStrategyResponses[keyof AssignDeviceStrategyResponses];
 
+export type DeleteDeviceData = {
+    body?: never;
+    path: {
+        orgId: number;
+        deviceId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/devices/{deviceId}';
+};
+
+export type DeleteDeviceErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+    /**
+     * 服务端错误（如邀请邮件投递失败）
+     */
+    500: ErrorResponse;
+};
+
+export type DeleteDeviceError = DeleteDeviceErrors[keyof DeleteDeviceErrors];
+
+export type DeleteDeviceResponses = {
+    /**
+     * 已删除
+     */
+    200: OkResponse;
+};
+
+export type DeleteDeviceResponse = DeleteDeviceResponses[keyof DeleteDeviceResponses];
+
 export type UpdateDeviceData = {
     body: DeviceUpdateRequest;
     path: {
@@ -6499,6 +6561,54 @@ export type GetSessionResponses = {
 };
 
 export type GetSessionResponse = GetSessionResponses[keyof GetSessionResponses];
+
+export type EndSessionData = {
+    body?: never;
+    path: {
+        orgId: number;
+        sessionId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}/sessions/{sessionId}/end';
+};
+
+export type EndSessionErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+    /**
+     * 服务端错误（如邀请邮件投递失败）
+     */
+    500: ErrorResponse;
+};
+
+export type EndSessionError = EndSessionErrors[keyof EndSessionErrors];
+
+export type EndSessionResponses = {
+    /**
+     * 会话已结束
+     */
+    200: SessionEndResponse;
+};
+
+export type EndSessionResponse = EndSessionResponses[keyof EndSessionResponses];
 
 export type ListPoliciesData = {
     body?: never;
