@@ -99,13 +99,25 @@ import { consoleE2EEnabled, openConsole, signIn } from '../support/console'
     cy.get('html').should('have.attr', 'data-theme', 'light')
   })
 
-  it('uses the composited circle fallback on mobile', () => {
+  it('uses the same view transition circle on mobile', () => {
     cy.viewport(589, 472)
+    cy.window().then((win) => {
+      const start = win.document.startViewTransition?.bind(win.document)
+      if (!start) throw new Error('View Transitions API is not available')
+      let calls = 0
+      win.document.startViewTransition = ((callback: () => void) => {
+        calls += 1
+        return start(callback)
+      }) as typeof win.document.startViewTransition
+      cy.wrap(() => calls).as('mobileViewTransitionCalls')
+    })
     cy.get('.theme-switch button[title="深色"]').click()
-    cy.get('.theme-circle').should('exist')
     cy.get('html').should('have.attr', 'data-theme', 'dark')
+    cy.get('@mobileViewTransitionCalls').then((getCalls) => {
+      expect((getCalls as unknown as () => number)()).to.eq(1)
+    })
+    cy.get('.theme-circle').should('not.exist')
     cy.get('.theme-switch button[title="浅色"]').click()
-    cy.get('.theme-circle').should('exist')
     cy.get('html').should('have.attr', 'data-theme', 'light')
     cy.viewport(1280, 720)
   })

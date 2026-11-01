@@ -360,16 +360,36 @@ const MOBILE_NAV: { key: string; label: string; permission?: string; icon: React
   { key: 'alerts', label: '告警', icon: ICONS.alerts },
 ]
 
-function circularThemeFallback(x: number, y: number, radius: number) {
+let themeRevealToken = 0
+
+function circularThemeFallback(x: number, y: number, radius: number, apply: () => void) {
+  const token = ++themeRevealToken
+  const root = document.documentElement
+  const background = getComputedStyle(root).getPropertyValue('--bg-app').trim() || '#fff'
+  const accent = getComputedStyle(root).getPropertyValue('--primary').trim() || '#0f4c81'
+  for (const existing of document.querySelectorAll('.theme-circle')) existing.remove()
+
   const circle = document.createElement('span')
   circle.className = 'theme-circle'
   circle.style.left = `${x}px`
   circle.style.top = `${y}px`
   circle.style.width = `${radius * 2}px`
   circle.style.height = `${radius * 2}px`
+  circle.style.background = background
+  circle.style.boxShadow = `inset 0 0 0 2px ${accent}`
   document.body.appendChild(circle)
-  requestAnimationFrame(() => circle.classList.add('run'))
-  window.setTimeout(() => circle.remove(), 620)
+  requestAnimationFrame(() => circle.classList.add('grow'))
+
+  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+  window.setTimeout(
+    () => {
+      if (token !== themeRevealToken) return
+      apply()
+      circle.classList.add('fade')
+      window.setTimeout(() => circle.remove(), 200)
+    },
+    reduce ? 320 : 460,
+  )
 }
 
 export default function AppShell() {
@@ -434,10 +454,11 @@ export default function AppShell() {
       Math.max(x, window.innerWidth - x),
       Math.max(y, window.innerHeight - y),
     )
-    const mobile = window.matchMedia?.('(max-width: 767px)').matches ?? false
-    if (!doc.startViewTransition || mobile) {
-      setTheme(next)
-      circularThemeFallback(x, y, radius)
+    if (!doc.startViewTransition) {
+      circularThemeFallback(x, y, radius, () => {
+        themeRevealRef.current = true
+        flushSync(() => setTheme(next))
+      })
       return
     }
     themeRevealRef.current = true
@@ -445,11 +466,12 @@ export default function AppShell() {
     root.style.setProperty('--theme-x', `${x}px`)
     root.style.setProperty('--theme-y', `${y}px`)
     let transition: { ready: Promise<void>; finished: Promise<void> }
+    const mobile = window.matchMedia?.('(max-width: 767px)').matches ?? false
     try {
       transition = doc.startViewTransition(() => {
-        // Add the pause class after the old snapshot is captured, so the
-        // outgoing frame is exactly what the user saw.
-        root.classList.add('theme-transitioning')
+        // Freeze ambient page motion only in the incoming mobile frame; the
+        // outgoing frame is captured before this callback runs.
+        if (mobile) root.classList.add('theme-transitioning')
         flushSync(() => setTheme(next))
       })
     } catch {
@@ -457,8 +479,10 @@ export default function AppShell() {
       root.classList.remove('theme-transitioning')
       root.style.removeProperty('--theme-x')
       root.style.removeProperty('--theme-y')
-      setTheme(next)
-      circularThemeFallback(x, y, radius)
+      circularThemeFallback(x, y, radius, () => {
+        themeRevealRef.current = true
+        flushSync(() => setTheme(next))
+      })
       return
     }
     transition.finished
@@ -473,8 +497,9 @@ export default function AppShell() {
         document.documentElement.animate(
           { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
           {
-            duration: mobile ? 420 : 560,
+            duration: window.matchMedia?.('(max-width: 767px)').matches ? 260 : 460,
             easing: 'cubic-bezier(.4, 0, .2, 1)',
+            fill: 'forwards',
             pseudoElement: '::view-transition-new(root)',
           },
         )
