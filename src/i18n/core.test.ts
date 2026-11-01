@@ -18,6 +18,9 @@ it('translates dynamic units, counts and entity labels', () => {
   expect(translate('2 小时 15 分')).toBe('2 h 15 min')
   expect(translate('设备 #42')).toBe('Device #42')
   expect(translate('共 12 台 · 第 2 / 3 页')).toBe('12 devices · page 2 of 3')
+  expect(translate('1 台')).toBe('1 device')
+  expect(translate('1 天')).toBe('1 day')
+  expect(translate('使用 Keycloak 登录')).toBe('Continue with Keycloak')
 })
 
 it('uses Traditional Chinese terminology', () => {

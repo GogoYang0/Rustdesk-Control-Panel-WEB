@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 import { LANGUAGES, setLanguage } from './core'
-import { useLang } from './I18nRoot'
+import { useLang } from './withLocale'
 
 export default function LanguageSwitcher({ floating = false }: { floating?: boolean }) {
   const lang = useLang()

@@ -9,7 +9,6 @@ import { RouterProvider } from 'react-router/dom'
 import './styles/global.css'
 // Prototype baseline last so its tokens win over Tailwind/Semi resets.
 import './styles/prototype.css'
-import { I18nRoot } from './i18n/I18nRoot'
 import { initLanguage } from './i18n/core'
 import { installToastTranslation } from './i18n/toast'
 import { bootstrapSession, watchSessionAcrossTabs } from './lib/session'
@@ -33,9 +32,7 @@ void bootstrapSession().finally(() => {
   createRoot(container).render(
     <StrictMode>
       <Provider store={store}>
-        <I18nRoot>
-          <RouterProvider router={router} />
-        </I18nRoot>
+        <RouterProvider router={router} />
       </Provider>
     </StrictMode>,
   )

@@ -558,7 +558,7 @@ export default function LoginPage() {
                     disabled={submitting}
                     onClick={() => void onOidcLogin()}
                   >
-                    使用 {providers.oidc?.name ?? 'OIDC'} 登录
+                    {`使用 ${providers.oidc?.name ?? 'OIDC'} 登录`}
                   </button>
                 </>
               ) : null}

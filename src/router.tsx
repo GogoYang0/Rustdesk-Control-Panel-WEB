@@ -27,6 +27,7 @@ import RolesPage from './features/roles/RolesPage'
 import SessionsPage from './features/sessions/SessionsPage'
 import StateBlock from './components/StateBlock'
 import LanguageSwitcher from './i18n/LanguageSwitcher'
+import { withLocale } from './i18n/withLocale'
 import AppShell from './layout/AppShell'
 import { useGetMeQuery } from './store/api'
 
@@ -97,45 +98,46 @@ export function RootRedirect() {
   return <Navigate to={`/orgs/${first.id}/overview`} replace />
 }
 
+function NotFoundPage() {
+  return (
+    <StateBlock
+      code="404"
+      title="页面不存在"
+      description="该地址没有对应的控制台页面，请从左侧导航进入。"
+    />
+  )
+}
+
 export const router = createBrowserRouter([
-  { path: '/login', element: <LoginPage /> },
-  { path: '/verify-email', element: <VerifyEmailPage /> },
-  { path: '/reset-password', element: <ResetPasswordPage /> },
-  { path: '/accept-invitation', element: <AcceptInvitationPage /> },
-  { path: '/', element: <RootRedirect /> },
+  { path: '/login', Component: withLocale(LoginPage) },
+  { path: '/verify-email', Component: withLocale(VerifyEmailPage) },
+  { path: '/reset-password', Component: withLocale(ResetPasswordPage) },
+  { path: '/accept-invitation', Component: withLocale(AcceptInvitationPage) },
+  { path: '/', Component: withLocale(RootRedirect) },
   {
     path: '/orgs/:orgId',
-    element: <AppShell />,
+    Component: withLocale(AppShell),
     children: [
       { index: true, element: <Navigate to="overview" replace /> },
-      { path: 'overview', element: <OverviewPage /> },
-      { path: 'members', element: <MembersPage /> },
-      { path: 'roles', element: <RolesPage /> },
-      { path: 'devices', element: <DevicesPage /> },
-      { path: 'sessions', element: <SessionsPage /> },
-      { path: 'policies', element: <PoliciesPage /> },
-      { path: 'strategies', element: <StrategiesPage /> },
-      { path: 'approvals', element: <ApprovalsPage /> },
-      { path: 'alerts', element: <AlertsPage /> },
-      { path: 'audit', element: <AuditPage /> },
-      { path: 'logs', element: <LogsPage /> },
-      { path: 'builds', element: <BuildsPage /> },
-      { path: 'access', element: <AccessPage /> },
-      { path: 'control-roles', element: <ControlRolesPage /> },
-      { path: 'address-books', element: <AddressBooksPage /> },
-      { path: 'address-books/:bookId', element: <AddressBookPage /> },
-      { path: 'account', element: <AccountPage /> },
-      { path: 'settings', element: <SettingsPage /> },
-      {
-        path: '*',
-        element: (
-          <StateBlock
-            code="404"
-            title="页面不存在"
-            description="该地址没有对应的控制台页面，请从左侧导航进入。"
-          />
-        ),
-      },
+      { path: 'overview', Component: withLocale(OverviewPage) },
+      { path: 'members', Component: withLocale(MembersPage) },
+      { path: 'roles', Component: withLocale(RolesPage) },
+      { path: 'devices', Component: withLocale(DevicesPage) },
+      { path: 'sessions', Component: withLocale(SessionsPage) },
+      { path: 'policies', Component: withLocale(PoliciesPage) },
+      { path: 'strategies', Component: withLocale(StrategiesPage) },
+      { path: 'approvals', Component: withLocale(ApprovalsPage) },
+      { path: 'alerts', Component: withLocale(AlertsPage) },
+      { path: 'audit', Component: withLocale(AuditPage) },
+      { path: 'logs', Component: withLocale(LogsPage) },
+      { path: 'builds', Component: withLocale(BuildsPage) },
+      { path: 'access', Component: withLocale(AccessPage) },
+      { path: 'control-roles', Component: withLocale(ControlRolesPage) },
+      { path: 'address-books', Component: withLocale(AddressBooksPage) },
+      { path: 'address-books/:bookId', Component: withLocale(AddressBookPage) },
+      { path: 'account', Component: withLocale(AccountPage) },
+      { path: 'settings', Component: withLocale(SettingsPage) },
+      { path: '*', Component: withLocale(NotFoundPage) },
     ],
   },
   { path: '*', element: <Navigate to="/" replace /> },
