@@ -540,6 +540,13 @@ export type OrgCreateRequest = {
     name: string;
 };
 
+export type OrgDeleteRequest = {
+    /**
+     * 必须与当前组织名完全一致（trim 后），用于防误删
+     */
+    confirm_name: string;
+};
+
 export type OrgUpdateRequest = {
     name: string;
 };
@@ -3405,6 +3412,53 @@ export type CreateOrgResponses = {
 };
 
 export type CreateOrgResponse = CreateOrgResponses[keyof CreateOrgResponses];
+
+export type DeleteOrgData = {
+    body: OrgDeleteRequest;
+    path: {
+        orgId: number;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{orgId}';
+};
+
+export type DeleteOrgErrors = {
+    /**
+     * 请求参数不合法
+     */
+    400: ErrorResponse;
+    /**
+     * 未认证或令牌无效
+     */
+    401: ErrorResponse;
+    /**
+     * 权限不足
+     */
+    403: ErrorResponse;
+    /**
+     * 资源不存在
+     */
+    404: ErrorResponse;
+    /**
+     * 状态冲突（重复、过期或已使用）
+     */
+    409: ErrorResponse;
+    /**
+     * 服务端错误（如邀请邮件投递失败）
+     */
+    500: ErrorResponse;
+};
+
+export type DeleteOrgError = DeleteOrgErrors[keyof DeleteOrgErrors];
+
+export type DeleteOrgResponses = {
+    /**
+     * 已删除
+     */
+    200: OkResponse;
+};
+
+export type DeleteOrgResponse = DeleteOrgResponses[keyof DeleteOrgResponses];
 
 export type UpdateOrgData = {
     body: OrgUpdateRequest;
