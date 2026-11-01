@@ -26,6 +26,7 @@ import PoliciesPage from './features/policies/PoliciesPage'
 import RolesPage from './features/roles/RolesPage'
 import SessionsPage from './features/sessions/SessionsPage'
 import StateBlock from './components/StateBlock'
+import LanguageSwitcher from './i18n/LanguageSwitcher'
 import AppShell from './layout/AppShell'
 import { useGetMeQuery } from './store/api'
 
@@ -59,6 +60,7 @@ export function RootRedirect() {
   if (!first) {
     return (
       <>
+        <LanguageSwitcher floating />
         <div className="flex min-h-screen items-center justify-center p-6">
           <div className="w-full max-w-[520px]">
             <Title heading={4}>还没有组织</Title>

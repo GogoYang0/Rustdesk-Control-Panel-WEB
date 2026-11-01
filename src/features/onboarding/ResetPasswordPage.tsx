@@ -8,6 +8,7 @@ import {
   PASSWORD_MAX,
   readHashToken,
 } from '../../lib/password-reset'
+import LanguageSwitcher from '../../i18n/LanguageSwitcher'
 
 const INVALID_LINK = '重置链接不完整或无效，请让管理员重新发送。'
 
@@ -55,6 +56,7 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="login-page">
+      <LanguageSwitcher floating />
       <div className="login-wrap onboarding-wrap">
         <div className="login-form">
           <div className="login-card">

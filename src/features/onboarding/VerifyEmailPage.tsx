@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router'
 
 import { verifyEmail } from '../../lib/api'
 import { clearTokenParam, isRetryableVerifyError, verifyEmailError } from '../../lib/onboarding'
+import LanguageSwitcher from '../../i18n/LanguageSwitcher'
 
 type Status = 'verifying' | 'success' | 'invalid' | 'retryable'
 
@@ -54,6 +55,7 @@ export default function VerifyEmailPage() {
 
   return (
     <div className="login-page">
+      <LanguageSwitcher floating />
       <div className="login-wrap onboarding-wrap">
         <div className="login-form">
           <div className="login-card">

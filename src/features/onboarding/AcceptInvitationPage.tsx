@@ -7,6 +7,7 @@ import { captchaProviderSupported, captchaSubmitMessage } from '../../lib/captch
 import { acceptInvitationError, clearTokenParam } from '../../lib/onboarding'
 import CaptchaField from '../auth/captcha/CaptchaField'
 import { useCaptchaChallenge } from '../auth/captcha/useCaptchaChallenge'
+import LanguageSwitcher from '../../i18n/LanguageSwitcher'
 
 export default function AcceptInvitationPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -77,6 +78,7 @@ export default function AcceptInvitationPage() {
 
   return (
     <div className="login-page">
+      <LanguageSwitcher floating />
       <div className="login-wrap onboarding-wrap">
         <div className="login-form">
           <div className="login-card">
