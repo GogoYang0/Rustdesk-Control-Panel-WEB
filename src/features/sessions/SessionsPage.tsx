@@ -181,6 +181,7 @@ export default function SessionsPage() {
   // effect below clears it, but that render must not paint the dialog under the
   // new orgId either.
   const activeRatifyTarget = orgChanged ? null : ratifyTarget
+  const activeEndTarget = orgChanged ? null : endTarget
   // The page instance survives an in-place organization change (a hand-edited
   // URL, or a future in-page switcher): drop the filters, which describe the
   // previous organization. The page correction below must not write the
@@ -189,6 +190,7 @@ export default function SessionsPage() {
     if (!orgChanged) return
     previousOrg.current = id
     setRatifyTarget(null)
+    setEndTarget(null)
     if (searchParams.toString()) setSearchParams(new URLSearchParams(), { replace: true })
   }, [id, orgChanged, searchParams, setSearchParams])
 
@@ -493,8 +495,8 @@ export default function SessionsPage() {
         />
       ) : null}
 
-      {endTarget ? (
-        <EndSessionDialog orgId={id} session={endTarget} onClose={() => setEndTarget(null)} />
+      {activeEndTarget ? (
+        <EndSessionDialog orgId={id} session={activeEndTarget} onClose={() => setEndTarget(null)} />
       ) : null}
       {activeRatifyTarget ? (
         <RequestApprovalDialog

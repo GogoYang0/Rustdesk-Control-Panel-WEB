@@ -54,8 +54,7 @@ describe('DeleteDeviceDialog', () => {
   })
 
   it('shows the open-session conflict and keeps the dialog open', async () => {
-    const onDone = vi.fn()
-    setup(409)
+    const { onDone } = setup(409)
     fireEvent.click(screen.getByRole('button', { name: '删除设备' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('进行中的会话')
     expect(onDone).not.toHaveBeenCalled()
