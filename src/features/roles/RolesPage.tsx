@@ -20,6 +20,7 @@ import {
   useGetRolesQuery,
   useUpdateRoleMutation,
 } from '../../store/api'
+import { FormLoading, TableSkeleton } from '../../components/Skeleton'
 
 type Editor = { mode: 'create'; instance: number } | { mode: 'edit'; role: Role; instance: number }
 
@@ -111,9 +112,7 @@ export default function RolesPage() {
           </div>
           <div className="card-body tight" style={{ overflowX: 'auto' }}>
             {loadingCurrent ? (
-              <div className="help" style={{ padding: '14px 0' }}>
-                正在加载角色…
-              </div>
+              <TableSkeleton columns={5} />
             ) : roles.length === 0 ? (
               <Empty
                 title="还没有角色"
@@ -358,112 +357,115 @@ function RoleEditor({
         </div>
       ) : null}
 
-      <div className="field mb-14">
-        <label className="form-label" htmlFor="role-name">
-          <span className="req">*</span>角色名称
-        </label>
-        <div className="input">
-          <input
-            id="role-name"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder="例如：审计员"
-            maxLength={64}
-            autoFocus
-          />
+      <FormLoading active={permissionsLoading} label="正在加载权限目录…">
+        <div className="field mb-14">
+          <label className="form-label" htmlFor="role-name">
+            <span className="req">*</span>角色名称
+          </label>
+          <div className="input">
+            <input
+              id="role-name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="例如：审计员"
+              maxLength={64}
+              autoFocus
+            />
+          </div>
+          <div className="help">1–64 个字符，不能与内置或其他角色重名。</div>
         </div>
-        <div className="help">1–64 个字符，不能与内置或其他角色重名。</div>
-      </div>
 
-      <fieldset className="field mb-14" style={{ border: 0, padding: 0, margin: 0 }}>
-        <legend className="form-label">审计范围</legend>
-        <div className="hstack" style={{ gap: 16 }}>
-          {(['individual', 'global'] as const).map((value) => (
-            <label key={value} className="check">
-              <input
-                type="radio"
-                name="role-audit-scope"
-                checked={scope === value}
-                onChange={() => setScope(value)}
-              />
-              {value === 'individual' ? '仅本人相关' : '全组织审计'}
-            </label>
-          ))}
-        </div>
-        <div className="help">
-          仅对持有 audit.read 的角色有意义；全组织审计可查看所有成员的操作记录。
-        </div>
-      </fieldset>
+        <fieldset className="field mb-14" style={{ border: 0, padding: 0, margin: 0 }}>
+          <legend className="form-label">审计范围</legend>
+          <div className="hstack" style={{ gap: 16 }}>
+            {(['individual', 'global'] as const).map((value) => (
+              <label key={value} className="check">
+                <input
+                  type="radio"
+                  name="role-audit-scope"
+                  checked={scope === value}
+                  onChange={() => setScope(value)}
+                />
+                {value === 'individual' ? '仅本人相关' : '全组织审计'}
+              </label>
+            ))}
+          </div>
+          <div className="help">
+            仅对持有 audit.read 的角色有意义；全组织审计可查看所有成员的操作记录。
+          </div>
+        </fieldset>
 
-      <fieldset className="field mb-14" style={{ border: 0, padding: 0, margin: 0 }}>
-        <legend className="form-label">权限</legend>
-        {permissionsLoading ? <div className="help mb-14">正在加载权限目录…</div> : null}
-        {!permissionsLoading && permissionsError ? null : (
-          <>
-            <div className="hstack mb-14">
-              <span className="help">
-                已选 {selected.size} 项 · 可委派 {assignable.length} 项
-              </span>
-              <div className="spacer" />
-              <button className="btn borderless sm" type="button" onClick={selectAllDelegable}>
-                全选可委派
-              </button>
-              <button
-                className="btn borderless sm"
-                type="button"
-                onClick={() => setSelected(new Set())}
-              >
-                清空
-              </button>
-            </div>
-            <div className="vstack" style={{ gap: 14 }}>
-              {groups.map((group) => (
-                <div key={group.title}>
-                  <div className="help" style={{ marginBottom: 6 }}>
-                    {group.title}
-                  </div>
-                  <div
-                    className="grid"
-                    role="group"
-                    aria-label={group.title}
-                    style={{
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-                      gap: 6,
-                    }}
-                  >
-                    {group.items.map((permission) => (
-                      <label
-                        key={permission.code}
-                        className="check"
-                        style={{ opacity: permission.delegable ? 1 : 0.6 }}
-                        title={
-                          permission.delegable
-                            ? permission.code
-                            : `${permission.code}（owner 专属，不可授予自定义角色）`
-                        }
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selected.has(permission.code)}
-                          disabled={!permission.delegable}
-                          onChange={() => toggle(permission.code)}
-                        />
-                        <span>
-                          {permissionLabel(permission.code)}
-                          <span className="mono help" style={{ marginLeft: 6 }}>
-                            {permission.code}
+        <fieldset className="field mb-14" style={{ border: 0, padding: 0, margin: 0 }}>
+          <legend className="form-label">权限</legend>
+          {!permissionsLoading && permissionsError ? null : (
+            <>
+              <div className="hstack mb-14">
+                <span className="help">
+                  已选 {selected.size} 项 · 可委派 {assignable.length} 项
+                </span>
+                <div className="spacer" />
+                <button className="btn borderless sm" type="button" onClick={selectAllDelegable}>
+                  全选可委派
+                </button>
+                <button
+                  className="btn borderless sm"
+                  type="button"
+                  onClick={() => setSelected(new Set())}
+                >
+                  清空
+                </button>
+              </div>
+              <div className="vstack" style={{ gap: 14 }}>
+                {groups.map((group) => (
+                  <div key={group.title}>
+                    <div className="help" style={{ marginBottom: 6 }}>
+                      {group.title}
+                    </div>
+                    <div
+                      className="grid"
+                      role="group"
+                      aria-label={group.title}
+                      style={{
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                        gap: 6,
+                      }}
+                    >
+                      {group.items.map((permission) => (
+                        <label
+                          key={permission.code}
+                          className="check"
+                          style={{ opacity: permission.delegable ? 1 : 0.6 }}
+                          title={
+                            permission.delegable
+                              ? permission.code
+                              : `${permission.code}（owner 专属，不可授予自定义角色）`
+                          }
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selected.has(permission.code)}
+                            disabled={!permission.delegable}
+                            onChange={() => toggle(permission.code)}
+                          />
+                          <span>
+                            {permissionLabel(permission.code)}
+                            <span className="mono help" style={{ marginLeft: 6 }}>
+                              {permission.code}
+                            </span>
                           </span>
-                        </span>
-                        {permission.delegable ? null : <span className="tag grey">owner 专属</span>}
-                      </label>
-                    ))}
+                          {permission.delegable ? null : (
+                            <span className="tag grey">owner 专属</span>
+                          )}
+                        </label>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-      </fieldset>
+                ))}
+              </div>
+            </>
+          )}
+        </fieldset>
+      </FormLoading>
     </Modal>
   )
 }

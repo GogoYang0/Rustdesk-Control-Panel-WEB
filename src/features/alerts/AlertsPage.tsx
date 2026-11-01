@@ -21,6 +21,7 @@ import {
 import { formatTime } from '../../lib/format'
 import { totalPages } from '../../lib/paging'
 import { useGetAlertPageQuery, useGetDevicesQuery, useGetMeQuery } from '../../store/api'
+import { TableSkeleton } from '../../components/Skeleton'
 
 const SEVERITIES: { value: AlertFilters['severity']; label: string }[] = [
   { value: '', label: '全部' },
@@ -237,9 +238,7 @@ export default function AlertsPage() {
         <div className="card" style={{ overflow: 'hidden' }}>
           <div className="card-body tight" style={{ overflowX: 'auto' }}>
             {loadingCurrent ? (
-              <div className="help" role="status" style={{ padding: '14px 0' }}>
-                正在加载告警…
-              </div>
+              <TableSkeleton columns={5} />
             ) : alerts.length === 0 ? (
               <Empty title="没有符合条件的告警" description="调整严重级、类型或时间范围后再试" />
             ) : (

@@ -30,6 +30,7 @@ import {
   useGetAddressBookGrantsQuery,
 } from '../../store/api'
 import { ConfirmDelete } from './AddressBookDialogs'
+import { FormLoading, TableSkeleton } from '../../components/Skeleton'
 
 const KIND_LABELS: Record<AddressBookGrantKind, string> = {
   user: '成员',
@@ -123,9 +124,7 @@ export default function BookGrantsPanel({
       </div>
       <div className="card-body tight" style={{ overflowX: 'auto' }}>
         {isLoading ? (
-          <div className="help" role="status" style={{ padding: '14px 0' }}>
-            正在加载授权…
-          </div>
+          <TableSkeleton columns={4} rows={4} />
         ) : error ? (
           <div>
             <Banner
@@ -308,6 +307,9 @@ function GrantDialog({
   const activeMembers = members.filter(
     (member) => !member.disabled || member.user_id === initial?.subject_user_id,
   )
+  const loadingDictionaries =
+    (form.kind === 'user' && memberState.loading) ||
+    (form.kind === 'user_group' && groupState.loading)
 
   function patch(next: Partial<GrantForm>) {
     setForm((prev) => ({ ...prev, ...next }))
@@ -341,7 +343,12 @@ function GrantDialog({
           <button className="btn tertiary" type="button" disabled={isLoading} onClick={onClose}>
             取消
           </button>
-          <button className="btn primary" type="button" disabled={isLoading} onClick={submit}>
+          <button
+            className="btn primary"
+            type="button"
+            disabled={isLoading || loadingDictionaries}
+            onClick={submit}
+          >
             {isLoading ? '保存中…' : existing ? '更新' : '添加'}
           </button>
         </>
@@ -353,154 +360,154 @@ function GrantDialog({
         </div>
       ) : null}
 
-      <div className="field mb-14">
-        <label className="form-label">主体类型</label>
-        <div className="chips" role="group" aria-label="主体类型" style={{ margin: 0 }}>
-          {(['user', 'user_group', 'everyone'] as AddressBookGrantKind[]).map((kind) => (
-            <button
-              key={kind}
-              type="button"
-              className={`chip-btn ${form.kind === kind ? 'on' : ''}`}
-              aria-pressed={form.kind === kind}
-              disabled={
-                Boolean(initial) ||
-                (kind === 'user_group' && (!canManageGroups || groups.length === 0))
-              }
-              title={
-                kind === 'user_group' && !canManageGroups
-                  ? '列用户组需要 access.manage 权限'
-                  : undefined
-              }
-              onClick={() => patch({ kind, userId: '', groupId: '' })}
-            >
-              {KIND_LABELS[kind]}
-            </button>
-          ))}
-        </div>
-        {initial ? (
-          <div className="help">已存在授权的主体不可更改；如需更换主体，请撤销后重新添加。</div>
-        ) : null}
-        {!canManageGroups ? (
-          <div className="help">当前角色没有 access.manage，无法列用户组，因此不能按组授权。</div>
-        ) : null}
-        {canManageGroups && groupState.error ? (
-          <DictionaryError
-            message={
-              groups.length === 0
-                ? '加载用户组失败，暂时无法按组授权。'
-                : '刷新用户组列表失败，当前显示的是上次结果。'
-            }
-            onRetry={groupState.retry}
-          />
-        ) : null}
-      </div>
-
-      {form.kind === 'user' ? (
+      <FormLoading active={loadingDictionaries} label="正在加载授权选项…">
         <div className="field mb-14">
-          <label className="form-label">
-            <span className="req">*</span>成员
-          </label>
-          <select
-            className="select-native"
-            aria-label="成员"
-            value={form.userId}
-            disabled={Boolean(initial)}
-            onChange={(event) => patch({ userId: event.target.value })}
-          >
-            <option value="">请选择成员</option>
-            {activeMembers.map((member) => (
-              <option key={member.user_id} value={String(member.user_id)}>
-                {member.email}
-              </option>
+          <label className="form-label">主体类型</label>
+          <div className="chips" role="group" aria-label="主体类型" style={{ margin: 0 }}>
+            {(['user', 'user_group', 'everyone'] as AddressBookGrantKind[]).map((kind) => (
+              <button
+                key={kind}
+                type="button"
+                className={`chip-btn ${form.kind === kind ? 'on' : ''}`}
+                aria-pressed={form.kind === kind}
+                disabled={
+                  Boolean(initial) ||
+                  (kind === 'user_group' && (!canManageGroups || groups.length === 0))
+                }
+                title={
+                  kind === 'user_group' && !canManageGroups
+                    ? '列用户组需要 access.manage 权限'
+                    : undefined
+                }
+                onClick={() => patch({ kind, userId: '', groupId: '' })}
+              >
+                {KIND_LABELS[kind]}
+              </button>
             ))}
-            {initial?.subject_user_id &&
-            !members.some((member) => member.user_id === initial.subject_user_id) ? (
-              <option value={String(initial.subject_user_id)}>
-                用户 #{initial.subject_user_id}（不在成员字典中）
-              </option>
-            ) : null}
-          </select>
-          {errors.userId ? <div className="help err">{errors.userId}</div> : null}
-          {memberState.error ? (
+          </div>
+          {initial ? (
+            <div className="help">已存在授权的主体不可更改；如需更换主体，请撤销后重新添加。</div>
+          ) : null}
+          {!canManageGroups ? (
+            <div className="help">当前角色没有 access.manage，无法列用户组，因此不能按组授权。</div>
+          ) : null}
+          {canManageGroups && groupState.error ? (
             <DictionaryError
               message={
-                activeMembers.length === 0
-                  ? '加载成员失败，暂时无法选择成员。'
-                  : '刷新成员列表失败，当前显示的是上次结果。'
+                groups.length === 0
+                  ? '加载用户组失败，暂时无法按组授权。'
+                  : '刷新用户组列表失败，当前显示的是上次结果。'
               }
-              onRetry={memberState.retry}
+              onRetry={groupState.retry}
             />
-          ) : activeMembers.length === 0 ? (
-            <div className="help">
-              {memberState.loading ? '正在加载成员…' : '没有可选的活跃成员。'}
-            </div>
           ) : null}
         </div>
-      ) : null}
 
-      {form.kind === 'user_group' ? (
-        <div className="field mb-14">
-          <label className="form-label">
-            <span className="req">*</span>用户组
-          </label>
-          <select
-            className="select-native"
-            aria-label="用户组"
-            value={form.groupId}
-            disabled={Boolean(initial)}
-            onChange={(event) => patch({ groupId: event.target.value })}
-          >
-            <option value="">请选择用户组</option>
-            {groups.map((group) => (
-              <option key={group.id} value={String(group.id)}>
-                {group.name}
-              </option>
-            ))}
-            {initial?.subject_group_id &&
-            !groups.some((group) => group.id === initial.subject_group_id) ? (
-              <option value={String(initial.subject_group_id)}>
-                用户组 #{initial.subject_group_id}（不在用户组列表中）
-              </option>
-            ) : null}
-          </select>
-          {errors.groupId ? <div className="help err">{errors.groupId}</div> : null}
-          <div className="help">内置 everyone 组不在此列出；它对应下面的「所有人」。</div>
-        </div>
-      ) : null}
-
-      <div className="field mb-14">
-        <label className="form-label">访问级别</label>
-        <div className="chips" role="group" aria-label="访问级别" style={{ margin: 0 }}>
-          {GRANT_ACCESS.map((access) => (
-            <button
-              key={access}
-              type="button"
-              className={`chip-btn ${form.access === access ? 'on' : ''}`}
-              aria-pressed={form.access === access}
-              onClick={() => patch({ access })}
+        {form.kind === 'user' ? (
+          <div className="field mb-14">
+            <label className="form-label">
+              <span className="req">*</span>成员
+            </label>
+            <select
+              className="select-native"
+              aria-label="成员"
+              value={form.userId}
+              disabled={Boolean(initial)}
+              onChange={(event) => patch({ userId: event.target.value })}
             >
-              {accessLabel(access)}
-            </button>
-          ))}
-        </div>
-        <div className="help">
-          只读：可见 peers；可编辑 peers：可增删改整本 peers；完全管理：可改名、删除簿、管理授权。
-        </div>
-      </div>
+              <option value="">请选择成员</option>
+              {activeMembers.map((member) => (
+                <option key={member.user_id} value={String(member.user_id)}>
+                  {member.email}
+                </option>
+              ))}
+              {initial?.subject_user_id &&
+              !members.some((member) => member.user_id === initial.subject_user_id) ? (
+                <option value={String(initial.subject_user_id)}>
+                  用户 #{initial.subject_user_id}（不在成员字典中）
+                </option>
+              ) : null}
+            </select>
+            {errors.userId ? <div className="help err">{errors.userId}</div> : null}
+            {memberState.error ? (
+              <DictionaryError
+                message={
+                  activeMembers.length === 0
+                    ? '加载成员失败，暂时无法选择成员。'
+                    : '刷新成员列表失败，当前显示的是上次结果。'
+                }
+                onRetry={memberState.retry}
+              />
+            ) : activeMembers.length === 0 ? (
+              <div className="help">没有可选的活跃成员。</div>
+            ) : null}
+          </div>
+        ) : null}
 
-      {existing ? (
-        <div className="banner warning mb-14" style={{ padding: '9px 11px' }}>
-          <div>
-            该主体已有 <b>{accessLabel(existing.access)}</b> 授权；保存会更新为{' '}
-            <b>{accessLabel(form.access)}</b>。
+        {form.kind === 'user_group' ? (
+          <div className="field mb-14">
+            <label className="form-label">
+              <span className="req">*</span>用户组
+            </label>
+            <select
+              className="select-native"
+              aria-label="用户组"
+              value={form.groupId}
+              disabled={Boolean(initial)}
+              onChange={(event) => patch({ groupId: event.target.value })}
+            >
+              <option value="">请选择用户组</option>
+              {groups.map((group) => (
+                <option key={group.id} value={String(group.id)}>
+                  {group.name}
+                </option>
+              ))}
+              {initial?.subject_group_id &&
+              !groups.some((group) => group.id === initial.subject_group_id) ? (
+                <option value={String(initial.subject_group_id)}>
+                  用户组 #{initial.subject_group_id}（不在用户组列表中）
+                </option>
+              ) : null}
+            </select>
+            {errors.groupId ? <div className="help err">{errors.groupId}</div> : null}
+            <div className="help">内置 everyone 组不在此列出；它对应下面的「所有人」。</div>
+          </div>
+        ) : null}
+
+        <div className="field mb-14">
+          <label className="form-label">访问级别</label>
+          <div className="chips" role="group" aria-label="访问级别" style={{ margin: 0 }}>
+            {GRANT_ACCESS.map((access) => (
+              <button
+                key={access}
+                type="button"
+                className={`chip-btn ${form.access === access ? 'on' : ''}`}
+                aria-pressed={form.access === access}
+                onClick={() => patch({ access })}
+              >
+                {accessLabel(access)}
+              </button>
+            ))}
+          </div>
+          <div className="help">
+            只读：可见 peers；可编辑 peers：可增删改整本 peers；完全管理：可改名、删除簿、管理授权。
           </div>
         </div>
-      ) : null}
-      {impact ? (
-        <div className="banner info" style={{ padding: '9px 11px' }}>
-          <div>{impact}</div>
-        </div>
-      ) : null}
+
+        {existing ? (
+          <div className="banner warning mb-14" style={{ padding: '9px 11px' }}>
+            <div>
+              该主体已有 <b>{accessLabel(existing.access)}</b> 授权；保存会更新为{' '}
+              <b>{accessLabel(form.access)}</b>。
+            </div>
+          </div>
+        ) : null}
+        {impact ? (
+          <div className="banner info" style={{ padding: '9px 11px' }}>
+            <div>{impact}</div>
+          </div>
+        ) : null}
+      </FormLoading>
     </Modal>
   )
 }

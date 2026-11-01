@@ -20,6 +20,7 @@ import {
 } from '../../store/api'
 import MemberAssignments from './MemberAssignments'
 import RoleEditor from './RoleEditor'
+import { CardSkeleton, TableSkeleton } from '../../components/Skeleton'
 
 export default function ControlRolesPage() {
   const { orgId } = useParams()
@@ -66,9 +67,7 @@ export default function ControlRolesPage() {
       <section className="page on">
         <div className="card">
           <div className="card-body">
-            <div className="help" role="status">
-              正在加载权限…
-            </div>
+            <CardSkeleton lines={2} />
           </div>
         </div>
       </section>
@@ -163,9 +162,7 @@ export default function ControlRolesPage() {
         <div className="card" style={{ overflow: 'hidden' }}>
           <div className="card-body tight" style={{ overflowX: 'auto' }}>
             {rolesLoading && !roles ? (
-              <div className="help" role="status" style={{ padding: '14px 0' }}>
-                正在加载控制角色…
-              </div>
+              <TableSkeleton columns={5} />
             ) : (
               <table className="table">
                 <thead>

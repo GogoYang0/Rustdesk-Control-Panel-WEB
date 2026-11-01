@@ -13,6 +13,7 @@ import { formatTime } from '../../lib/format'
 import { totalPages } from '../../lib/paging'
 import { useGetAuditLogPageQuery, useGetMembersQuery } from '../../store/api'
 import { AuditLogSheet } from './AuditSheets'
+import { TableSkeleton } from '../../components/Skeleton'
 
 export interface AuditTabProps {
   orgId: number
@@ -96,9 +97,7 @@ export default function AuditLogTab({
         <div className="card" style={{ overflow: 'hidden' }}>
           <div className="card-body tight" style={{ overflowX: 'auto' }}>
             {loadingCurrent ? (
-              <div className="help" role="status" style={{ padding: '14px 0' }}>
-                正在加载审计记录…
-              </div>
+              <TableSkeleton columns={6} />
             ) : rows.length === 0 ? (
               <Empty
                 title="没有符合条件的审计记录"

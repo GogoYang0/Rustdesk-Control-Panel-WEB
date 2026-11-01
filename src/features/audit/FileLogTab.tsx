@@ -8,6 +8,7 @@ import { totalPages } from '../../lib/paging'
 import { useGetDevicesQuery, useGetFileLogPageQuery } from '../../store/api'
 import type { AuditTabProps } from './AuditLogTab'
 import { FileLogSheet } from './AuditSheets'
+import { TableSkeleton } from '../../components/Skeleton'
 
 export default function FileLogTab({
   orgId,
@@ -84,9 +85,7 @@ export default function FileLogTab({
         <div className="card" style={{ overflow: 'hidden' }}>
           <div className="card-body tight" style={{ overflowX: 'auto' }}>
             {loadingCurrent ? (
-              <div className="help" role="status" style={{ padding: '14px 0' }}>
-                正在加载文件日志…
-              </div>
+              <TableSkeleton columns={9} />
             ) : rows.length === 0 ? (
               <Empty
                 title="没有符合条件的文件日志"

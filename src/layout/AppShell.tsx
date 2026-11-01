@@ -1,5 +1,14 @@
 import { Toast } from '@douyinfe/semi-ui'
-import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+  type ReactElement,
+} from 'react'
+import { flushSync } from 'react-dom'
 import { Navigate, Outlet, useLocation, useNavigate, useParams } from 'react-router'
 
 import CreateOrgDialog from '../features/orgs/CreateOrgDialog'
@@ -13,6 +22,8 @@ import { store } from '../store'
 import { panelApi } from '../store/api'
 import { applyThemeMode, getStoredTheme, type ThemeMode } from '../lib/theme'
 import { useGetMeQuery } from '../store/api'
+import TopProgress from './TopProgress'
+import usePageReveal from './usePageReveal'
 
 interface NavEntry {
   key: string
@@ -378,6 +389,9 @@ export default function AppShell() {
   const [tabs, setTabs] = useState<string[]>([])
   const tabbarRef = useRef<HTMLDivElement>(null)
   const [theme, setTheme] = useState<ThemeMode>(() => getStoredTheme())
+  const contentRef = useRef<HTMLDivElement>(null)
+  const themeRevealRef = useRef(false)
+  usePageReveal(contentRef, location.pathname, Boolean(me))
 
   useEffect(() => {
     setLogoutHandler(() => {
@@ -389,9 +403,51 @@ export default function AppShell() {
     return () => setLogoutHandler(null)
   }, [navigate])
 
-  useEffect(() => {
-    applyThemeMode(theme)
+  useLayoutEffect(() => {
+    applyThemeMode(theme, { transition: !themeRevealRef.current })
+    themeRevealRef.current = false
   }, [theme])
+
+  function changeTheme(next: ThemeMode, event: MouseEvent<HTMLButtonElement>) {
+    const doc = document as Document & {
+      startViewTransition?: (callback: () => void) => { ready: Promise<void> }
+    }
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+    if (!doc.startViewTransition || reduce) {
+      setTheme(next)
+      return
+    }
+    const rect = event.currentTarget.getBoundingClientRect()
+    const x = rect.left + rect.width / 2
+    const y = rect.top + rect.height / 2
+    const radius = Math.hypot(
+      Math.max(x, window.innerWidth - x),
+      Math.max(y, window.innerHeight - y),
+    )
+    themeRevealRef.current = true
+    let transition: { ready: Promise<void> }
+    try {
+      transition = doc.startViewTransition(() => {
+        flushSync(() => setTheme(next))
+      })
+    } catch {
+      themeRevealRef.current = false
+      setTheme(next)
+      return
+    }
+    transition.ready
+      .then(() => {
+        document.documentElement.animate(
+          { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+          {
+            duration: 520,
+            easing: 'cubic-bezier(.4, 0, .2, 1)',
+            pseudoElement: '::view-transition-new(root)',
+          },
+        )
+      })
+      .catch(() => undefined)
+  }
 
   // A mobile drawer is route-scoped: navigation or Escape closes it.
   useEffect(() => {
@@ -532,6 +588,7 @@ export default function AppShell() {
 
   return (
     <div className="shell">
+      <TopProgress />
       <aside
         id="app-side"
         ref={drawerRef}
@@ -679,6 +736,36 @@ export default function AppShell() {
           ))}
         </nav>
 
+        <button
+          type="button"
+          className="nav-item side-collapse"
+          title={collapsed ? '展开侧边栏' : '收起侧边栏'}
+          onClick={() => {
+            if (isMobile) {
+              setSideOpen(false)
+              return
+            }
+            setCollapsed((value) => !value)
+          }}
+        >
+          <span className="ic">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="1.8" y="2.5" width="12.4" height="11" rx="1.5" />
+              <path d="M6 2.5v11" />
+              {collapsed ? <path d="M8.5 6.5L11 8l-2.5 1.5" /> : <path d="M11 6.5L8.5 8 11 9.5" />}
+            </svg>
+          </span>
+          <span className="txt">{collapsed ? '展开侧边栏' : '收起侧边栏'}</span>
+        </button>
         <div className="side-foot">
           <div className="ver-row">
             <span className="live" />
@@ -687,40 +774,6 @@ export default function AppShell() {
             </span>
           </div>
           <div className="copyright">© 2026 RustDesk Panel</div>
-          <button
-            type="button"
-            className="nav-item side-collapse"
-            title={collapsed ? '展开侧边栏' : '收起侧边栏'}
-            onClick={() => {
-              if (isMobile) {
-                setSideOpen(false)
-                return
-              }
-              setCollapsed((value) => !value)
-            }}
-          >
-            <span className="ic">
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <rect x="1.8" y="2.5" width="12.4" height="11" rx="1.5" />
-                <path d="M6 2.5v11" />
-                {collapsed ? (
-                  <path d="M8.5 6.5L11 8l-2.5 1.5" />
-                ) : (
-                  <path d="M11 6.5L8.5 8 11 9.5" />
-                )}
-              </svg>
-            </span>
-            <span className="txt">{collapsed ? '展开侧边栏' : '收起侧边栏'}</span>
-          </button>
         </div>
       </aside>
       {sideOpen ? (
@@ -865,7 +918,7 @@ export default function AppShell() {
               type="button"
               className={theme === 'light' ? 'on' : ''}
               title="浅色"
-              onClick={() => setTheme('light')}
+              onClick={(event) => changeTheme('light', event)}
             >
               <svg
                 width="14"
@@ -884,7 +937,7 @@ export default function AppShell() {
               type="button"
               className={theme === 'dark' ? 'on' : ''}
               title="深色"
-              onClick={() => setTheme('dark')}
+              onClick={(event) => changeTheme('dark', event)}
             >
               <svg
                 width="14"
@@ -902,7 +955,7 @@ export default function AppShell() {
               type="button"
               className={theme === 'auto' ? 'on' : ''}
               title="跟随系统"
-              onClick={() => setTheme('auto')}
+              onClick={(event) => changeTheme('auto', event)}
             >
               <svg
                 width="14"
@@ -1023,7 +1076,7 @@ export default function AppShell() {
           ))}
         </div>
 
-        <div className="content">
+        <div className="content" ref={contentRef}>
           <Outlet />
         </div>
       </div>

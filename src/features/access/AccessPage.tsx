@@ -6,6 +6,7 @@ import { useGetMeQuery } from '../../store/api'
 import DeviceGroupsTab from './DeviceGroupsTab'
 import RulesTab from './RulesTab'
 import UserGroupsTab from './UserGroupsTab'
+import { CardSkeleton } from '../../components/Skeleton'
 
 const TABS = ['rules', 'user-groups', 'device-groups'] as const
 type AccessTab = (typeof TABS)[number]
@@ -62,9 +63,7 @@ export default function AccessPage() {
       <section className="page on">
         <div className="card">
           <div className="card-body">
-            <div className="help" role="status">
-              正在加载权限…
-            </div>
+            <CardSkeleton lines={2} />
           </div>
         </div>
       </section>

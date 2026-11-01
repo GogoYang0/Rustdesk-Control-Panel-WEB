@@ -22,6 +22,7 @@ import {
 } from '../../store/api'
 import { ConfirmDelete } from '../addressbooks/AddressBookDialogs'
 import { ErrorBanner, SaveDialog } from './AccessDialogs'
+import { TableSkeleton } from '../../components/Skeleton'
 
 const TARGET_KINDS: AccessRuleTargetKind[] = ['device_group', 'user_group', 'all_devices']
 
@@ -100,9 +101,7 @@ export default function RulesTab({ orgId }: { orgId: number }) {
         {!error || rules ? (
           <div className="card-body tight" style={{ overflowX: 'auto' }}>
             {loadingCurrent ? (
-              <div className="help" role="status" style={{ padding: '14px 0' }}>
-                正在加载访问规则…
-              </div>
+              <TableSkeleton columns={4} />
             ) : (rules ?? []).length === 0 ? (
               <Empty title="还没有访问规则" description="新建规则后，组成员才能访问对应设备" />
             ) : (

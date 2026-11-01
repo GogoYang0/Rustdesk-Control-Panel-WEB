@@ -13,6 +13,7 @@ import {
   useUpdatePolicyMutation,
 } from '../../store/api'
 import PolicyDialog from './PolicyDialog'
+import { CardSkeleton } from '../../components/Skeleton'
 
 type OverlayBody =
   { kind: 'create' } | { kind: 'edit'; policy: Policy } | { kind: 'delete'; policy: Policy }
@@ -186,9 +187,7 @@ export default function PoliciesPage() {
       {loadingCurrent ? (
         <div className="card">
           <div className="card-body">
-            <div className="help" role="status">
-              正在加载策略…
-            </div>
+            <CardSkeleton lines={3} />
           </div>
         </div>
       ) : error && !data ? null : policies.length === 0 ? (

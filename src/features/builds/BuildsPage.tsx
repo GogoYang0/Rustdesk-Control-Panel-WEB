@@ -11,6 +11,7 @@ import {
 import { useGetClientBuildCapabilitiesQuery, useGetMeQuery } from '../../store/api'
 import BuildsSection from './BuildsSection'
 import ProfilesSection from './ProfilesSection'
+import { CardSkeleton } from '../../components/Skeleton'
 
 export default function BuildsPage() {
   const { orgId } = useParams()
@@ -37,9 +38,7 @@ export default function BuildsPage() {
       <section className="page on">
         <div className="card">
           <div className="card-body">
-            <div className="help" role="status">
-              正在加载权限…
-            </div>
+            <CardSkeleton lines={2} />
           </div>
         </div>
       </section>
