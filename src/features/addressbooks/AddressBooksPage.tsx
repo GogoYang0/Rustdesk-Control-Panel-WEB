@@ -11,6 +11,7 @@ import {
   useGetMeQuery,
 } from '../../store/api'
 import { BookDialog, ConfirmDelete } from './AddressBookDialogs'
+import { CardSkeleton } from '../../components/Skeleton'
 
 export default function AddressBooksPage() {
   const { orgId } = useParams()
@@ -101,9 +102,7 @@ export default function AddressBooksPage() {
       {loading ? (
         <div className="card">
           <div className="card-body">
-            <div className="help" role="status">
-              正在加载地址簿…
-            </div>
+            <CardSkeleton lines={2} />
           </div>
         </div>
       ) : error && !books ? null : (books ?? []).length === 0 ? (

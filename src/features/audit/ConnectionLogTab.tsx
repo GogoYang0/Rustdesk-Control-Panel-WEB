@@ -13,6 +13,7 @@ import { totalPages } from '../../lib/paging'
 import { useGetConnectionLogPageQuery, useGetDevicesQuery } from '../../store/api'
 import type { AuditTabProps } from './AuditLogTab'
 import { ConnectionLogSheet } from './AuditSheets'
+import { TableSkeleton } from '../../components/Skeleton'
 
 export default function ConnectionLogTab({
   orgId,
@@ -89,9 +90,7 @@ export default function ConnectionLogTab({
         <div className="card" style={{ overflow: 'hidden' }}>
           <div className="card-body tight" style={{ overflowX: 'auto' }}>
             {loadingCurrent ? (
-              <div className="help" role="status" style={{ padding: '14px 0' }}>
-                正在加载连接日志…
-              </div>
+              <TableSkeleton columns={8} />
             ) : rows.length === 0 ? (
               <Empty
                 title="没有符合条件的连接日志"

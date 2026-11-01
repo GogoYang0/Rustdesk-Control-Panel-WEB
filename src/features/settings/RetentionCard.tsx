@@ -8,6 +8,7 @@ import { formatTime } from '../../lib/format'
 import { readArchiveSummary, retentionDaysProblem, settingsError } from '../../lib/settings'
 import type { AppDispatch } from '../../store'
 import { panelApi, useGetAuditRetentionQuery } from '../../store/api'
+import { CardSkeleton } from '../../components/Skeleton'
 
 export default function RetentionCard({ orgId }: { orgId: number }) {
   const dispatch = useDispatch<AppDispatch>()
@@ -101,9 +102,7 @@ export default function RetentionCard({ orgId }: { orgId: number }) {
           ) : null}
 
           {loading ? (
-            <div className="help" role="status">
-              正在加载审计保留…
-            </div>
+            <CardSkeleton lines={3} />
           ) : !data ? (
             <div className="help">审计保留不可用。</div>
           ) : (

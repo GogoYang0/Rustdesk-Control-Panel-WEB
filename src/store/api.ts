@@ -1,5 +1,7 @@
 import { createApi, fakeBaseQuery } from '@reduxjs/toolkit/query/react'
 
+import { beginRequest, endRequest } from '../lib/progress'
+
 import {
   ApiError,
   assignMemberControlRole as assignMemberControlRoleRequest,
@@ -164,10 +166,13 @@ import {
 } from '../lib/api'
 
 async function wrap<T>(fn: () => Promise<T>): Promise<{ data: T } | { error: ApiError }> {
+  beginRequest()
   try {
     return { data: await fn() }
   } catch (err) {
     return { error: err instanceof ApiError ? err : new ApiError(0, 'internal', String(err)) }
+  } finally {
+    endRequest()
   }
 }
 

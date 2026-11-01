@@ -6,6 +6,7 @@ import OrgCard from './OrgCard'
 import ProviderCard from './ProviderCard'
 import ProvisioningCard from './ProvisioningCard'
 import RetentionCard from './RetentionCard'
+import { CardSkeleton } from '../../components/Skeleton'
 
 export default function SettingsPage() {
   const { orgId } = useParams()
@@ -22,9 +23,7 @@ export default function SettingsPage() {
       <section className="page on">
         <div className="card">
           <div className="card-body">
-            <div className="help" role="status">
-              正在加载系统设置…
-            </div>
+            <CardSkeleton lines={2} />
           </div>
         </div>
       </section>

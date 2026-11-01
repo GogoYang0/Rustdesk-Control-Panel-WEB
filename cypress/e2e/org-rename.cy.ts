@@ -67,8 +67,9 @@ import { consoleE2EEnabled, openConsole, signIn } from '../support/console'
       cy.get('.page-sub').should('contain', renamedTo)
 
       // The switcher reads the same /me cache; opening it proves the patched
-      // name reaches the shell without a refetch.
-      cy.get('.org-switch').click()
+      // name reaches the shell without a refetch. The success toast can overlap
+      // the topbar, so bypass hit testing while keeping the click event.
+      cy.get('.org-switch').click({ force: true })
       cy.get('.org-menu-item').contains(renamedTo).should('exist')
       cy.get('.org-scrim').click()
 

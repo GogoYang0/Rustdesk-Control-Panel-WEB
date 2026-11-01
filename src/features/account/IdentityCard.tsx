@@ -10,6 +10,7 @@ import { formatTime } from '../../lib/format'
 import { webAuthnErrorMessage } from '../../lib/webauthn'
 import { panelApi, useGetIdentitiesQuery } from '../../store/api'
 import { useStepup } from './useStepup'
+import { ListSkeleton } from '../../components/Skeleton'
 
 type Proof = 'password' | 'stepup'
 
@@ -125,9 +126,7 @@ export default function IdentityCard({
                 </div>
               ) : null}
               {loading ? (
-                <div className="help" role="status">
-                  正在加载外部身份…
-                </div>
+                <ListSkeleton rows={2} />
               ) : identities.length === 0 ? (
                 <div className="help">还没有外部身份绑定。</div>
               ) : (

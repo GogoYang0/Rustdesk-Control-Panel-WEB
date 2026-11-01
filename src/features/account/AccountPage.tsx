@@ -10,6 +10,7 @@ import PasskeyCard from './PasskeyCard'
 import PasswordCard from './PasswordCard'
 import TokenCard from './TokenCard'
 import TotpCard from './TotpCard'
+import { CardSkeleton } from '../../components/Skeleton'
 
 const ACCOUNT_TABS = ['credentials', 'tokens', 'identities'] as const
 type AccountTab = (typeof ACCOUNT_TABS)[number]
@@ -77,9 +78,7 @@ export default function AccountPage() {
       <section className="page on">
         <div className="card">
           <div className="card-body">
-            <div className="help" role="status">
-              正在加载账户…
-            </div>
+            <CardSkeleton lines={2} />
           </div>
         </div>
       </section>

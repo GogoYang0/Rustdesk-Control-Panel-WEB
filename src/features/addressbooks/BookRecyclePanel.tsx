@@ -17,6 +17,7 @@ import {
 } from '../../store/api'
 import { ConfirmDelete } from './AddressBookDialogs'
 import TagChips from './TagChips'
+import { TableSkeleton } from '../../components/Skeleton'
 
 interface Props {
   orgId: number
@@ -95,9 +96,7 @@ export default function BookRecyclePanel({ orgId, bookId, emails, tagColors }: P
       {loading ? (
         <div className="card">
           <div className="card-body">
-            <div className="help" role="status">
-              正在加载回收站…
-            </div>
+            <TableSkeleton columns={4} rows={4} />
           </div>
         </div>
       ) : error && !items ? null : (items ?? []).length === 0 ? (

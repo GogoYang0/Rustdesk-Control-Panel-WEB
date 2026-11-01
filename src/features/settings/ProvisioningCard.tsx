@@ -7,6 +7,7 @@ import { updateProvisioning } from '../../lib/api'
 import { provisioningStateLabel, provisioningStateTone, settingsError } from '../../lib/settings'
 import type { AppDispatch } from '../../store'
 import { panelApi, useGetProvisioningQuery } from '../../store/api'
+import { CardSkeleton } from '../../components/Skeleton'
 
 type Action = 'enable' | 'disable' | 'cleanup' | null
 
@@ -113,9 +114,7 @@ export default function ProvisioningCard({ orgId }: { orgId: number }) {
           ) : null}
 
           {loading ? (
-            <div className="help" role="status">
-              正在加载供应状态…
-            </div>
+            <CardSkeleton lines={3} />
           ) : !data ? (
             <div className="help">供应状态不可用。</div>
           ) : (

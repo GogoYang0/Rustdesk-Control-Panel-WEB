@@ -15,6 +15,7 @@ import {
 } from '../../store/api'
 import { ConfirmDelete } from '../addressbooks/AddressBookDialogs'
 import { ErrorBanner, GroupNameDialog, SaveDialog } from './AccessDialogs'
+import { TableSkeleton } from '../../components/Skeleton'
 
 export default function UserGroupsTab({ orgId }: { orgId: number }) {
   const {
@@ -93,9 +94,7 @@ export default function UserGroupsTab({ orgId }: { orgId: number }) {
         {!error || groups ? (
           <div className="card-body tight" style={{ overflowX: 'auto' }}>
             {loadingCurrent ? (
-              <div className="help" role="status" style={{ padding: '14px 0' }}>
-                正在加载用户组…
-              </div>
+              <TableSkeleton columns={5} />
             ) : (groups ?? []).length === 0 ? (
               <Empty title="还没有用户组" description="新建用户组后即可按组配置访问规则" />
             ) : (

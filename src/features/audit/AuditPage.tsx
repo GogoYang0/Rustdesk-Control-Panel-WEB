@@ -24,6 +24,7 @@ import AuditFilterInput from './AuditFilterInput'
 import AuditLogTab from './AuditLogTab'
 import ConnectionLogTab from './ConnectionLogTab'
 import FileLogTab from './FileLogTab'
+import { CardSkeleton } from '../../components/Skeleton'
 
 export default function AuditPage() {
   const { orgId } = useParams()
@@ -123,9 +124,7 @@ export default function AuditPage() {
       <section className="page on">
         <div className="card">
           <div className="card-body">
-            <div className="help" role="status">
-              正在加载权限…
-            </div>
+            <CardSkeleton lines={2} />
           </div>
         </div>
       </section>

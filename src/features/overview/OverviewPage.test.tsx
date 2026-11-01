@@ -192,10 +192,22 @@ describe('OverviewPage', () => {
     ]) {
       const card = await screen.findByTestId(id)
       expect(card.querySelector('.stat-ring')).toBeTruthy()
+      expect(card.querySelector('.stat-icon')).toBeTruthy()
+      expect(card.querySelector('.stat-spot')).toBeTruthy()
+      expect(card.querySelector('.stat-dots')).toBeTruthy()
       expect(card.getAttribute('style')).toContain('--stat-accent')
     }
     fireEvent.pointerEnter(device)
     expect(device.getAttribute('data-flow')).toBe('on')
+    const rect = vi
+      .spyOn(device, 'getBoundingClientRect')
+      .mockReturnValue(new DOMRect(10, 20, 100, 50))
+    fireEvent.pointerMove(device, { clientX: 50, clientY: 50 })
+    expect(device.style.getPropertyValue('--stat-x')).toBe('40px')
+    expect(device.style.getPropertyValue('--stat-y')).toBe('30px')
+    rect.mockRestore()
+    fireEvent.pointerLeave(device)
+    expect(device.getAttribute('data-flow')).toBeNull()
   })
 
   it('degrades the device card without sending a device request', async () => {

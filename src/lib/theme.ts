@@ -16,11 +16,16 @@ function resolve(mode: ThemeMode): 'light' | 'dark' {
   return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
-function paint(mode: ThemeMode) {
+function paint(mode: ThemeMode, transition: boolean) {
   const root = document.documentElement
-  root.classList.add('theme-switching')
+  if (transition) root.classList.add('theme-switching')
+  else root.classList.remove('theme-switching')
   root.dataset.theme = resolve(mode)
   if (transitionTimer) clearTimeout(transitionTimer)
+  if (!transition) {
+    transitionTimer = null
+    return
+  }
   transitionTimer = setTimeout(() => {
     root.classList.remove('theme-switching')
     transitionTimer = null
@@ -32,9 +37,9 @@ function paint(mode: ThemeMode) {
  * open. Called once from main.tsx so every route (login included) is themed, and
  * from the shell's switch on change.
  */
-export function applyThemeMode(mode: ThemeMode): void {
+export function applyThemeMode(mode: ThemeMode, options: { transition?: boolean } = {}): void {
   localStorage.setItem(THEME_KEY, mode)
-  paint(mode)
+  paint(mode, options.transition !== false)
 
   // Only follow the OS while `auto` is selected: a listener left behind would
   // repaint an explicit light/dark choice on the next system change.
@@ -45,7 +50,7 @@ export function applyThemeMode(mode: ThemeMode): void {
     autoHandler = null
   }
   if (mode === 'auto' && !autoHandler) {
-    autoHandler = () => paint('auto')
+    autoHandler = () => paint('auto', true)
     autoQuery = mq
     mq.addEventListener('change', autoHandler)
   }

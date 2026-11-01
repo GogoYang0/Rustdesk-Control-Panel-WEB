@@ -26,6 +26,7 @@ import {
 } from '../../store/api'
 import ApprovalSheet from './ApprovalSheet'
 import DecisionDialog from './DecisionDialog'
+import { TableSkeleton } from '../../components/Skeleton'
 
 const STATUS_TABS: { status: ApprovalFilters['status']; label: string }[] = [
   { status: 'pending', label: '待处理' },
@@ -312,9 +313,7 @@ export default function ApprovalsPage() {
         <div className="card" style={{ overflow: 'hidden' }}>
           <div className="card-body tight" style={{ overflowX: 'auto' }}>
             {loadingCurrent ? (
-              <div className="help" role="status" style={{ padding: '14px 0' }}>
-                正在加载审批…
-              </div>
+              <TableSkeleton columns={5} />
             ) : approvals.length === 0 ? (
               <Empty
                 title="当前状态下没有审批"

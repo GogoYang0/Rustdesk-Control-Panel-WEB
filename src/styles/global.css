@@ -503,6 +503,7 @@ h1.page-title {
    the pointer leaves; re-entering resumes the forward flow from that angle. */
 .stat {
   --stat-accent: var(--primary);
+  isolation: isolate;
 }
 .stat::after {
   content: '';
@@ -518,16 +519,19 @@ h1.page-title {
     transparent
   );
   pointer-events: none;
+  z-index: 2;
 }
 .stat-ring {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  padding: 2px;
+  padding: 1.5px;
   background: conic-gradient(
     from calc(var(--stat-angle, 0deg) + 250deg),
-    var(--stat-accent) 0deg 40deg,
-    transparent 40deg
+    transparent 0deg 10deg,
+    color-mix(in srgb, var(--stat-accent) 35%, transparent) 16deg,
+    var(--stat-accent) 28deg,
+    transparent 42deg
   );
   -webkit-mask:
     linear-gradient(#000 0 0) content-box,
@@ -537,12 +541,177 @@ h1.page-title {
     linear-gradient(#000 0 0) content-box,
     linear-gradient(#000 0 0);
   mask-composite: exclude;
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--stat-accent) 55%, transparent));
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.12s ease;
+  z-index: 3;
+  transition: opacity 0.18s ease;
 }
 .stat[data-flow='on'] .stat-ring {
   opacity: 1;
+}
+.stat-spot,
+.stat-dots {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+.stat-spot {
+  z-index: 0;
+  background: radial-gradient(
+    180px circle at var(--stat-x, 50%) var(--stat-y, 50%),
+    color-mix(in srgb, var(--stat-accent) 20%, transparent),
+    transparent 68%
+  );
+}
+.stat-dots {
+  z-index: 1;
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--stat-accent) 48%, transparent) 1px,
+    transparent 1.4px
+  );
+  background-size: 14px 14px;
+  -webkit-mask-image: radial-gradient(
+    150px circle at var(--stat-x, 50%) var(--stat-y, 50%),
+    #000 0%,
+    transparent 74%
+  );
+  mask-image: radial-gradient(
+    150px circle at var(--stat-x, 50%) var(--stat-y, 50%),
+    #000 0%,
+    transparent 74%
+  );
+}
+.stat:hover .stat-spot,
+.stat:hover .stat-dots {
+  opacity: 1;
+}
+.stat-top {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.stat-icon {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  color: var(--stat-accent);
+  background: color-mix(in srgb, var(--stat-accent) 14%, transparent);
+}
+.stat .val,
+.stat .help {
+  position: relative;
+  z-index: 4;
+}
+
+/* Skeleton placeholders keep the same row/card rhythm as real content. */
+.skeleton-line {
+  display: inline-block;
+  vertical-align: middle;
+  border-radius: 5px;
+  background: linear-gradient(100deg, var(--fill-0) 22%, var(--fill-1) 38%, var(--fill-0) 54%);
+  background-size: 220% 100%;
+  animation: skeleton-shimmer 1.4s linear infinite;
+}
+@keyframes skeleton-shimmer {
+  from {
+    background-position: 140% 0;
+  }
+  to {
+    background-position: -80% 0;
+  }
+}
+.skeleton-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.skeleton-list {
+  display: flex;
+  flex-direction: column;
+}
+.skeleton-list-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.skeleton-list-row:last-child {
+  border-bottom: 0;
+}
+.skeleton-list-copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.skeleton-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex: none;
+}
+.skeleton-table-row {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 5), minmax(0, 1fr));
+  align-items: center;
+  gap: 16px;
+  padding: 14px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.skeleton-table-head {
+  padding: 10px 12px;
+  background: var(--bg-subtle);
+  border-top-left-radius: var(--radius-m);
+  border-top-right-radius: var(--radius-m);
+}
+.skeleton-table-row:last-child {
+  border-bottom: 0;
+}
+.form-area {
+  position: relative;
+}
+.form-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-m);
+  background: color-mix(in srgb, var(--bg-card) 58%, transparent);
+  backdrop-filter: blur(1.5px);
+}
+.form-spinner {
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--fill-1);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: form-spin 0.8s linear infinite;
+}
+@keyframes form-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-line,
+  .form-spinner {
+    animation: none;
+  }
 }
 
 /* Mobile login: the desktop min-height must not win over the responsive rule. */
@@ -565,5 +734,152 @@ h1.page-title {
   .login-page .login-card {
     width: 100%;
     max-width: 420px;
+  }
+}
+
+/* ── Page progress, entrance and theme reveal ───────────────────────────── */
+.top-progress {
+  position: fixed;
+  inset: 0 0 auto;
+  height: 2px;
+  z-index: 300;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+}
+.top-progress.on {
+  opacity: 1;
+}
+.top-progress span {
+  display: block;
+  height: 100%;
+  transform-origin: left center;
+  background: linear-gradient(90deg, var(--secondary), var(--primary), var(--accent));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--secondary) 55%, transparent);
+  transition: transform 0.18s ease;
+}
+.reveal-in {
+  animation: riseIn 0.55s var(--ease) both;
+  animation-delay: calc(var(--reveal-i, 0) * 55ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal-in {
+    animation: none;
+  }
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-new(root) {
+  clip-path: circle(0px at var(--theme-x, 50%) var(--theme-y, 50%));
+  will-change: clip-path;
+}
+
+/* Collapse entry sits above the version/copyright footer. */
+.side-collapse {
+  margin: 6px 8px 0;
+  width: calc(100% - 16px);
+  justify-content: center;
+}
+.side[data-collapsed='true'] .side-collapse {
+  width: 38px;
+  margin: 6px auto 0;
+}
+
+/* User card: email on one line, role emphasized on the next. */
+.user-chip .desk-only {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+.user-chip .nm {
+  display: block;
+  max-width: 220px;
+  font-size: 12.5px;
+  line-height: 15px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.shell .user-chip .rl {
+  display: inline-flex;
+  margin-top: 2px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.35px;
+  line-height: 14px;
+  text-transform: uppercase;
+}
+
+/* Organization picker avatars are circular. */
+.org-menu-item .org-ava {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+}
+
+/* Rows follow their card in reading order without animating large tables. */
+.reveal-in .table tbody tr:nth-child(-n + 8) {
+  animation: riseIn 0.4s var(--ease) both;
+}
+.reveal-in .table tbody tr:nth-child(1) {
+  animation-delay: 0.16s;
+}
+.reveal-in .table tbody tr:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.reveal-in .table tbody tr:nth-child(3) {
+  animation-delay: 0.24s;
+}
+.reveal-in .table tbody tr:nth-child(4) {
+  animation-delay: 0.28s;
+}
+.reveal-in .table tbody tr:nth-child(5) {
+  animation-delay: 0.32s;
+}
+.reveal-in .table tbody tr:nth-child(6) {
+  animation-delay: 0.36s;
+}
+.reveal-in .table tbody tr:nth-child(7) {
+  animation-delay: 0.4s;
+}
+.reveal-in .table tbody tr:nth-child(8) {
+  animation-delay: 0.44s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal-in .table tbody tr:nth-child(-n + 8) {
+    animation: none;
+  }
+}
+
+.theme-circle {
+  position: fixed;
+  z-index: 299;
+  pointer-events: none;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  will-change: transform, opacity;
+  opacity: 1;
+  transition: transform 0.46s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.theme-circle.grow {
+  transform: translate(-50%, -50%) scale(1);
+}
+.theme-circle.fade {
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+@media (max-width: 767px) {
+  html.theme-transitioning body *,
+  html.theme-transitioning body *::before,
+  html.theme-transitioning body *::after {
+    animation-play-state: paused !important;
   }
 }

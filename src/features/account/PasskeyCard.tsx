@@ -18,6 +18,7 @@ import {
   webAuthnSupported,
   type CreationOptions,
 } from '../../lib/webauthn'
+import { ListSkeleton } from '../../components/Skeleton'
 
 function passkeyFailure(
   err: unknown,
@@ -146,9 +147,7 @@ export default function PasskeyCard({
               <div>{accountSecurityError(error, 'passkey')}</div>
             </div>
           ) : loading ? (
-            <div className="help" role="status">
-              正在加载 Passkey…
-            </div>
+            <ListSkeleton rows={2} />
           ) : passkeys.length === 0 ? (
             <div className="help">还没有 Passkey；添加后可用于快速登录与敏感操作验证。</div>
           ) : (

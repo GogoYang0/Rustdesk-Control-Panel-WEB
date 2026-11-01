@@ -34,6 +34,7 @@ import {
   useGetTicketQuery,
 } from '../../store/api'
 import RequestApprovalDialog from '../approvals/RequestApprovalDialog'
+import { TableSkeleton } from '../../components/Skeleton'
 
 const ORIGINS: { value: SessionFilters['origin']; label: string }[] = [
   { value: '', label: '全部来源' },
@@ -366,9 +367,7 @@ export default function SessionsPage() {
           </div>
           <div className="card-body tight" style={{ overflowX: 'auto' }}>
             {loadingCurrent ? (
-              <div className="help" style={{ padding: '14px 0' }}>
-                正在加载会话…
-              </div>
+              <TableSkeleton columns={8} />
             ) : sessions.length === 0 ? (
               <Empty
                 title="没有符合条件的会话"

@@ -1,5 +1,14 @@
 import { Toast } from '@douyinfe/semi-ui'
-import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+  type ReactElement,
+} from 'react'
+import { flushSync } from 'react-dom'
 import { Navigate, Outlet, useLocation, useNavigate, useParams } from 'react-router'
 
 import CreateOrgDialog from '../features/orgs/CreateOrgDialog'
@@ -13,6 +22,8 @@ import { store } from '../store'
 import { panelApi } from '../store/api'
 import { applyThemeMode, getStoredTheme, type ThemeMode } from '../lib/theme'
 import { useGetMeQuery } from '../store/api'
+import TopProgress from './TopProgress'
+import usePageReveal from './usePageReveal'
 
 interface NavEntry {
   key: string
@@ -349,6 +360,38 @@ const MOBILE_NAV: { key: string; label: string; permission?: string; icon: React
   { key: 'alerts', label: '告警', icon: ICONS.alerts },
 ]
 
+let themeRevealToken = 0
+
+function circularThemeFallback(x: number, y: number, radius: number, apply: () => void) {
+  const token = ++themeRevealToken
+  const root = document.documentElement
+  const background = getComputedStyle(root).getPropertyValue('--bg-app').trim() || '#fff'
+  const accent = getComputedStyle(root).getPropertyValue('--primary').trim() || '#0f4c81'
+  for (const existing of document.querySelectorAll('.theme-circle')) existing.remove()
+
+  const circle = document.createElement('span')
+  circle.className = 'theme-circle'
+  circle.style.left = `${x}px`
+  circle.style.top = `${y}px`
+  circle.style.width = `${radius * 2}px`
+  circle.style.height = `${radius * 2}px`
+  circle.style.background = background
+  circle.style.boxShadow = `inset 0 0 0 2px ${accent}`
+  document.body.appendChild(circle)
+  requestAnimationFrame(() => circle.classList.add('grow'))
+
+  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+  window.setTimeout(
+    () => {
+      if (token !== themeRevealToken) return
+      apply()
+      circle.classList.add('fade')
+      window.setTimeout(() => circle.remove(), 200)
+    },
+    reduce ? 320 : 460,
+  )
+}
+
 export default function AppShell() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -378,6 +421,9 @@ export default function AppShell() {
   const [tabs, setTabs] = useState<string[]>([])
   const tabbarRef = useRef<HTMLDivElement>(null)
   const [theme, setTheme] = useState<ThemeMode>(() => getStoredTheme())
+  const contentRef = useRef<HTMLDivElement>(null)
+  const themeRevealRef = useRef(false)
+  usePageReveal(contentRef, location.pathname, Boolean(me))
 
   useEffect(() => {
     setLogoutHandler(() => {
@@ -389,9 +435,77 @@ export default function AppShell() {
     return () => setLogoutHandler(null)
   }, [navigate])
 
-  useEffect(() => {
-    applyThemeMode(theme)
+  useLayoutEffect(() => {
+    applyThemeMode(theme, { transition: !themeRevealRef.current })
+    themeRevealRef.current = false
   }, [theme])
+
+  function changeTheme(next: ThemeMode, event: MouseEvent<HTMLButtonElement>) {
+    const doc = document as Document & {
+      startViewTransition?: (callback: () => void) => {
+        ready: Promise<void>
+        finished: Promise<void>
+      }
+    }
+    const rect = event.currentTarget.getBoundingClientRect()
+    const x = rect.left + rect.width / 2
+    const y = rect.top + rect.height / 2
+    const radius = Math.hypot(
+      Math.max(x, window.innerWidth - x),
+      Math.max(y, window.innerHeight - y),
+    )
+    if (!doc.startViewTransition) {
+      circularThemeFallback(x, y, radius, () => {
+        themeRevealRef.current = true
+        flushSync(() => setTheme(next))
+      })
+      return
+    }
+    themeRevealRef.current = true
+    const root = document.documentElement
+    root.style.setProperty('--theme-x', `${x}px`)
+    root.style.setProperty('--theme-y', `${y}px`)
+    let transition: { ready: Promise<void>; finished: Promise<void> }
+    const mobile = window.matchMedia?.('(max-width: 767px)').matches ?? false
+    try {
+      transition = doc.startViewTransition(() => {
+        // Freeze ambient page motion only in the incoming mobile frame; the
+        // outgoing frame is captured before this callback runs.
+        if (mobile) root.classList.add('theme-transitioning')
+        flushSync(() => setTheme(next))
+      })
+    } catch {
+      themeRevealRef.current = false
+      root.classList.remove('theme-transitioning')
+      root.style.removeProperty('--theme-x')
+      root.style.removeProperty('--theme-y')
+      circularThemeFallback(x, y, radius, () => {
+        themeRevealRef.current = true
+        flushSync(() => setTheme(next))
+      })
+      return
+    }
+    transition.finished
+      .then(() => {
+        root.classList.remove('theme-transitioning')
+        root.style.removeProperty('--theme-x')
+        root.style.removeProperty('--theme-y')
+      })
+      .catch(() => root.classList.remove('theme-transitioning'))
+    transition.ready
+      .then(() => {
+        document.documentElement.animate(
+          { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+          {
+            duration: window.matchMedia?.('(max-width: 767px)').matches ? 260 : 460,
+            easing: 'cubic-bezier(.4, 0, .2, 1)',
+            fill: 'forwards',
+            pseudoElement: '::view-transition-new(root)',
+          },
+        )
+      })
+      .catch(() => undefined)
+  }
 
   // A mobile drawer is route-scoped: navigation or Escape closes it.
   useEffect(() => {
@@ -532,6 +646,7 @@ export default function AppShell() {
 
   return (
     <div className="shell">
+      <TopProgress />
       <aside
         id="app-side"
         ref={drawerRef}
@@ -679,6 +794,36 @@ export default function AppShell() {
           ))}
         </nav>
 
+        <button
+          type="button"
+          className="nav-item side-collapse"
+          title={collapsed ? '展开侧边栏' : '收起侧边栏'}
+          onClick={() => {
+            if (isMobile) {
+              setSideOpen(false)
+              return
+            }
+            setCollapsed((value) => !value)
+          }}
+        >
+          <span className="ic">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="1.8" y="2.5" width="12.4" height="11" rx="1.5" />
+              <path d="M6 2.5v11" />
+              {collapsed ? <path d="M8.5 6.5L11 8l-2.5 1.5" /> : <path d="M11 6.5L8.5 8 11 9.5" />}
+            </svg>
+          </span>
+          <span className="txt">{collapsed ? '展开侧边栏' : '收起侧边栏'}</span>
+        </button>
         <div className="side-foot">
           <div className="ver-row">
             <span className="live" />
@@ -687,40 +832,6 @@ export default function AppShell() {
             </span>
           </div>
           <div className="copyright">© 2026 RustDesk Panel</div>
-          <button
-            type="button"
-            className="nav-item side-collapse"
-            title={collapsed ? '展开侧边栏' : '收起侧边栏'}
-            onClick={() => {
-              if (isMobile) {
-                setSideOpen(false)
-                return
-              }
-              setCollapsed((value) => !value)
-            }}
-          >
-            <span className="ic">
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <rect x="1.8" y="2.5" width="12.4" height="11" rx="1.5" />
-                <path d="M6 2.5v11" />
-                {collapsed ? (
-                  <path d="M8.5 6.5L11 8l-2.5 1.5" />
-                ) : (
-                  <path d="M11 6.5L8.5 8 11 9.5" />
-                )}
-              </svg>
-            </span>
-            <span className="txt">{collapsed ? '展开侧边栏' : '收起侧边栏'}</span>
-          </button>
         </div>
       </aside>
       {sideOpen ? (
@@ -865,7 +976,7 @@ export default function AppShell() {
               type="button"
               className={theme === 'light' ? 'on' : ''}
               title="浅色"
-              onClick={() => setTheme('light')}
+              onClick={(event) => changeTheme('light', event)}
             >
               <svg
                 width="14"
@@ -884,7 +995,7 @@ export default function AppShell() {
               type="button"
               className={theme === 'dark' ? 'on' : ''}
               title="深色"
-              onClick={() => setTheme('dark')}
+              onClick={(event) => changeTheme('dark', event)}
             >
               <svg
                 width="14"
@@ -902,7 +1013,7 @@ export default function AppShell() {
               type="button"
               className={theme === 'auto' ? 'on' : ''}
               title="跟随系统"
-              onClick={() => setTheme('auto')}
+              onClick={(event) => changeTheme('auto', event)}
             >
               <svg
                 width="14"
@@ -1023,7 +1134,7 @@ export default function AppShell() {
           ))}
         </div>
 
-        <div className="content">
+        <div className="content" ref={contentRef}>
           <Outlet />
         </div>
       </div>

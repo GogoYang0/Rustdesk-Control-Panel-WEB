@@ -32,6 +32,7 @@ import {
   useRevokeInvitationMutation,
   useUpdateMemberMutation,
 } from '../../store/api'
+import { FormLoading, TableSkeleton } from '../../components/Skeleton'
 
 type Dialog =
   | { kind: 'invite' }
@@ -202,9 +203,7 @@ export default function MembersPage() {
           </div>
           <div className="card-body tight" style={{ overflowX: 'auto' }}>
             {loadingCurrent ? (
-              <div className="help" style={{ padding: '14px 0' }}>
-                正在加载成员…
-              </div>
+              <TableSkeleton columns={6} />
             ) : members.length === 0 ? (
               <Empty title="还没有成员" description="邀请成员后他们会出现在这里" />
             ) : (
@@ -327,9 +326,7 @@ export default function MembersPage() {
               </div>
             ) : null}
             {loadingInvitations ? (
-              <div className="help" style={{ padding: '14px 0' }}>
-                正在加载待接受邀请…
-              </div>
+              <TableSkeleton columns={4} rows={3} />
             ) : invitationsError && !invitations ? null : !invitations ||
               invitations.length === 0 ? (
               <Empty title="没有待接受的邀请" description="邀请成员后，未接受的邀请会显示在这里" />
@@ -795,65 +792,66 @@ function RoleDialog({
           <div>{error}</div>
         </div>
       ) : null}
-      <div className="help mb-14">
-        成员：<b>{member.email}</b> · 当前{' '}
-        <span className={`tag ${roleColor(memberKind(member))}`}>{member.role_name}</span>
-      </div>
-      <div className="field">
-        <label className="form-label">新角色</label>
-        {/* Persistent live region: the save button disables itself when the query
+      <FormLoading active={isLoading} label="正在加载角色…">
+        <div className="help mb-14">
+          成员：<b>{member.email}</b> · 当前{' '}
+          <span className={`tag ${roleColor(memberKind(member))}`}>{member.role_name}</span>
+        </div>
+        <div className="field">
+          <label className="form-label">新角色</label>
+          {/* Persistent live region: the save button disables itself when the query
             fails or returns nothing, so the reason must be announced too. */}
-        <div role="status" aria-live="polite">
-          {isLoading ? <div className="help">正在加载角色…</div> : null}
-          {loadError ? (
-            <div className="help" style={{ color: 'var(--danger)' }}>
-              角色列表加载失败，请重试
-            </div>
-          ) : null}
-          {!isLoading && !loadError && assignable.length === 0 ? (
-            <div className="help">没有可分配的角色</div>
-          ) : null}
+          <div role="status" aria-live="polite">
+            {loadError ? (
+              <div className="help" style={{ color: 'var(--danger)' }}>
+                角色列表加载失败，请重试
+              </div>
+            ) : null}
+            {!isLoading && !loadError && assignable.length === 0 ? (
+              <div className="help">没有可分配的角色</div>
+            ) : null}
+          </div>
+          <div className="vstack" style={{ gap: 6 }} role="radiogroup" aria-label="新角色">
+            {assignable.map((role, index) => (
+              <label
+                key={role.id}
+                className={`radio ${roleId === role.id ? 'on' : ''}`}
+                role="radio"
+                aria-checked={roleId === role.id}
+                // Roving tabindex, as the radio pattern requires: one stop for the
+                // whole group, arrows move both focus and selection.
+                tabIndex={roleId === role.id || (roleId === null && index === 0) ? 0 : -1}
+                onClick={() => setRoleId(role.id)}
+                onKeyDown={(event) => {
+                  const step = ARROW_STEP[event.key] ?? 0
+                  if (step !== 0) {
+                    event.preventDefault()
+                    const next = (index + step + assignable.length) % assignable.length
+                    setRoleId(assignable[next].id)
+                    const items =
+                      event.currentTarget.parentElement?.querySelectorAll<HTMLElement>(
+                        '[role="radio"]',
+                      )
+                    items?.[next]?.focus()
+                    return
+                  }
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    setRoleId(role.id)
+                  }
+                }}
+              >
+                <i />
+                {role.name}
+                <span className="help" style={{ marginLeft: 8 }}>
+                  {role.kind === 'custom' ? '自定义' : '内置'} · {role.permissions.length} 项权限
+                </span>
+              </label>
+            ))}
+          </div>
+          <div className="help">降级会在同一事务内撤销该成员的 compat 会话。</div>
         </div>
-        <div className="vstack" style={{ gap: 6 }} role="radiogroup" aria-label="新角色">
-          {assignable.map((role, index) => (
-            <label
-              key={role.id}
-              className={`radio ${roleId === role.id ? 'on' : ''}`}
-              role="radio"
-              aria-checked={roleId === role.id}
-              // Roving tabindex, as the radio pattern requires: one stop for the
-              // whole group, arrows move both focus and selection.
-              tabIndex={roleId === role.id || (roleId === null && index === 0) ? 0 : -1}
-              onClick={() => setRoleId(role.id)}
-              onKeyDown={(event) => {
-                const step = ARROW_STEP[event.key] ?? 0
-                if (step !== 0) {
-                  event.preventDefault()
-                  const next = (index + step + assignable.length) % assignable.length
-                  setRoleId(assignable[next].id)
-                  const items =
-                    event.currentTarget.parentElement?.querySelectorAll<HTMLElement>(
-                      '[role="radio"]',
-                    )
-                  items?.[next]?.focus()
-                  return
-                }
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault()
-                  setRoleId(role.id)
-                }
-              }}
-            >
-              <i />
-              {role.name}
-              <span className="help" style={{ marginLeft: 8 }}>
-                {role.kind === 'custom' ? '自定义' : '内置'} · {role.permissions.length} 项权限
-              </span>
-            </label>
-          ))}
-        </div>
-        <div className="help">降级会在同一事务内撤销该成员的 compat 会话。</div>
-      </div>
+      </FormLoading>
     </Modal>
   )
 }

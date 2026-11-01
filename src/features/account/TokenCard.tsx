@@ -24,6 +24,7 @@ import { accountSecurityError } from '../../lib/account-security'
 import { writeClipboard } from '../../lib/clipboard'
 import { formatTime } from '../../lib/format'
 import { panelApi, useGetTokensQuery } from '../../store/api'
+import { ListSkeleton } from '../../components/Skeleton'
 
 export default function TokenCard({
   orgId,
@@ -155,9 +156,7 @@ export default function TokenCard({
             </div>
           ) : null}
           {loading ? (
-            <div className="help" role="status">
-              正在加载令牌…
-            </div>
+            <ListSkeleton rows={2} />
           ) : tokens.length === 0 ? (
             <div className="help">{error ? '令牌列表加载失败。' : '还没有个人 API Token。'}</div>
           ) : (

@@ -10,6 +10,7 @@ import { strategyDeleteWarning, strategyError, strategyKeyCount } from '../../li
 import { useDeleteStrategyMutation, useGetMeQuery, useGetStrategiesQuery } from '../../store/api'
 import StrategyAssignments from './StrategyAssignments'
 import StrategyEditor from './StrategyEditor'
+import { CardSkeleton, TableSkeleton } from '../../components/Skeleton'
 
 export default function StrategiesPage() {
   const { orgId } = useParams()
@@ -48,9 +49,7 @@ export default function StrategiesPage() {
       <section className="page on">
         <div className="card">
           <div className="card-body">
-            <div className="help" role="status">
-              正在加载权限…
-            </div>
+            <CardSkeleton lines={3} />
           </div>
         </div>
       </section>
@@ -138,9 +137,7 @@ export default function StrategiesPage() {
         <div className="card" style={{ overflow: 'hidden' }}>
           <div className="card-body tight" style={{ overflowX: 'auto' }}>
             {isLoading && !strategies ? (
-              <div className="help" role="status" style={{ padding: '14px 0' }}>
-                正在加载客户端策略…
-              </div>
+              <TableSkeleton columns={5} />
             ) : (
               <table className="table">
                 <thead>

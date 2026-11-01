@@ -26,6 +26,7 @@ import {
   RegisterDialog,
   ToggleDeviceDialog,
 } from './DeviceDialogs'
+import { TableSkeleton } from '../../components/Skeleton'
 
 type DialogKind =
   | { kind: 'register' }
@@ -246,9 +247,7 @@ export default function DevicesPage() {
         <div className="card" style={{ overflow: 'hidden' }}>
           <div className="card-body tight" style={{ overflowX: 'auto' }}>
             {loadingCurrent ? (
-              <div className="help" role="status" style={{ padding: '14px 0' }}>
-                正在加载设备…
-              </div>
+              <TableSkeleton columns={7} />
             ) : devices.length === 0 ? (
               <Empty title="没有符合条件的设备" description="调整关键词或绑定状态后再试">
                 {q || bound || page > 1 ? (

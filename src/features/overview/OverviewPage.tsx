@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+  type ReactElement,
+} from 'react'
 import { Link, useParams } from 'react-router'
 
 import StateBlock from '../../components/StateBlock'
@@ -19,6 +26,7 @@ import {
   useGetMeQuery,
   useGetSessionsQuery,
 } from '../../store/api'
+import { CardSkeleton, ListSkeleton, SkeletonLine } from '../../components/Skeleton'
 
 const STAT_FLOW_SPEED = 120
 
@@ -31,6 +39,7 @@ function StatCard({
   locked,
   hint,
   accent,
+  icon,
   testId,
 }: {
   label: string
@@ -41,6 +50,7 @@ function StatCard({
   locked?: boolean
   hint?: string
   accent: string
+  icon: ReactElement
   testId: string
 }) {
   const cardRef = useRef<HTMLDivElement>(null)
@@ -54,9 +64,6 @@ function StatCard({
       : STAT_FLOW_SPEED
 
     let angle = 0
-    let direction = 1
-    let target = 0
-    let hovering = false
     let frame: number | null = null
     let last = 0
 
@@ -66,19 +73,8 @@ function StatCard({
       frame = null
       const dt = Math.min((now - last) / 1000, 0.064)
       last = now
-      if (hovering) {
-        direction = 1
-        angle += speed * dt
-        if (angle >= 360) angle -= 360
-      } else {
-        angle += direction * speed * dt
-        if ((direction > 0 && angle >= target) || (direction < 0 && angle <= target)) {
-          angle = 0
-          draw()
-          setFlow(false)
-          return
-        }
-      }
+      angle += speed * dt
+      if (angle >= 360) angle -= 360
       draw()
       frame = requestAnimationFrame(tick)
     }
@@ -90,26 +86,15 @@ function StatCard({
     }
 
     const enter = () => {
-      hovering = true
       setFlow(true)
       start()
     }
     const leave = () => {
-      hovering = false
-      if (angle === 0) {
-        setFlow(false)
-        return
+      setFlow(false)
+      if (frame !== null) {
+        cancelAnimationFrame(frame)
+        frame = null
       }
-      // Retrace along the shortest arc back to the rest position at the same
-      // constant speed; re-entering mid-return resumes the forward flow.
-      if (angle <= 180) {
-        direction = -1
-        target = 0
-      } else {
-        direction = 1
-        target = 360
-      }
-      start()
     }
 
     el.addEventListener('pointerenter', enter)
@@ -121,6 +106,12 @@ function StatCard({
     }
   }, [])
 
+  function trackSpot(event: ReactPointerEvent<HTMLDivElement>) {
+    const rect = event.currentTarget.getBoundingClientRect()
+    event.currentTarget.style.setProperty('--stat-x', `${event.clientX - rect.left}px`)
+    event.currentTarget.style.setProperty('--stat-y', `${event.clientY - rect.top}px`)
+  }
+
   return (
     <div
       ref={cardRef}
@@ -128,11 +119,29 @@ function StatCard({
       data-testid={testId}
       data-flow={flow ? 'on' : undefined}
       style={{ '--stat-accent': accent } as CSSProperties}
+      onPointerMove={trackSpot}
     >
       <span className="stat-ring" aria-hidden="true" />
-      <div className="lbl">{label}</div>
-      <div className="val" role={loading ? 'status' : undefined}>
-        {locked || loading || errorText ? '—' : formatCount(value)}
+      <span className="stat-spot" aria-hidden="true" />
+      <span className="stat-dots" aria-hidden="true" />
+      <div className="stat-top">
+        <span className="stat-icon" aria-hidden="true">
+          {icon}
+        </span>
+        <div className="lbl">{label}</div>
+      </div>
+      <div
+        className="val"
+        role={loading ? 'status' : undefined}
+        aria-label={loading ? '正在加载' : undefined}
+      >
+        {locked || errorText ? (
+          '—'
+        ) : loading ? (
+          <SkeletonLine width={72} height={34} />
+        ) : (
+          formatCount(value)
+        )}
       </div>
       {locked ? (
         <div className="help">{hint ?? '当前角色无权查看该指标'}</div>
@@ -145,8 +154,12 @@ function StatCard({
             </button>
           ) : null}
         </div>
+      ) : loading ? (
+        <div className="help">
+          <SkeletonLine width="68%" height={10} />
+        </div>
       ) : (
-        <div className="help">{loading ? '正在加载…' : hint}</div>
+        <div className="help">{hint}</div>
       )}
     </div>
   )
@@ -200,9 +213,7 @@ export default function OverviewPage() {
       <section className="page on">
         <div className="card">
           <div className="card-body">
-            <div className="help" role="status">
-              正在加载总览…
-            </div>
+            <CardSkeleton lines={2} />
           </div>
         </div>
       </section>
@@ -258,6 +269,20 @@ export default function OverviewPage() {
         <StatCard
           accent="var(--primary)"
           testId="overview-stat-devices"
+          icon={
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 18 18"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            >
+              <rect x="2.5" y="3.5" width="13" height="8.5" rx="1.5" />
+              <path d="M6 15h6M9 12v3" />
+            </svg>
+          }
           label="设备总数"
           value={devices.currentData?.total}
           loading={canReadDevices && loadingOf(devices)}
@@ -271,6 +296,20 @@ export default function OverviewPage() {
         <StatCard
           accent="var(--secondary)"
           testId="overview-stat-sessions"
+          icon={
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 18 18"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinejoin="round"
+            >
+              <circle cx="9" cy="9" r="6.5" />
+              <path d="M7.5 6.5l4 2.5-4 2.5z" />
+            </svg>
+          }
           label="进行中会话"
           value={sessions.currentData?.total}
           loading={loadingOf(sessions)}
@@ -281,6 +320,21 @@ export default function OverviewPage() {
         <StatCard
           accent="var(--warning)"
           testId="overview-stat-approvals"
+          icon={
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 18 18"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="3" y="3" width="12" height="12" rx="2" />
+              <path d="M6.3 9.2l1.8 1.8 3.6-4" />
+            </svg>
+          }
           label="待处理审批"
           value={approvals.currentData?.total}
           loading={loadingOf(approvals)}
@@ -291,6 +345,21 @@ export default function OverviewPage() {
         <StatCard
           accent="var(--danger)"
           testId="overview-stat-alerts"
+          icon={
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 18 18"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M9 2.8a4.4 4.4 0 00-4.4 4.4v2.8L3.2 12.5h11.6L13.4 10V7.2A4.4 4.4 0 009 2.8z" />
+              <path d="M7.3 14.2a1.8 1.8 0 003.4 0" />
+            </svg>
+          }
           label="告警总数"
           value={alerts.currentData?.total}
           loading={loadingOf(alerts)}
@@ -313,9 +382,7 @@ export default function OverviewPage() {
           </div>
           <div className="card-body">
             {loadingOf(sessions) ? (
-              <div className="help" role="status">
-                正在加载会话…
-              </div>
+              <ListSkeleton rows={3} />
             ) : sessions.error ? (
               <div className="banner danger" role="alert">
                 <div>{overviewError(sessions.error, 'sessions')}</div>
@@ -361,9 +428,7 @@ export default function OverviewPage() {
           </div>
           <div className="card-body">
             {loadingOf(approvals) ? (
-              <div className="help" role="status">
-                正在加载审批…
-              </div>
+              <ListSkeleton rows={3} />
             ) : approvals.error ? (
               <div className="banner danger" role="alert">
                 <div>{overviewError(approvals.error, 'approvals')}</div>
@@ -412,9 +477,7 @@ export default function OverviewPage() {
           </div>
           <div className="card-body">
             {loadingOf(alerts) ? (
-              <div className="help" role="status">
-                正在加载告警…
-              </div>
+              <ListSkeleton rows={3} />
             ) : alerts.error ? (
               <div className="banner danger" role="alert">
                 <div>{overviewError(alerts.error, 'alerts')}</div>

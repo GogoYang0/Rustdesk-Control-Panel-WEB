@@ -17,6 +17,7 @@ import BookGrantsPanel from './BookGrantsPanel'
 import BookRecyclePanel from './BookRecyclePanel'
 import BookTagsDialog from './BookTagsDialog'
 import TagChips, { tagColorMap } from './TagChips'
+import { TableSkeleton } from '../../components/Skeleton'
 
 export default function AddressBookPage() {
   const { orgId, bookId } = useParams()
@@ -261,9 +262,7 @@ export default function AddressBookPage() {
         ) : loading ? (
           <div className="card">
             <div className="card-body">
-              <div className="help" role="status">
-                正在加载 peers…
-              </div>
+              <TableSkeleton columns={6} />
             </div>
           </div>
         ) : error && !book ? null : (book?.peers ?? []).length === 0 ? (

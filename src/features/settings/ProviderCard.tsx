@@ -1,5 +1,6 @@
 import { useGetProvidersQuery } from '../../store/api'
 import { settingsError } from '../../lib/settings'
+import { CardSkeleton } from '../../components/Skeleton'
 
 function providerRow(label: string, provider: { enabled: boolean; name?: string }) {
   return (
@@ -56,9 +57,7 @@ export default function ProviderCard() {
               </div>
             ) : null}
             {loading ? (
-              <div className="help" role="status">
-                正在加载身份提供方…
-              </div>
+              <CardSkeleton lines={3} />
             ) : !data ? (
               <div className="help">身份提供方状态不可用。</div>
             ) : (

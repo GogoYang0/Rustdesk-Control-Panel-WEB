@@ -25,6 +25,7 @@ import {
 } from '../../lib/log-query'
 import { useGetDevicesQuery, useGetLogEventsQuery, useGetMeQuery } from '../../store/api'
 import LogDetailSheet from './LogDetailSheet'
+import { CardSkeleton, TableSkeleton } from '../../components/Skeleton'
 
 export default function LogsPage() {
   const { orgId } = useParams()
@@ -122,9 +123,7 @@ export default function LogsPage() {
       <section className="page on">
         <div className="card">
           <div className="card-body">
-            <div className="help" role="status">
-              正在加载权限…
-            </div>
+            <CardSkeleton lines={2} />
           </div>
         </div>
       </section>
@@ -284,9 +283,7 @@ export default function LogsPage() {
         <div className="card" style={{ overflow: 'hidden' }}>
           <div className="card-body tight" style={{ overflowX: 'auto' }}>
             {loadingCurrent ? (
-              <div className="help" role="status" style={{ padding: '14px 0' }}>
-                正在加载采集日志…
-              </div>
+              <TableSkeleton columns={6} />
             ) : events.length === 0 ? (
               <Empty
                 title="没有符合条件的采集日志"
