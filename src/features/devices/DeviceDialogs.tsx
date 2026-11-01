@@ -3,8 +3,10 @@ import { useState } from 'react'
 
 import Modal from '../../components/Modal'
 import type { Device, Member } from '../../lib/api'
+import { deleteDeviceError } from '../../lib/device-session'
 import { deviceWriteError } from '../../lib/device-errors'
 import {
+  useDeleteDeviceMutation,
   useRebindDeviceMutation,
   useRegisterDeviceMutation,
   useRequestDeviceDisconnectMutation,
@@ -20,7 +22,7 @@ interface DialogProps {
 function ErrorBanner({ message }: { message: string | null }) {
   if (!message) return null
   return (
-    <div className="banner danger mb-14" style={{ padding: '9px 11px' }}>
+    <div className="banner danger mb-14" role="alert" style={{ padding: '9px 11px' }}>
       <div>{message}</div>
     </div>
   )
@@ -151,6 +153,53 @@ export function ToggleDeviceDialog({
               恢复 <b>{device.name}</b> 后，设备可重新被客户端认领与连接。
             </>
           )}
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+export function DeleteDeviceDialog({
+  orgId,
+  device,
+  onClose,
+  onDone,
+}: DialogProps & { device: Device }) {
+  const [error, setError] = useState<string | null>(null)
+  const [remove, { isLoading }] = useDeleteDeviceMutation()
+
+  async function submit() {
+    setError(null)
+    try {
+      await remove({ orgId, deviceId: device.id }).unwrap()
+      Toast.success(`已删除 ${device.name}`)
+      onDone()
+    } catch (err) {
+      setError(deleteDeviceError(err))
+    }
+  }
+
+  return (
+    <Modal
+      title="删除设备"
+      onClose={isLoading ? () => undefined : onClose}
+      footer={
+        <>
+          <button className="btn tertiary" type="button" disabled={isLoading} onClick={onClose}>
+            取消
+          </button>
+          <button className="btn danger solid" type="button" disabled={isLoading} onClick={submit}>
+            {isLoading ? '删除中…' : '删除设备'}
+          </button>
+        </>
+      }
+    >
+      <ErrorBanner message={error} />
+      <div className="banner warning" style={{ padding: '10px 12px' }}>
+        <div>
+          将软删除 <b>{device.name}</b>（<span className="mono">{device.rustdesk_id}</span>）。
+          会话、日志与审计历史保留；存在进行中会话时需先在会话页结束。管理员重新登记同一 RustDesk ID
+          会恢复该设备。
         </div>
       </div>
     </Modal>

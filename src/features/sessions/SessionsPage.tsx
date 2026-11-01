@@ -1,8 +1,10 @@
-import { Banner, Empty } from '@douyinfe/semi-ui'
+import { Banner, Empty, Toast } from '@douyinfe/semi-ui'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
 
+import Modal from '../../components/Modal'
 import SideSheet from '../../components/SideSheet'
+import { endSessionError, endSessionToast } from '../../lib/device-session'
 import { formatDuration, formatTime } from '../../lib/format'
 import type { Alert, Device, Session, SessionDetail, SessionEvent } from '../../lib/api'
 import {
@@ -22,7 +24,9 @@ import {
   type TicketState,
 } from '../../lib/ticket'
 import {
+  useEndSessionMutation,
   useGetDevicesQuery,
+  useGetMeQuery,
   useGetMembersQuery,
   useGetSessionAlertsQuery,
   useGetSessionQuery,
@@ -68,6 +72,7 @@ const EVENT_LABELS: Record<string, string> = {
   connected: '连接建立',
   disconnected: '连接断开',
   closed: '会话结束',
+  admin_ended: '管理员结束',
 }
 
 function eventLabel(kind: string): string {
@@ -107,6 +112,7 @@ const END_REASON_LABELS: Record<string, string> = {
   idle_timeout: '空闲超时',
   policy_denied: '签发阶段被策略拒绝',
   policy_exceeded: '超过时长上限',
+  admin_ended: '管理员结束',
 }
 
 function endReasonLabel(reason: string | null | undefined): string {
@@ -156,6 +162,10 @@ export default function SessionsPage() {
   // the current one's rows while its own query is still in flight.
   const { currentData: devicesPage } = useGetDevicesQuery(id, { skip: !id })
   const { currentData: members } = useGetMembersQuery(id, { skip: !id })
+  const { data: me } = useGetMeQuery()
+  const currentOrg = me?.orgs.find((org) => org.id === id)
+  const canDisconnect = currentOrg?.permissions.includes('device.disconnect') ?? false
+  const [endTarget, setEndTarget] = useState<Session | null>(null)
 
   // The open session lives in the URL (`?sessionId=`), so alerts can deep-link
   // into a session and one source of truth drives the sheet.
@@ -409,13 +419,24 @@ export default function SessionsPage() {
                             : formatDuration(session.started_at, session.ended_at)}
                       </td>
                       <td style={{ textAlign: 'right' }}>
-                        <button
-                          className="btn borderless sm"
-                          type="button"
-                          onClick={() => change({ sessionId: session.id })}
-                        >
-                          详情
-                        </button>
+                        <div className="hstack" style={{ gap: 4, justifyContent: 'flex-end' }}>
+                          <button
+                            className="btn borderless sm"
+                            type="button"
+                            onClick={() => change({ sessionId: session.id })}
+                          >
+                            详情
+                          </button>
+                          {session.status === 'open' && canDisconnect ? (
+                            <button
+                              className="btn danger sm"
+                              type="button"
+                              onClick={() => setEndTarget(session)}
+                            >
+                              结束
+                            </button>
+                          ) : null}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -472,6 +493,9 @@ export default function SessionsPage() {
         />
       ) : null}
 
+      {endTarget ? (
+        <EndSessionDialog orgId={id} session={endTarget} onClose={() => setEndTarget(null)} />
+      ) : null}
       {activeRatifyTarget ? (
         <RequestApprovalDialog
           orgId={id}
@@ -481,6 +505,59 @@ export default function SessionsPage() {
         />
       ) : null}
     </section>
+  )
+}
+
+function EndSessionDialog({
+  orgId,
+  session,
+  onClose,
+}: {
+  orgId: number
+  session: Session
+  onClose: () => void
+}) {
+  const [end, { isLoading }] = useEndSessionMutation()
+  const [error, setError] = useState('')
+
+  async function submit() {
+    setError('')
+    try {
+      const result = await end({ orgId, sessionId: session.id }).unwrap()
+      Toast.success(endSessionToast(result.disconnect_requested))
+      onClose()
+    } catch (err) {
+      setError(endSessionError(err))
+    }
+  }
+
+  return (
+    <Modal
+      title="结束会话"
+      onClose={isLoading ? () => undefined : onClose}
+      footer={
+        <>
+          <button className="btn tertiary" type="button" disabled={isLoading} onClick={onClose}>
+            取消
+          </button>
+          <button className="btn danger solid" type="button" disabled={isLoading} onClick={submit}>
+            {isLoading ? '结束中…' : '结束会话'}
+          </button>
+        </>
+      }
+    >
+      {error ? (
+        <div className="banner danger mb-14" role="alert" style={{ padding: '9px 11px' }}>
+          <div>{error}</div>
+        </div>
+      ) : null}
+      <div className="banner warning" style={{ padding: '10px 12px' }}>
+        <div>
+          会话记录将立即结束，并向设备排队断连请求。面板不在 RustDesk
+          信令路径，实际连接在客户端下一次心跳消费请求后才会断开。
+        </div>
+      </div>
+    </Modal>
   )
 }
 
