@@ -360,6 +360,18 @@ const MOBILE_NAV: { key: string; label: string; permission?: string; icon: React
   { key: 'alerts', label: '告警', icon: ICONS.alerts },
 ]
 
+function circularThemeFallback(x: number, y: number, radius: number) {
+  const circle = document.createElement('span')
+  circle.className = 'theme-circle'
+  circle.style.left = `${x}px`
+  circle.style.top = `${y}px`
+  circle.style.width = `${radius * 2}px`
+  circle.style.height = `${radius * 2}px`
+  document.body.appendChild(circle)
+  requestAnimationFrame(() => circle.classList.add('run'))
+  window.setTimeout(() => circle.remove(), 620)
+}
+
 export default function AppShell() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -410,12 +422,10 @@ export default function AppShell() {
 
   function changeTheme(next: ThemeMode, event: MouseEvent<HTMLButtonElement>) {
     const doc = document as Document & {
-      startViewTransition?: (callback: () => void) => { ready: Promise<void> }
-    }
-    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
-    if (!doc.startViewTransition || reduce) {
-      setTheme(next)
-      return
+      startViewTransition?: (callback: () => void) => {
+        ready: Promise<void>
+        finished: Promise<void>
+      }
     }
     const rect = event.currentTarget.getBoundingClientRect()
     const x = rect.left + rect.width / 2
@@ -424,23 +434,36 @@ export default function AppShell() {
       Math.max(x, window.innerWidth - x),
       Math.max(y, window.innerHeight - y),
     )
+    if (!doc.startViewTransition) {
+      setTheme(next)
+      circularThemeFallback(x, y, radius)
+      return
+    }
     themeRevealRef.current = true
-    let transition: { ready: Promise<void> }
+    const root = document.documentElement
+    let transition: { ready: Promise<void>; finished: Promise<void> }
     try {
+      root.classList.add('theme-transitioning')
       transition = doc.startViewTransition(() => {
         flushSync(() => setTheme(next))
       })
     } catch {
       themeRevealRef.current = false
+      root.classList.remove('theme-transitioning')
       setTheme(next)
+      circularThemeFallback(x, y, radius)
       return
     }
+    transition.finished
+      .then(() => root.classList.remove('theme-transitioning'))
+      .catch(() => root.classList.remove('theme-transitioning'))
+    const mobile = window.matchMedia?.('(max-width: 767px)').matches ?? false
     transition.ready
       .then(() => {
         document.documentElement.animate(
           { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
           {
-            duration: 520,
+            duration: mobile ? 420 : 560,
             easing: 'cubic-bezier(.4, 0, .2, 1)',
             pseudoElement: '::view-transition-new(root)',
           },

@@ -856,3 +856,41 @@ h1.page-title {
     animation: none;
   }
 }
+
+/* Pause ambient page motion while the theme snapshots animate, so the
+   clip-path reveal stays composited instead of competing with every card. */
+html.theme-transitioning body *,
+html.theme-transitioning body *::before,
+html.theme-transitioning body *::after {
+  animation-play-state: paused !important;
+}
+.theme-circle {
+  position: fixed;
+  z-index: 299;
+  pointer-events: none;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  opacity: 0;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--bg-app) 52%, var(--primary) 14%) 0%,
+    transparent 68%
+  );
+}
+.theme-circle.run {
+  opacity: 0.9;
+  transform: translate(-50%, -50%) scale(1);
+  transition:
+    transform 0.55s var(--ease),
+    opacity 0.55s ease;
+}
+@media (max-width: 767px) {
+  .theme-circle.run {
+    transition-duration: 0.4s;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .theme-circle.run {
+    transition-duration: 0.18s;
+  }
+}
