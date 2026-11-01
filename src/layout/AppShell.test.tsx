@@ -123,11 +123,13 @@ describe('AppShell organization creation entry', () => {
 
   it('opens account actions and the profile dialog from the user menu', async () => {
     setup([acme])
-    fireEvent.click(await screen.findByRole('button', { name: /admin@acme.local/ }))
+    const chip = await screen.findByRole('button', { name: /admin@acme.local/ })
+    fireEvent.click(chip)
     fireEvent.click(screen.getByRole('menuitem', { name: '个人资料' }))
     expect(await screen.findByRole('dialog', { name: '个人资料' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: '关闭' }))
     expect(screen.queryByRole('dialog')).toBeNull()
+    expect(document.activeElement).toBe(chip)
     expect(screen.getByRole('button', { name: '收起侧边栏' })).toBeTruthy()
     expect(screen.queryByText(/TLS 1.3/)).toBeNull()
   })

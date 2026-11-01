@@ -1046,7 +1046,10 @@ export default function AppShell() {
           email={me.user.email}
           organization={current.name}
           role={current.role_kind}
-          onClose={() => setProfileOpen(false)}
+          onClose={() => {
+            setProfileOpen(false)
+            userChipRef.current?.focus()
+          }}
           onAccount={() => {
             setProfileOpen(false)
             navigate(`/orgs/${current.id}/account`)

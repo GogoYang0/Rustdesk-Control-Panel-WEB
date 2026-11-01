@@ -45,7 +45,7 @@ import { consoleE2EEnabled, openConsole, signIn } from '../support/console'
       expect(($card[0] as HTMLElement).style.getPropertyValue('--stat-angle')).to.match(/deg$/)
     })
     cy.get('@stat').trigger('pointerleave')
-    cy.get('@stat').should('not.have.attr', 'data-flow', { timeout: 5000 })
+    cy.get('@stat', { timeout: 5000 }).should('not.have.attr', 'data-flow')
     cy.get('@stat').should(($card) => {
       expect(($card[0] as HTMLElement).style.getPropertyValue('--stat-angle')).to.eq('0.00deg')
     })

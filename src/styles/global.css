@@ -436,7 +436,7 @@ html.theme-switching .table td {
   padding: 9px 18px 11px;
   font-size: 11.5px;
   line-height: 16px;
-  color: var(--text-3);
+  color: var(--text-2);
 }
 .book-group-note {
   margin: -4px 0 10px;
@@ -479,6 +479,19 @@ h1.page-title {
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  html.theme-switching,
+  html.theme-switching body,
+  html.theme-switching .side,
+  html.theme-switching .topbar,
+  html.theme-switching .tabbar,
+  html.theme-switching .content,
+  html.theme-switching .card,
+  html.theme-switching .btn,
+  html.theme-switching .input,
+  html.theme-switching .table th,
+  html.theme-switching .table td {
+    transition-duration: 0.1s;
+  }
   /* Keep the requested sheen visible but slow it down for motion-sensitive users. */
   h1.page-title {
     animation-duration: 12s;
