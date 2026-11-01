@@ -15,14 +15,8 @@ import { consoleE2EEnabled, openConsole, signIn } from '../support/console'
     cy.get('.table tbody tr').should('have.length.at.least', 1)
     cy.env(['consoleEmail']).then(({ consoleEmail }) => {
       const email = String(consoleEmail ?? 'admin@acme.local')
-      cy.contains('.table tbody tr', email)
-      // The signed-in row must not offer actions on itself.
-      cy.contains('.table tbody tr', email)
-        .find('button')
-        .should(($buttons) => {
-          expect($buttons.length).to.be.greaterThan(0)
-          $buttons.each((_, button) => expect(button).to.be.disabled)
-        })
+      // The signed-in row must not render any member actions on itself.
+      cy.contains('.table tbody tr', email).find('button').should('have.length', 0)
     })
   })
 
@@ -111,7 +105,7 @@ import { consoleE2EEnabled, openConsole, signIn } from '../support/console'
 
     cy.env(['consoleEmail']).then(({ consoleEmail }) => {
       const email = String(consoleEmail ?? 'admin@acme.local')
-      cy.contains('tbody tr', email).find('button').contains('安全').should('be.disabled')
+      cy.contains('tbody tr', email).find('button').should('have.length', 0)
     })
     cy.contains('tbody tr', 'ops@acme.local').within(() => {
       cy.contains('button', '安全').should('be.enabled').click()

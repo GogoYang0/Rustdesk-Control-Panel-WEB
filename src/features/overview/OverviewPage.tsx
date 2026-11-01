@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Link, useParams } from 'react-router'
 
 import StateBlock from '../../components/StateBlock'
@@ -19,6 +20,8 @@ import {
   useGetSessionsQuery,
 } from '../../store/api'
 
+const STAT_FLOW_SPEED = 120
+
 function StatCard({
   label,
   value,
@@ -27,6 +30,7 @@ function StatCard({
   onRetry,
   locked,
   hint,
+  accent,
   testId,
 }: {
   label: string
@@ -36,10 +40,96 @@ function StatCard({
   onRetry?: () => void
   locked?: boolean
   hint?: string
+  accent: string
   testId: string
 }) {
+  const cardRef = useRef<HTMLDivElement>(null)
+  const [flow, setFlow] = useState(false)
+
+  useEffect(() => {
+    const el = cardRef.current
+    if (!el) return
+    const speed = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+      ? STAT_FLOW_SPEED * 0.4
+      : STAT_FLOW_SPEED
+
+    let angle = 0
+    let direction = 1
+    let target = 0
+    let hovering = false
+    let frame: number | null = null
+    let last = 0
+
+    const draw = () => el.style.setProperty('--stat-angle', `${angle.toFixed(2)}deg`)
+
+    const tick = (now: number) => {
+      frame = null
+      const dt = Math.min((now - last) / 1000, 0.064)
+      last = now
+      if (hovering) {
+        direction = 1
+        angle += speed * dt
+        if (angle >= 360) angle -= 360
+      } else {
+        angle += direction * speed * dt
+        if ((direction > 0 && angle >= target) || (direction < 0 && angle <= target)) {
+          angle = 0
+          draw()
+          setFlow(false)
+          return
+        }
+      }
+      draw()
+      frame = requestAnimationFrame(tick)
+    }
+
+    const start = () => {
+      if (frame !== null) return
+      last = performance.now()
+      frame = requestAnimationFrame(tick)
+    }
+
+    const enter = () => {
+      hovering = true
+      setFlow(true)
+      start()
+    }
+    const leave = () => {
+      hovering = false
+      if (angle === 0) {
+        setFlow(false)
+        return
+      }
+      // Retrace along the shortest arc back to the rest position at the same
+      // constant speed; re-entering mid-return resumes the forward flow.
+      if (angle <= 180) {
+        direction = -1
+        target = 0
+      } else {
+        direction = 1
+        target = 360
+      }
+      start()
+    }
+
+    el.addEventListener('pointerenter', enter)
+    el.addEventListener('pointerleave', leave)
+    return () => {
+      el.removeEventListener('pointerenter', enter)
+      el.removeEventListener('pointerleave', leave)
+      if (frame !== null) cancelAnimationFrame(frame)
+    }
+  }, [])
+
   return (
-    <div className="card stat" data-testid={testId}>
+    <div
+      ref={cardRef}
+      className="card stat"
+      data-testid={testId}
+      data-flow={flow ? 'on' : undefined}
+      style={{ '--stat-accent': accent } as CSSProperties}
+    >
+      <span className="stat-ring" aria-hidden="true" />
       <div className="lbl">{label}</div>
       <div className="val" role={loading ? 'status' : undefined}>
         {locked || loading || errorText ? '—' : formatCount(value)}
@@ -166,6 +256,7 @@ export default function OverviewPage() {
         style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}
       >
         <StatCard
+          accent="var(--primary)"
           testId="overview-stat-devices"
           label="设备总数"
           value={devices.currentData?.total}
@@ -178,6 +269,7 @@ export default function OverviewPage() {
           hint={canReadDevices ? '来自设备列表 total' : '需要 device.read 权限'}
         />
         <StatCard
+          accent="var(--secondary)"
           testId="overview-stat-sessions"
           label="进行中会话"
           value={sessions.currentData?.total}
@@ -187,6 +279,7 @@ export default function OverviewPage() {
           hint="按开始时间倒序"
         />
         <StatCard
+          accent="var(--warning)"
           testId="overview-stat-approvals"
           label="待处理审批"
           value={approvals.currentData?.total}
@@ -196,6 +289,7 @@ export default function OverviewPage() {
           hint="含事前审批与事后追认"
         />
         <StatCard
+          accent="var(--danger)"
           testId="overview-stat-alerts"
           label="告警总数"
           value={alerts.currentData?.total}

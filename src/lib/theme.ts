@@ -3,6 +3,7 @@ export type ThemeMode = 'light' | 'dark' | 'auto'
 const THEME_KEY = 'rdp-panel-theme'
 let autoQuery: MediaQueryList | null = null
 let autoHandler: (() => void) | null = null
+let transitionTimer: ReturnType<typeof setTimeout> | null = null
 
 export function getStoredTheme(): ThemeMode {
   const stored = localStorage.getItem(THEME_KEY)
@@ -16,7 +17,14 @@ function resolve(mode: ThemeMode): 'light' | 'dark' {
 }
 
 function paint(mode: ThemeMode) {
-  document.documentElement.dataset.theme = resolve(mode)
+  const root = document.documentElement
+  root.classList.add('theme-switching')
+  root.dataset.theme = resolve(mode)
+  if (transitionTimer) clearTimeout(transitionTimer)
+  transitionTimer = setTimeout(() => {
+    root.classList.remove('theme-switching')
+    transitionTimer = null
+  }, 320)
 }
 
 /**

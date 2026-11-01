@@ -159,17 +159,13 @@ export default function AddressBookPage() {
               标签
             </button>
           ) : null}
-          {tab === 'peers' ? (
+          {tab === 'peers' && editable ? (
             <button
               className="btn primary sm"
               type="button"
-              disabled={!editable || !book || (book.peers?.length ?? 0) >= PEER_LIMIT}
+              disabled={!book || (book.peers?.length ?? 0) >= PEER_LIMIT}
               title={
-                !editable
-                  ? '没有该地址簿的写权限'
-                  : (book?.peers?.length ?? 0) >= PEER_LIMIT
-                    ? `最多 ${PEER_LIMIT} 个 peer`
-                    : undefined
+                (book?.peers?.length ?? 0) >= PEER_LIMIT ? `最多 ${PEER_LIMIT} 个 peer` : undefined
               }
               onClick={() => setAdding(true)}
             >
@@ -316,23 +312,25 @@ export default function AddressBookPage() {
                       </td>
                       <td>
                         <div className="hstack" style={{ gap: 4, justifyContent: 'flex-end' }}>
-                          <button
-                            className="btn borderless sm"
-                            type="button"
-                            disabled={!editable}
-                            onClick={() => setEditing(peer)}
-                          >
-                            编辑
-                          </button>
-                          <button
-                            className="btn borderless sm"
-                            type="button"
-                            style={{ color: 'var(--danger)' }}
-                            disabled={!editable}
-                            onClick={() => setDeleting(peer)}
-                          >
-                            删除
-                          </button>
+                          {editable ? (
+                            <>
+                              <button
+                                className="btn borderless sm"
+                                type="button"
+                                onClick={() => setEditing(peer)}
+                              >
+                                编辑
+                              </button>
+                              <button
+                                className="btn borderless sm"
+                                type="button"
+                                style={{ color: 'var(--danger)' }}
+                                onClick={() => setDeleting(peer)}
+                              >
+                                删除
+                              </button>
+                            </>
+                          ) : null}
                         </div>
                       </td>
                     </tr>
@@ -345,16 +343,13 @@ export default function AddressBookPage() {
                 </div>
               ) : null}
             </div>
+            <div className="card-note">
+              保存 peers
+              走「全量替换」：控制台会先读取最新内容并核对版本，版本变化时中止保存，避免覆盖他人的修改。
+              删除单个 peer 使用独立端点，不会重写整本。
+            </div>
           </div>
         )}
-
-        {tab === 'peers' ? (
-          <p className="help" style={{ marginTop: 12 }}>
-            保存 peers
-            走「全量替换」：控制台会先读取最新内容并核对版本，版本变化时中止保存，避免覆盖他人的修改。
-            删除单个 peer 使用独立端点，不会重写整本。
-          </p>
-        ) : null}
       </div>
 
       {tab === 'peers' && book && (adding || editing) ? (

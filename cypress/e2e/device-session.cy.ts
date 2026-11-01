@@ -42,11 +42,14 @@ import { consoleE2EEnabled, openConsole, signIn } from '../support/console'
     cy.location('pathname', { timeout: 10000 }).should('match', /\/sessions$/)
     cy.get('select[aria-label="会话状态"]').select('open')
     cy.wait('@listSessions')
+    // The select changes the query key; the previous response can land after
+    // the aliased wait and replace (detach) the row. Let it settle first.
+    cy.wait(400)
     cy.contains('tbody tr', 'E2E 会话设备')
       .should('exist')
-      .find('button')
-      .contains('结束')
-      .click({ force: true })
+      .within(() => {
+        cy.contains('button', '结束').click({ force: true })
+      })
     cy.get('.modal').within(() => {
       cy.contains('结束会话').should('exist')
       cy.contains('button', '结束会话').click()

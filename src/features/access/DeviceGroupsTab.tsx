@@ -155,11 +155,10 @@ export default function DeviceGroupsTab({ orgId }: { orgId: number }) {
             )}
           </div>
         ) : null}
+        <div className="card-note">
+          规则只对未停用设备生效；设备移入本组时会从原组移出，删除设备组不会删除设备。
+        </div>
       </div>
-
-      <p className="help" style={{ marginTop: 12 }}>
-        规则只对未停用设备生效；设备移入本组时会从原组移出，删除设备组不会删除设备。
-      </p>
 
       {creating ? (
         <GroupNameDialog

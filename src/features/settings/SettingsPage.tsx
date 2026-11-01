@@ -67,6 +67,7 @@ export default function SettingsPage() {
         <div>
           <b>owner 级设置。</b>
           供应与审计保留的修改会写入审计；秘密项来自环境变量，控制台只读且不回显。
+          供应状态的异步变化本页不自动轮询，可手动刷新；席位、时区与验证码运行状态尚无只读 API。
         </div>
       </div>
 
@@ -79,10 +80,6 @@ export default function SettingsPage() {
         <RetentionCard key={`retention-${id}`} orgId={id} />
         <ProviderCard />
       </div>
-
-      <p className="help" style={{ marginTop: 12 }}>
-        供应状态的异步变化本页不自动轮询，可手动刷新；席位、时区与验证码运行状态尚无只读 API。
-      </p>
     </section>
   )
 }

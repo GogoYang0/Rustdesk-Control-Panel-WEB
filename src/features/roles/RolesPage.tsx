@@ -84,15 +84,15 @@ export default function RolesPage() {
         </div>
         <div className="spacer" />
         <div className="head-actions">
-          <button
-            className="btn primary sm"
-            type="button"
-            disabled={!canManage}
-            title={canManage ? '新建自定义角色' : '需要 role.manage（仅 owner 可管理角色）'}
-            onClick={() => openEditor({ mode: 'create' })}
-          >
-            新建自定义角色
-          </button>
+          {canManage ? (
+            <button
+              className="btn primary sm"
+              type="button"
+              onClick={() => openEditor({ mode: 'create' })}
+            >
+              新建自定义角色
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -162,13 +162,11 @@ export default function RolesPage() {
                       <td>
                         {role.builtin ? (
                           <span className="help">内置固定</span>
-                        ) : (
+                        ) : canManage ? (
                           <div className="hstack" style={{ gap: 4, justifyContent: 'flex-end' }}>
                             <button
                               className="btn outline sm"
                               type="button"
-                              disabled={!canManage}
-                              title={canManage ? '编辑角色' : '需要 role.manage'}
                               onClick={() => openEditor({ mode: 'edit', role })}
                             >
                               编辑
@@ -176,14 +174,12 @@ export default function RolesPage() {
                             <button
                               className="btn danger sm"
                               type="button"
-                              disabled={!canManage}
-                              title={canManage ? '删除角色' : '需要 role.manage'}
                               onClick={() => openDelete(role)}
                             >
                               删除
                             </button>
                           </div>
-                        )}
+                        ) : null}
                       </td>
                     </tr>
                   ))}
@@ -191,12 +187,11 @@ export default function RolesPage() {
               </table>
             )}
           </div>
+          <div className="card-note">
+            owner/admin 不受访问规则限制；自定义角色仅可包含权限目录中可委派的权限码。
+          </div>
         </div>
       )}
-
-      <p className="help" style={{ marginTop: 12 }}>
-        owner/admin 不受访问规则限制；自定义角色仅可包含权限目录中可委派的权限码。
-      </p>
 
       {editor ? (
         <RoleEditor

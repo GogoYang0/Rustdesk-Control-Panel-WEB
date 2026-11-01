@@ -143,14 +143,12 @@ function setup(
 describe('RolesPage', () => {
   afterEach(() => vi.restoreAllMocks())
 
-  it('disables role writes without role.manage', async () => {
+  it('hides role writes without role.manage', async () => {
     setup({ permissions: ['device.read'] })
     await screen.findAllByText('Ops')
-    expect(
-      (screen.getByRole('button', { name: '新建自定义角色' }) as HTMLButtonElement).disabled,
-    ).toBe(true)
-    expect((screen.getByRole('button', { name: '编辑' }) as HTMLButtonElement).disabled).toBe(true)
-    expect((screen.getByRole('button', { name: '删除' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.queryByRole('button', { name: '新建自定义角色' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '编辑' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '删除' })).toBeNull()
   })
 
   it('creates a custom role with permissions and audit scope', async () => {

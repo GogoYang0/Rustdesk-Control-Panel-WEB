@@ -475,13 +475,12 @@ export default function SessionsPage() {
               </div>
             ) : null}
           </div>
+          <div className="card-note">
+            面板不在 RustDesk 信令链路上：panel 会话的策略在签发/兑换阶段强制，native
+            会话只做记录与告警，不会主动断连。
+          </div>
         </div>
       )}
-
-      <p className="help" style={{ marginTop: 12 }}>
-        面板不在 RustDesk 信令链路上：panel 会话的策略在签发/兑换阶段强制，native
-        会话只做记录与告警，不会主动断连。
-      </p>
 
       {selected !== null ? (
         <SessionDetailSheet

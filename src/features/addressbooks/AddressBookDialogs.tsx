@@ -118,16 +118,16 @@ export function BookDialog({
             >
               个人
             </button>
-            <button
-              type="button"
-              className={`chip-btn ${scope === 'shared' ? 'on' : ''}`}
-              aria-pressed={scope === 'shared'}
-              disabled={!canCreateShared}
-              title={canCreateShared ? undefined : '需要 addressbook.write 权限'}
-              onClick={() => setScope('shared')}
-            >
-              共享
-            </button>
+            {canCreateShared ? (
+              <button
+                type="button"
+                className={`chip-btn ${scope === 'shared' ? 'on' : ''}`}
+                aria-pressed={scope === 'shared'}
+                onClick={() => setScope('shared')}
+              >
+                共享
+              </button>
+            ) : null}
           </div>
           <div className="help">
             个人簿只有你可见；共享簿对组织成员可读，写操作需要 addressbook.write。

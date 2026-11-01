@@ -113,6 +113,47 @@ describe('AppShell organization creation entry', () => {
     expect(document.querySelector('.org-switch')?.textContent).toContain('Beta')
   })
 
+  it('closes the desktop organization menu on an outside pointer press', async () => {
+    setup([acme, beta])
+    fireEvent.click(await screen.findByTitle('切换组织'))
+    expect(document.querySelector('.org-menu')).not.toBeNull()
+    fireEvent.pointerDown(document.body)
+    expect(document.querySelector('.org-menu')).toBeNull()
+  })
+
+  it('opens account actions and the profile dialog from the user menu', async () => {
+    setup([acme])
+    const chip = await screen.findByRole('button', { name: /admin@acme.local/ })
+    fireEvent.click(chip)
+    fireEvent.click(screen.getByRole('menuitem', { name: '个人资料' }))
+    expect(await screen.findByRole('dialog', { name: '个人资料' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '关闭' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(document.activeElement).toBe(chip)
+    expect(screen.getByRole('button', { name: '收起侧边栏' })).toBeTruthy()
+    expect(screen.queryByText(/TLS 1.3/)).toBeNull()
+  })
+
+  it('closes the user menu with Escape and restores focus', async () => {
+    setup([acme])
+    const chip = await screen.findByRole('button', { name: /admin@acme.local/ })
+    fireEvent.click(chip)
+    expect(document.querySelector('.user-menu')).not.toBeNull()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(document.querySelector('.user-menu')).toBeNull()
+    expect(document.activeElement).toBe(chip)
+  })
+
+  it('hides navigation items the current role cannot use', async () => {
+    setMobile(false)
+    setup([acme, beta], '/orgs/2/overview')
+    expect(await screen.findByText('OVERVIEW')).toBeTruthy()
+    const nav = document.querySelector('.side-nav') as HTMLElement
+    expect(within(nav).queryByText('系统设置')).toBeNull()
+    expect(within(nav).queryByText('访问控制')).toBeNull()
+    expect(within(nav).getByText('设备')).toBeTruthy()
+  })
+
   it('closes the desktop menu with Escape from its search box', async () => {
     setup([acme, beta])
     fireEvent.click(await screen.findByTitle('切换组织'))

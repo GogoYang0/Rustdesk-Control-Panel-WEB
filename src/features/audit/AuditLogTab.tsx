@@ -170,6 +170,7 @@ export default function AuditLogTab({
               </div>
             ) : null}
           </div>
+          <div className="card-note">动作与目标为精确匹配；查看列表不产生审计记录。</div>
         </div>
       )}
 

@@ -120,7 +120,10 @@ export default function TotpCard({
     <>
       <div className="card" data-testid="totp-card">
         <div className="card-head">
-          <div className="card-title">两步验证</div>
+          <div className="card-title">
+            两步验证
+            <span className="hint">使用验证器 App 生成动态码</span>
+          </div>
           <span className={`tag ${enabled ? 'green' : 'grey'}`}>
             {enabled ? '已启用' : '未启用'}
           </span>

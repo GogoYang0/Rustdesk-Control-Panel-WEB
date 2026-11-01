@@ -132,8 +132,13 @@ export default function StrategyEditor({
         <div className="spacer" />
         {strategy ? <span className="tag grey">version {strategy.version}</span> : null}
       </div>
+      {strategy && (strategy.cleared_keys?.length ?? 0) > 0 ? (
+        <div className="help mb-10">已清除：{strategy.cleared_keys?.join('、')}</div>
+      ) : null}
       <div className="help mb-14">
         勾选表示下发该键；空值也是有效下发值（清除客户端值）。取消勾选表示不再发送，服务端会记录为已清除键。
+        配置实际变化时服务端分配组织内下一个代次（可能跳号）；改名/空转不触发全量下发。客户端下一次心跳（≤30
+        秒）才生效。
       </div>
 
       <div
@@ -175,16 +180,6 @@ export default function StrategyEditor({
             </div>
           </div>
         ))}
-      </div>
-
-      {strategy && (strategy.cleared_keys?.length ?? 0) > 0 ? (
-        <div className="help" style={{ marginTop: 12 }}>
-          已清除：{strategy.cleared_keys?.join('、')}
-        </div>
-      ) : null}
-      <div className="help" style={{ marginTop: 10 }}>
-        配置实际变化时服务端分配组织内下一个代次（可能跳号）；改名/空转不触发全量下发。客户端下一次心跳（≤30
-        秒）才生效。
       </div>
     </Modal>
   )

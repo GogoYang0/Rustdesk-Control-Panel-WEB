@@ -1,10 +1,11 @@
 /**
- * Tab strip state. Tabs are page keys ordered least-recently-used first, so the
- * head is always the eviction candidate and the active tab sits at the tail.
+ * Tab strip state. Tabs keep their first-open order; selecting an existing tab
+ * must not move it to the tail. Eviction removes the oldest non-active tab,
+ * which is a stable, predictable "expired" candidate.
  */
 export function pushTab(tabs: string[], key: string): string[] {
-  if (tabs[tabs.length - 1] === key) return tabs
-  return [...tabs.filter((existing) => existing !== key), key]
+  if (tabs.includes(key)) return tabs
+  return [...tabs, key]
 }
 
 export function closeTabFrom(tabs: string[], key: string): string[] {

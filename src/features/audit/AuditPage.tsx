@@ -166,7 +166,10 @@ export default function AuditPage() {
       <div className="page-head">
         <div>
           <h1 className="page-title">审计与日志</h1>
-          <div className="page-sub">请求审计 / 连接日志 / 文件日志；可见范围由角色审计范围决定</div>
+          <div className="page-sub">
+            请求审计 / 连接日志 / 文件日志；可见范围由角色审计范围决定；导出使用当前筛选（最多 1000
+            行，会写入审计）
+          </div>
         </div>
         <div className="spacer" />
         <div className="head-actions">
@@ -309,11 +312,6 @@ export default function AuditPage() {
           <FileLogTab key={`${id}-files`} {...tabProps} canReadDevices={canReadDevices} />
         )}
       </div>
-
-      <p className="help" style={{ marginTop: 12 }}>
-        动作、目标与 RustDesk ID 为精确匹配。审计可见范围由角色决定（全局，或仅本人及本人设备）；
-        查看列表不产生审计记录。导出使用当前筛选（最多 1000 行），导出动作会写入审计。
-      </p>
     </section>
   )
 }

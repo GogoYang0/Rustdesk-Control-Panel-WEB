@@ -4,6 +4,7 @@ import { Navigate, Outlet, useLocation, useNavigate, useParams } from 'react-rou
 
 import CreateOrgDialog from '../features/orgs/CreateOrgDialog'
 
+import ProfileDialog from '../components/ProfileDialog'
 import StateBlock from '../components/StateBlock'
 import { useFocusTrap } from '../components/useFocusTrap'
 import { logout, setLogoutHandler } from '../lib/session'
@@ -364,10 +365,16 @@ export default function AppShell() {
   const [orgOpen, setOrgOpen] = useState(false)
   const [mobileOrgOpen, setMobileOrgOpen] = useState(false)
   const [orgQuery, setOrgQuery] = useState('')
+  const [userOpen, setUserOpen] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
+  const desktopOrgRef = useRef<HTMLDivElement>(null)
+  const mobileOrgRef = useRef<HTMLDivElement>(null)
+  const userMenuRef = useRef<HTMLDivElement>(null)
+  const userChipRef = useRef<HTMLButtonElement>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [createFrom, setCreateFrom] = useState<'org' | 'menu'>('org')
   const orgSwitchRef = useRef<HTMLButtonElement>(null)
-  // Open tabs, least-recently-used first (design D3: tabs are route handles).
+  // Open tabs keep their first-open order (design D3: tabs are route handles).
   const [tabs, setTabs] = useState<string[]>([])
   const tabbarRef = useRef<HTMLDivElement>(null)
   const [theme, setTheme] = useState<ThemeMode>(() => getStoredTheme())
@@ -406,6 +413,32 @@ export default function AppShell() {
     if (!sideOpen) setMobileOrgOpen(false)
   }, [sideOpen])
 
+  // Any pointer press outside an open picker/menu closes it, including the
+  // header and page content. The desktop scrim remains for click blocking, but
+  // the listener also covers the mobile picker inside the drawer.
+  useEffect(() => {
+    if (!orgOpen && !mobileOrgOpen && !userOpen) return
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node
+      if (orgOpen && !desktopOrgRef.current?.contains(target)) setOrgOpen(false)
+      if (mobileOrgOpen && !mobileOrgRef.current?.contains(target)) setMobileOrgOpen(false)
+      if (userOpen && !userMenuRef.current?.contains(target)) setUserOpen(false)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [orgOpen, mobileOrgOpen, userOpen])
+
+  useEffect(() => {
+    if (!userOpen) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      setUserOpen(false)
+      userChipRef.current?.focus()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [userOpen])
+
   // A wrong organization id in the URL must not silently render the first org:
   // that made 404s look like a successful load of somebody else's scope.
   // `Number("abc")` is NaN, which is falsy: selecting on it explicitly (rather
@@ -416,6 +449,17 @@ export default function AppShell() {
       ? me?.orgs[0]
       : me?.orgs.find((org) => Number.isInteger(requestedOrgId) && org.id === requestedOrgId)
   const perms = useMemo(() => new Set(current?.permissions ?? []), [current])
+  const visibleGroups = useMemo(
+    () =>
+      GROUPS.map((group) => ({
+        ...group,
+        items: group.items.filter((item) => !item.permission || perms.has(item.permission)),
+      })).filter((group) => group.items.length > 0),
+    [perms],
+  )
+  const visibleMobileNav = MOBILE_NAV.filter(
+    (item) => !item.permission || perms.has(item.permission),
+  )
   const orgNeedle = orgQuery.trim().toLowerCase()
   const visibleOrgs = (me?.orgs ?? []).filter(
     (org) =>
@@ -436,7 +480,10 @@ export default function AppShell() {
     const el = tabbarRef.current
     if (!el || el.clientWidth === 0) return
     const victim = evictionCandidate(tabs, activeKey)
-    if (victim && el.scrollWidth > el.clientWidth + 1) setTabs((prev) => closeTabFrom(prev, victim))
+    if (victim && el.scrollWidth > el.clientWidth + 1) {
+      Toast.info(`页签已满，已移除「${TAB_LABELS[victim] ?? victim}」`)
+      setTabs((prev) => closeTabFrom(prev, victim))
+    }
   }, [tabs, activeKey])
 
   function openCreate(from: 'org' | 'menu') {
@@ -516,7 +563,7 @@ export default function AppShell() {
         </div>
 
         {isMobile ? (
-          <>
+          <div ref={mobileOrgRef} className="side-org-wrap">
             <button
               className="side-org"
               type="button"
@@ -600,61 +647,39 @@ export default function AppShell() {
               <span className="ic">＋</span>
               <span className="txt">创建组织</span>
             </button>
-          </>
+          </div>
         ) : null}
 
         <nav className="side-nav">
-          {GROUPS.map((group) => (
+          {visibleGroups.map((group) => (
             <div key={group.title}>
               <div className="nav-group">{group.title}</div>
-              {group.items.map((item) => {
-                const allowed = item.permission ? perms.has(item.permission) : true
-                return (
-                  <button
-                    key={item.key}
-                    type="button"
-                    className={`nav-item ${item.key === activeKey ? 'active' : ''}`}
-                    aria-disabled={!item.ready || !allowed}
-                    title={item.ready ? item.label : `${item.label}（后续波次）`}
-                    onClick={() => {
-                      if (!item.ready) {
-                        Toast.info('该域在后续波次接入')
-                        return
-                      }
-                      if (!allowed) {
-                        Toast.warning('当前角色没有该域的权限')
-                        return
-                      }
-                      setSideOpen(false)
-                      navigate(`/orgs/${current.id}/${item.key}`)
-                    }}
-                  >
-                    <span className="ic">{item.icon}</span>
-                    <span className="txt">{item.label}</span>
-                    {item.ready ? null : <span className="nav-badge soft">后续</span>}
-                  </button>
-                )
-              })}
+              {group.items.map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  className={`nav-item ${item.key === activeKey ? 'active' : ''}`}
+                  aria-disabled={!item.ready}
+                  title={item.ready ? item.label : `${item.label}（后续波次）`}
+                  onClick={() => {
+                    if (!item.ready) {
+                      Toast.info('该域在后续波次接入')
+                      return
+                    }
+                    setSideOpen(false)
+                    navigate(`/orgs/${current.id}/${item.key}`)
+                  }}
+                >
+                  <span className="ic">{item.icon}</span>
+                  <span className="txt">{item.label}</span>
+                  {item.ready ? null : <span className="nav-badge soft">后续</span>}
+                </button>
+              ))}
             </div>
           ))}
         </nav>
 
         <div className="side-foot">
-          <div className="secure-pill side-secure">
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 12 12"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinejoin="round"
-            >
-              <path d="M6 1.5l4 1.6v2.7c0 2.2-1.6 4-4 4.7-2.4-.7-4-2.5-4-4.7V3.1z" />
-              <path d="M4.5 6l1.1 1.1 2-2.1" />
-            </svg>
-            <span className="sp-txt">TLS 1.3 · 审计开启</span>
-          </div>
           <div className="ver-row">
             <span className="live" />
             <span>
@@ -662,27 +687,41 @@ export default function AppShell() {
             </span>
           </div>
           <div className="copyright">© 2026 RustDesk Panel</div>
-        </div>
-
-        <button
-          type="button"
-          className="side-toggle"
-          title={collapsed ? '展开侧栏' : '收起侧栏'}
-          onClick={() => setCollapsed((v) => !v)}
-        >
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+          <button
+            type="button"
+            className="nav-item side-collapse"
+            title={collapsed ? '展开侧边栏' : '收起侧边栏'}
+            onClick={() => {
+              if (isMobile) {
+                setSideOpen(false)
+                return
+              }
+              setCollapsed((value) => !value)
+            }}
           >
-            <path d="M9.5 4L5.5 8l4 4" />
-          </svg>
-        </button>
+            <span className="ic">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect x="1.8" y="2.5" width="12.4" height="11" rx="1.5" />
+                <path d="M6 2.5v11" />
+                {collapsed ? (
+                  <path d="M8.5 6.5L11 8l-2.5 1.5" />
+                ) : (
+                  <path d="M11 6.5L8.5 8 11 9.5" />
+                )}
+              </svg>
+            </span>
+            <span className="txt">{collapsed ? '展开侧边栏' : '收起侧边栏'}</span>
+          </button>
+        </div>
       </aside>
       {sideOpen ? (
         <button
@@ -735,7 +774,7 @@ export default function AppShell() {
             <kbd>⌘K</kbd>
           </button>
 
-          <div style={{ position: 'relative' }}>
+          <div ref={desktopOrgRef} style={{ position: 'relative' }}>
             <button
               ref={orgSwitchRef}
               className="org-switch"
@@ -880,15 +919,68 @@ export default function AppShell() {
             </button>
           </div>
 
-          <div className="user-chip">
-            <div className="avatar">{me.user.email.slice(0, 1).toUpperCase()}</div>
-            <div className="desk-only">
-              <div className="nm">{me.user.email}</div>
-              <div className="rl">{current.role_kind}</div>
-            </div>
-            <button className="btn tertiary sm" type="button" onClick={() => logout()}>
-              退出
+          <div className="user-menu-wrap" ref={userMenuRef}>
+            <button
+              ref={userChipRef}
+              type="button"
+              className="user-chip"
+              aria-haspopup="menu"
+              aria-expanded={userOpen}
+              aria-controls="user-menu"
+              onClick={() => setUserOpen((value) => !value)}
+            >
+              <span className="avatar">{me.user.email.slice(0, 1).toUpperCase()}</span>
+              <span className="desk-only">
+                <span className="nm">{me.user.email}</span>
+                <span className="rl">{current.role_kind}</span>
+              </span>
+              <svg
+                width="10"
+                height="10"
+                viewBox="0 0 12 12"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              >
+                <path d="M3 4.5L6 7.5l3-3" />
+              </svg>
             </button>
+            {userOpen ? (
+              <div id="user-menu" className="user-menu" role="menu">
+                <button
+                  type="button"
+                  className="user-menu-item"
+                  role="menuitem"
+                  onClick={() => {
+                    setUserOpen(false)
+                    setProfileOpen(true)
+                  }}
+                >
+                  个人资料
+                </button>
+                <button
+                  type="button"
+                  className="user-menu-item"
+                  role="menuitem"
+                  onClick={() => {
+                    setUserOpen(false)
+                    navigate(`/orgs/${current.id}/account`)
+                  }}
+                >
+                  账户安全
+                </button>
+                <div className="user-menu-sep" />
+                <button
+                  type="button"
+                  className="user-menu-item danger"
+                  role="menuitem"
+                  onClick={() => logout()}
+                >
+                  退出登录
+                </button>
+              </div>
+            ) : null}
           </div>
         </header>
 
@@ -949,31 +1041,38 @@ export default function AppShell() {
           }}
         />
       ) : null}
+      {profileOpen ? (
+        <ProfileDialog
+          email={me.user.email}
+          organization={current.name}
+          role={current.role_kind}
+          onClose={() => {
+            setProfileOpen(false)
+            userChipRef.current?.focus()
+          }}
+          onAccount={() => {
+            setProfileOpen(false)
+            navigate(`/orgs/${current.id}/account`)
+          }}
+        />
+      ) : null}
 
       <nav className="mobtab" aria-label="移动端快捷导航">
-        {MOBILE_NAV.map((item) => {
-          const allowed = item.permission ? perms.has(item.permission) : true
-          return (
-            <button
-              key={item.key}
-              type="button"
-              className={activeKey === item.key ? 'on' : ''}
-              aria-current={activeKey === item.key ? 'page' : undefined}
-              aria-disabled={!allowed}
-              onClick={() => {
-                if (!allowed) {
-                  Toast.warning('当前角色没有该域的权限')
-                  return
-                }
-                setSideOpen(false)
-                navigate(`/orgs/${current.id}/${item.key}`)
-              }}
-            >
-              <span className="mi">{item.icon}</span>
-              {item.label}
-            </button>
-          )
-        })}
+        {visibleMobileNav.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            className={activeKey === item.key ? 'on' : ''}
+            aria-current={activeKey === item.key ? 'page' : undefined}
+            onClick={() => {
+              setSideOpen(false)
+              navigate(`/orgs/${current.id}/${item.key}`)
+            }}
+          >
+            <span className="mi">{item.icon}</span>
+            {item.label}
+          </button>
+        ))}
       </nav>
     </div>
   )

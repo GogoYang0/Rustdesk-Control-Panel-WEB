@@ -181,6 +181,23 @@ describe('OverviewPage', () => {
     expect(screen.getByText('严重')).toBeTruthy()
   })
 
+  it('marks stat cards with an accent ring and starts the flow on hover', async () => {
+    setup()
+    const device = await screen.findByTestId('overview-stat-devices')
+    for (const id of [
+      'overview-stat-devices',
+      'overview-stat-sessions',
+      'overview-stat-approvals',
+      'overview-stat-alerts',
+    ]) {
+      const card = await screen.findByTestId(id)
+      expect(card.querySelector('.stat-ring')).toBeTruthy()
+      expect(card.getAttribute('style')).toContain('--stat-accent')
+    }
+    fireEvent.pointerEnter(device)
+    expect(device.getAttribute('data-flow')).toBe('on')
+  })
+
   it('degrades the device card without sending a device request', async () => {
     const { requests } = setup({ permissions: ['audit.read'] })
     const device = await screen.findByTestId('overview-stat-devices')

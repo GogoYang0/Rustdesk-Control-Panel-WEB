@@ -344,3 +344,226 @@ button.switch:focus-visible {
     backdrop-filter: blur(1.5px);
   }
 }
+
+/* ── UI polish: smooth theme, user menu, sidebar footer ─────────────────── */
+html.theme-switching,
+html.theme-switching body,
+html.theme-switching .side,
+html.theme-switching .topbar,
+html.theme-switching .tabbar,
+html.theme-switching .content,
+html.theme-switching .card,
+html.theme-switching .btn,
+html.theme-switching .input,
+html.theme-switching .table th,
+html.theme-switching .table td {
+  transition:
+    background-color 0.28s ease,
+    color 0.28s ease,
+    border-color 0.28s ease,
+    box-shadow 0.28s ease;
+}
+
+.user-menu-wrap {
+  position: relative;
+  flex: none;
+}
+.user-chip {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+.user-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 42;
+  min-width: 184px;
+  padding: 6px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-pop);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.user-menu-item {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--text-1);
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.user-menu-item:hover {
+  background: var(--fill-0);
+}
+.user-menu-item.danger {
+  color: var(--danger);
+}
+.user-menu-sep {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 2px;
+}
+.side-foot {
+  align-items: center;
+  text-align: center;
+}
+.side-foot .ver-row,
+.side-foot .copyright {
+  justify-content: center;
+  text-align: center;
+}
+.side-collapse {
+  margin-top: 6px;
+  width: 100%;
+  justify-content: center;
+}
+.side[data-collapsed='true'] .side-collapse {
+  width: 38px;
+}
+
+/* Explanations that used to float under the whole page belong inside the card
+   they describe. */
+.card-note {
+  border-top: 1px solid var(--border);
+  padding: 9px 18px 11px;
+  font-size: 11.5px;
+  line-height: 16px;
+  color: var(--text-2);
+}
+.book-group-note {
+  margin: -4px 0 10px;
+}
+
+/* PC title sheen: a light band sweeps across the gradient text on a loop. */
+h1.page-title {
+  background-image:
+    linear-gradient(115deg, transparent 40%, rgba(255, 255, 255, 0.82) 50%, transparent 60%),
+    linear-gradient(
+      100deg,
+      var(--title-g1) 0%,
+      var(--title-g2) 36%,
+      var(--title-g3) 62%,
+      var(--title-g4) 90%
+    );
+  background-size:
+    240% 100%,
+    240% 100%;
+  background-repeat: no-repeat, no-repeat;
+  background-position:
+    -140% 0,
+    0 50%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: title-sheen 6s linear infinite;
+}
+@keyframes title-sheen {
+  0% {
+    background-position:
+      -140% 0,
+      0 50%;
+  }
+  55%,
+  100% {
+    background-position:
+      240% 0,
+      0 50%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.theme-switching,
+  html.theme-switching body,
+  html.theme-switching .side,
+  html.theme-switching .topbar,
+  html.theme-switching .tabbar,
+  html.theme-switching .content,
+  html.theme-switching .card,
+  html.theme-switching .btn,
+  html.theme-switching .input,
+  html.theme-switching .table th,
+  html.theme-switching .table td {
+    transition-duration: 0.1s;
+  }
+  /* Keep the requested sheen visible but slow it down for motion-sensitive users. */
+  h1.page-title {
+    animation-duration: 12s;
+  }
+}
+
+/* Overview stat cards: a resting color edge on the left, and a light band that
+   runs around the card while hovered. The band retraces to the left edge after
+   the pointer leaves; re-entering resumes the forward flow from that angle. */
+.stat {
+  --stat-accent: var(--primary);
+}
+.stat::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 14px;
+  bottom: 14px;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--stat-accent) 90%, transparent),
+    transparent
+  );
+  pointer-events: none;
+}
+.stat-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  background: conic-gradient(
+    from calc(var(--stat-angle, 0deg) + 250deg),
+    var(--stat-accent) 0deg 40deg,
+    transparent 40deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+.stat[data-flow='on'] .stat-ring {
+  opacity: 1;
+}
+
+/* Mobile login: the desktop min-height must not win over the responsive rule. */
+@media (max-width: 767px) {
+  .login-page {
+    min-height: 100dvh;
+    padding: 12px;
+    align-items: flex-start;
+  }
+  .login-page .login-wrap {
+    width: 100%;
+    min-height: auto;
+    border: 0;
+    box-shadow: none;
+    flex-direction: column;
+  }
+  .login-page .login-form {
+    padding: 20px 4px;
+  }
+  .login-page .login-card {
+    width: 100%;
+    max-width: 420px;
+  }
+}

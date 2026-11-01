@@ -94,7 +94,9 @@ export default function IdentityCard({
         <div className="card-head">
           <div className="card-title">
             外部身份
-            <span className="hint">SSO 登录与账户的绑定；绑定/重置由管理员处理</span>
+            <span className="hint">
+              SSO 登录与账户的绑定；绑定/重置由管理员处理，解绑需当前密码或 Passkey
+            </span>
           </div>
           {data?.active_provider && !unavailable ? (
             <span className="tag blue">
