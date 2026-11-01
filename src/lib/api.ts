@@ -572,6 +572,23 @@ export async function setPassword(newPassword: string, stepupToken: string): Pro
   })
 }
 
+/** Admin-initiated reset mail; the token only travels to the member mailbox. */
+export async function requestMemberPasswordReset(orgId: number, userId: number): Promise<void> {
+  await apiFetch<unknown>(`/api/v1/orgs/${orgId}/members/${userId}/password/reset`, {
+    method: 'POST',
+  })
+}
+
+/** Redeems the one-shot reset token; never retries or persists the token. */
+export async function resetPassword(token: string, newPassword: string): Promise<void> {
+  await apiFetch<unknown>('/api/v1/auth/password/reset', {
+    method: 'POST',
+    body: JSON.stringify({ token, new_password: newPassword }),
+    retryOn401: false,
+    referrerPolicy: 'no-referrer',
+  })
+}
+
 // ── personal tokens & external identities ─────────────────────────────────
 
 export function fetchTokens(organizationId: number): Promise<ApiToken[]> {

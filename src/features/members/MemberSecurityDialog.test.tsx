@@ -54,11 +54,12 @@ function setup(status = 200) {
 afterEach(() => vi.restoreAllMocks())
 
 describe('MemberSecurityDialog', () => {
-  it('lists the three security actions and confirms before resetting TOTP', async () => {
+  it('lists the security actions and confirms before resetting TOTP', async () => {
     const { requests, onClose } = setup()
     expect(screen.getByText('重置两步验证')).toBeTruthy()
     expect(screen.getByText('重置 Passkey')).toBeTruthy()
     expect(screen.getByText('解绑外部身份')).toBeTruthy()
+    expect(screen.getByText('重置本地密码')).toBeTruthy()
 
     const totpCard = screen.getByText('重置两步验证').closest('.card') as HTMLElement
     fireEvent.click(within(totpCard).getByRole('button', { name: '重置' }))
@@ -68,6 +69,26 @@ describe('MemberSecurityDialog', () => {
     await waitFor(() => expect(requests).toHaveLength(1))
     expect(requests[0]).toBe('/api/v1/orgs/1/members/7/2fa/reset')
     await waitFor(() => expect(onClose).toHaveBeenCalled())
+  })
+
+  it('sends a password reset mail after confirmation', async () => {
+    const { requests, onClose } = setup()
+    const card = screen.getByText('重置本地密码').closest('.card') as HTMLElement
+    fireEvent.click(within(card).getByRole('button', { name: '重置' }))
+    expect(screen.getByText(/管理员不会看到新密码/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '发送重置邮件' }))
+    await waitFor(() => expect(requests).toHaveLength(1))
+    expect(requests[0]).toBe('/api/v1/orgs/1/members/7/password/reset')
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
+  })
+
+  it('shows the password reset conflict and keeps the dialog open', async () => {
+    const { onClose } = setup(409)
+    const card = screen.getByText('重置本地密码').closest('.card') as HTMLElement
+    fireEvent.click(within(card).getByRole('button', { name: '重置' }))
+    fireEvent.click(screen.getByRole('button', { name: '发送重置邮件' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('没有本地密码')
+    expect(onClose).not.toHaveBeenCalled()
   })
 
   it('shows the passkey lockout refusal and keeps the dialog open', async () => {

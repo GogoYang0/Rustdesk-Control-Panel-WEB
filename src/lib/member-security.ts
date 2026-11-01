@@ -1,6 +1,6 @@
 import { ApiError } from './api'
 
-export type MemberSecurityAction = 'totp' | 'passkey' | 'identity'
+export type MemberSecurityAction = 'totp' | 'passkey' | 'identity' | 'password'
 
 export const MEMBER_SECURITY_ACTIONS: {
   action: MemberSecurityAction
@@ -30,6 +30,14 @@ export const MEMBER_SECURITY_ACTIONS: {
     confirm: '该成员的外部身份绑定会被删除，且不可撤销；请确认其仍能通过本地凭据登录。',
     button: '解绑外部身份',
   },
+  {
+    action: 'password',
+    label: '重置本地密码',
+    description: '向该成员邮箱发送一次性重置链接；1 小时内有效，旧链接立即失效。',
+    confirm:
+      '将向该成员邮箱发送密码重置链接。成员设置新密码后，其全部登录会话会被撤销；管理员不会看到新密码。',
+    button: '发送重置邮件',
+  },
 ]
 
 export function memberSecurityError(err: unknown, action: MemberSecurityAction): string {
@@ -50,6 +58,7 @@ export function memberSecurityError(err: unknown, action: MemberSecurityAction):
     if (action === 'identity') {
       return '该成员没有本地凭据且仍有可用绑定，解绑会导致无法登录'
     }
+    if (action === 'password') return '该成员没有本地密码、已停用，或不能重置自己'
     return '两步验证状态已变化，请刷新后重试'
   }
   return '操作失败，请稍后重试'

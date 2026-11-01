@@ -26,6 +26,7 @@ import {
   resetMemberTotp,
   resetMemberPasskeys,
   resetMemberIdentity,
+  requestMemberPasswordReset,
   fetchSession,
   fetchSessionAlerts,
   fetchSessions,
@@ -260,6 +261,12 @@ export const panelApi = createApi({
         { type: 'Members', id: orgId },
         { type: 'Invitations', id: orgId },
       ],
+    }),
+    requestMemberPasswordReset: build.mutation<void, { orgId: number; userId: number }>({
+      queryFn: async ({ orgId, userId }) => {
+        const result = await wrap(() => requestMemberPasswordReset(orgId, userId))
+        return 'data' in result ? { data: undefined } : result
+      },
     }),
     revokeInvitation: build.mutation<void, { orgId: number; invitationId: number }>({
       queryFn: async ({ orgId, invitationId }) => {
@@ -900,6 +907,7 @@ export const {
   useResetMemberTotpMutation,
   useResetMemberPasskeysMutation,
   useResetMemberIdentityMutation,
+  useRequestMemberPasswordResetMutation,
   useGetSessionsQuery,
   useGetSessionQuery,
   useGetSessionAlertsQuery,
